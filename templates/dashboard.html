@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard — Retail Analytics{% endblock %}
+
+{% block body %}
+<div style="padding: 2rem; font-family: sans-serif;">
+    <h1>Olá, {{ session['full_name'] }}!</h1>
+    <p>Dashboard em construção.</p>
+    <a href="{{ url_for('auth.logout') }}">Sair</a>
+</div>
+{% endblock %}
