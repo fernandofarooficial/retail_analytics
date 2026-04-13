@@ -32,6 +32,12 @@
                 <td>{{ r.store_name or '—' }}</td>
                 <td class="td-truncate">{{ r.rtsp_url or '—' }}</td>
                 <td class="col-actions">
+                    <button class="btn-ver" onclick="abrirVer(
+                        {{ r.camera_id | tojson }},
+                        {{ r.camera_name | tojson }},
+                        {{ (r.rtsp_url or '') | tojson }},
+                        {{ url_for('cadastros.camera_snapshot', camera_id=r.camera_id) | tojson }}
+                    )">Ver</button>
                     <button class="btn-edit" onclick="abrirEditar(
                         {{ r.camera_id | tojson }},
                         {{ r.camera_name | tojson }},
@@ -54,6 +60,7 @@
     </table>
 </div>
 
+<!-- Modal: Editar / Criar -->
 <dialog id="modal">
     <form method="POST">
         <div class="modal-header">
@@ -105,8 +112,34 @@
     </form>
 </dialog>
 
+<!-- Modal: Snapshot ao vivo -->
+<dialog id="modal-ver" class="modal-snapshot">
+    <div class="modal-header">
+        <h2 id="ver-titulo">Câmera</h2>
+        <button type="button" class="modal-close" onclick="fecharVer()">&times;</button>
+    </div>
+    <div id="ver-body" class="snapshot-body">
+        <div id="ver-loading" class="snapshot-msg">Conectando à câmera...</div>
+        <img id="ver-img" src="" alt="Snapshot" class="snapshot-img" style="display:none">
+        <div id="ver-sem-url" class="snapshot-msg snapshot-warn" style="display:none">
+            Esta câmera não possui URL RTSP configurada.
+        </div>
+        <div id="ver-erro" class="snapshot-msg snapshot-err" style="display:none">
+            Não foi possível conectar à câmera.<br>
+            <small>Verifique se a câmera está online e a URL RTSP está correta.</small>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <span id="ver-status" class="snapshot-status"></span>
+        <button type="button" class="btn-secondary" onclick="fecharVer()">Fechar</button>
+    </div>
+</dialog>
+
 <script>
-const modal = document.getElementById('modal');
+const modal    = document.getElementById('modal');
+const modalVer = document.getElementById('modal-ver');
+
+// ── Modal Editar/Criar ────────────────────────────────────────────────────────
 
 function abrirNovo() {
     document.getElementById('modal-titulo').textContent = 'Nova Câmera';
@@ -138,5 +171,65 @@ function abrirEditar(id, nome, tipoId, storeId, rtsp) {
 
 function fecharModal() { modal.close(); }
 modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
+
+// ── Modal Snapshot ────────────────────────────────────────────────────────────
+
+let verInterval   = null;
+let snapshotUrl   = null;
+const REFRESH_MS  = 30000;
+
+function abrirVer(cameraId, cameraNome, rtspUrl, url) {
+    document.getElementById('ver-titulo').textContent = cameraNome;
+    snapshotUrl = url;
+
+    // Reseta estado
+    mostrarEstado('loading');
+
+    if (!rtspUrl) {
+        mostrarEstado('sem-url');
+        modalVer.showModal();
+        return;
+    }
+
+    modalVer.showModal();
+    carregarSnapshot();
+    verInterval = setInterval(carregarSnapshot, REFRESH_MS);
+}
+
+function carregarSnapshot() {
+    const img = document.getElementById('ver-img');
+    const ts  = Date.now();
+    const src = snapshotUrl + '?t=' + ts;
+
+    img.onload = () => {
+        mostrarEstado('img');
+        const agora = new Date().toLocaleTimeString('pt-BR');
+        document.getElementById('ver-status').textContent =
+            'Atualizado às ' + agora + ' — próximo em 30s';
+    };
+
+    img.onerror = () => {
+        mostrarEstado('erro');
+        document.getElementById('ver-status').textContent = '';
+    };
+
+    img.src = src;
+}
+
+function mostrarEstado(estado) {
+    document.getElementById('ver-loading').style.display = estado === 'loading' ? '' : 'none';
+    document.getElementById('ver-img').style.display     = estado === 'img'     ? '' : 'none';
+    document.getElementById('ver-sem-url').style.display = estado === 'sem-url' ? '' : 'none';
+    document.getElementById('ver-erro').style.display    = estado === 'erro'    ? '' : 'none';
+}
+
+function fecharVer() {
+    if (verInterval) { clearInterval(verInterval); verInterval = null; }
+    document.getElementById('ver-img').src = '';
+    document.getElementById('ver-status').textContent = '';
+    modalVer.close();
+}
+
+modalVer.addEventListener('click', e => { if (e.target === modalVer) fecharVer(); });
 </script>
 {% endblock %}

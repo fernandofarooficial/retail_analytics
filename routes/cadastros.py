@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
+import threading
+import cv2
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, Response
 from routes.utils import login_required
 import db
 
@@ -392,3 +394,48 @@ def cameras():
         "SELECT store_id, store_name FROM faciais.stores ORDER BY store_name"
     )
     return render_template('cadastros/cameras.html', registros=registros, tipos_cam=tipos_cam, stores=stores)
+
+
+# ── Snapshot de câmera ────────────────────────────────────────────────────────
+
+def _capturar_frame(rtsp_url, resultado, timeout_seg=8):
+    """Captura um frame do stream RTSP em thread separada."""
+    try:
+        cap = cv2.VideoCapture(rtsp_url)
+        ret, frame = cap.read()
+        cap.release()
+        if ret:
+            resultado['frame'] = frame
+    except Exception as e:
+        resultado['erro'] = str(e)
+
+
+@cadastros_bp.route('/cameras/<int:camera_id>/snapshot')
+@login_required
+def camera_snapshot(camera_id):
+    camera = db.query_one(
+        "SELECT rtsp_url FROM faciais.cameras WHERE camera_id = %s",
+        (camera_id,)
+    )
+
+    if not camera or not camera['rtsp_url']:
+        abort(404)
+
+    resultado = {}
+    t = threading.Thread(target=_capturar_frame, args=(camera['rtsp_url'], resultado))
+    t.start()
+    t.join(timeout=8)
+
+    if 'frame' not in resultado:
+        abort(503)
+
+    _, buffer = cv2.imencode('.jpg', resultado['frame'], [cv2.IMWRITE_JPEG_QUALITY, 80])
+
+    return Response(
+        buffer.tobytes(),
+        mimetype='image/jpeg',
+        headers={
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+        }
+    )

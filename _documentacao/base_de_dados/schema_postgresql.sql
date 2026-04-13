@@ -240,7 +240,7 @@ SELECT faciais.create_updated_at_trigger('camera_types');
 -- TABELA: Câmeras
 -- ============================================================
 CREATE TABLE faciais.cameras (
-    camera_id           SERIAL PRIMARY KEY,
+    camera_id           INT PRIMARY KEY,
     camera_type_id      CHAR(1),
     store_id            INT,
     camera_name         VARCHAR(30) NOT NULL,
