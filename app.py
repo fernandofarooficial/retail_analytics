@@ -2,11 +2,15 @@ import os
 from datetime import datetime
 from flask import Flask
 from dotenv import load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ['SECRET_KEY']
+
+# Lê X-Forwarded-Prefix enviado pelo nginx para gerar URLs corretas com o prefixo /retail_analytics
+app.wsgi_app = ProxyFix(app.wsgi_app, x_prefix=1)
 
 # Disponibiliza `now` globalmente nos templates
 @app.context_processor
