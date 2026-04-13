@@ -32,19 +32,19 @@
                 <td>{{ r.store_name or '—' }}</td>
                 <td class="td-truncate">{{ r.rtsp_url or '—' }}</td>
                 <td class="col-actions">
-                    <button class="btn-ver" onclick="abrirVer(
-                        {{ r.camera_id | tojson }},
-                        {{ r.camera_name | tojson }},
-                        {{ (r.rtsp_url or '') | tojson }},
-                        {{ url_for('cadastros.camera_snapshot', camera_id=r.camera_id) | tojson }}
-                    )">Ver</button>
-                    <button class="btn-edit" onclick="abrirEditar(
-                        {{ r.camera_id | tojson }},
-                        {{ r.camera_name | tojson }},
-                        {{ (r.camera_type_id or '') | tojson }},
-                        {{ (r.store_id | string) | tojson }},
-                        {{ (r.rtsp_url or '') | tojson }}
-                    )">Editar</button>
+                    <button class="btn-ver"
+                        data-id="{{ r.camera_id }}"
+                        data-nome="{{ r.camera_name | e }}"
+                        data-rtsp="{{ r.rtsp_url or '' | e }}"
+                        data-url="{{ url_for('cadastros.camera_snapshot', camera_id=r.camera_id) }}"
+                        onclick="abrirVer(this)">Ver</button>
+                    <button class="btn-edit"
+                        data-id="{{ r.camera_id }}"
+                        data-nome="{{ r.camera_name | e }}"
+                        data-tipo="{{ r.camera_type_id or '' }}"
+                        data-store="{{ r.store_id or '' }}"
+                        data-rtsp="{{ r.rtsp_url or '' | e }}"
+                        onclick="abrirEditar(this)">Editar</button>
                     <form method="POST" style="display:inline"
                           onsubmit="return confirm('Confirma a exclusão desta câmera?')">
                         <input type="hidden" name="_action" value="excluir">
@@ -60,7 +60,7 @@
     </table>
 </div>
 
-<!-- Modal: Editar / Criar -->
+<!-- Modal: Criar / Editar -->
 <dialog id="modal">
     <form method="POST">
         <div class="modal-header">
@@ -75,7 +75,6 @@
                 <label for="f-camera-id">ID da Câmera</label>
                 <input type="number" id="f-camera-id" name="camera_id" required min="1">
             </div>
-
             <div class="form-group">
                 <label>Nome da Câmera</label>
                 <input type="text" id="f-name" name="camera_name" required>
@@ -118,7 +117,7 @@
         <h2 id="ver-titulo">Câmera</h2>
         <button type="button" class="modal-close" onclick="fecharVer()">&times;</button>
     </div>
-    <div id="ver-body" class="snapshot-body">
+    <div class="snapshot-body">
         <div id="ver-loading" class="snapshot-msg">Conectando à câmera...</div>
         <img id="ver-img" src="" alt="Snapshot" class="snapshot-img" style="display:none">
         <div id="ver-sem-url" class="snapshot-msg snapshot-warn" style="display:none">
@@ -138,15 +137,18 @@
 <script>
 const modal    = document.getElementById('modal');
 const modalVer = document.getElementById('modal-ver');
+const REFRESH_MS = 30000;
+let verInterval  = null;
+let snapshotUrl  = null;
 
-// ── Modal Editar/Criar ────────────────────────────────────────────────────────
+// ── Modal Criar/Editar ────────────────────────────────────────────────────────
 
 function abrirNovo() {
-    document.getElementById('modal-titulo').textContent = 'Nova Câmera';
-    document.getElementById('form-action').value = 'criar';
-    document.getElementById('form-id').value     = '';
-    document.getElementById('f-camera-id').value = '';
-    document.getElementById('f-camera-id').readOnly = false;
+    document.getElementById('modal-titulo').textContent     = 'Nova Câmera';
+    document.getElementById('form-action').value            = 'criar';
+    document.getElementById('form-id').value                = '';
+    document.getElementById('f-camera-id').value            = '';
+    document.getElementById('f-camera-id').readOnly         = false;
     document.getElementById('grupo-camera-id').style.display = '';
     document.getElementById('f-name').value  = '';
     document.getElementById('f-type').value  = '';
@@ -155,17 +157,18 @@ function abrirNovo() {
     modal.showModal();
 }
 
-function abrirEditar(id, nome, tipoId, storeId, rtsp) {
-    document.getElementById('modal-titulo').textContent = 'Editar Câmera';
-    document.getElementById('form-action').value = 'editar';
-    document.getElementById('form-id').value     = id;
-    document.getElementById('f-camera-id').value = id;
-    document.getElementById('f-camera-id').readOnly = true;
+function abrirEditar(btn) {
+    const d = btn.dataset;
+    document.getElementById('modal-titulo').textContent     = 'Editar Câmera';
+    document.getElementById('form-action').value            = 'editar';
+    document.getElementById('form-id').value                = d.id;
+    document.getElementById('f-camera-id').value            = d.id;
+    document.getElementById('f-camera-id').readOnly         = true;
     document.getElementById('grupo-camera-id').style.display = 'none';
-    document.getElementById('f-name').value  = nome;
-    document.getElementById('f-type').value  = tipoId;
-    document.getElementById('f-store').value = storeId !== 'None' ? storeId : '';
-    document.getElementById('f-rtsp').value  = rtsp;
+    document.getElementById('f-name').value  = d.nome;
+    document.getElementById('f-type').value  = d.tipo;
+    document.getElementById('f-store').value = d.store;
+    document.getElementById('f-rtsp').value  = d.rtsp;
     modal.showModal();
 }
 
@@ -174,18 +177,14 @@ modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); })
 
 // ── Modal Snapshot ────────────────────────────────────────────────────────────
 
-let verInterval   = null;
-let snapshotUrl   = null;
-const REFRESH_MS  = 30000;
+function abrirVer(btn) {
+    const d = btn.dataset;
+    document.getElementById('ver-titulo').textContent = d.nome;
+    snapshotUrl = d.url;
 
-function abrirVer(cameraId, cameraNome, rtspUrl, url) {
-    document.getElementById('ver-titulo').textContent = cameraNome;
-    snapshotUrl = url;
-
-    // Reseta estado
     mostrarEstado('loading');
 
-    if (!rtspUrl) {
+    if (!d.rtsp) {
         mostrarEstado('sem-url');
         modalVer.showModal();
         return;
@@ -198,22 +197,17 @@ function abrirVer(cameraId, cameraNome, rtspUrl, url) {
 
 function carregarSnapshot() {
     const img = document.getElementById('ver-img');
-    const ts  = Date.now();
-    const src = snapshotUrl + '?t=' + ts;
-
     img.onload = () => {
         mostrarEstado('img');
         const agora = new Date().toLocaleTimeString('pt-BR');
         document.getElementById('ver-status').textContent =
             'Atualizado às ' + agora + ' — próximo em 30s';
     };
-
     img.onerror = () => {
         mostrarEstado('erro');
         document.getElementById('ver-status').textContent = '';
     };
-
-    img.src = src;
+    img.src = snapshotUrl + '?t=' + Date.now();
 }
 
 function mostrarEstado(estado) {

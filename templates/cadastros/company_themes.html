@@ -42,16 +42,16 @@
                     {% else %}—{% endif %}
                 </td>
                 <td class="col-actions">
-                    <button class="btn-edit" onclick="abrirEditar(
-                        {{ r.company_theme_id | tojson }},
-                        {{ r.company_id | tojson }},
-                        {{ r.primary_color | tojson }},
-                        {{ r.secondary_color | tojson }},
-                        {{ r.accent_color | tojson }},
-                        {{ r.text_color | tojson }},
-                        {{ r.background_color | tojson }},
-                        {{ (r.logo_url or '') | tojson }}
-                    )">Editar</button>
+                    <button class="btn-edit"
+                        data-id="{{ r.company_theme_id }}"
+                        data-company="{{ r.company_id }}"
+                        data-primary="{{ r.primary_color }}"
+                        data-secondary="{{ r.secondary_color }}"
+                        data-accent="{{ r.accent_color }}"
+                        data-text="{{ r.text_color }}"
+                        data-background="{{ r.background_color }}"
+                        data-logo="{{ r.logo_url or '' | e }}"
+                        onclick="abrirEditar(this)">Editar</button>
                     <form method="POST" style="display:inline"
                           onsubmit="return confirm('Confirma a exclusão deste tema?')">
                         <input type="hidden" name="_action" value="excluir">
@@ -86,7 +86,6 @@
                     {% endfor %}
                 </select>
             </div>
-
             <div class="form-row">
                 <div class="form-group">
                     <label>Cor Primária</label>
@@ -111,7 +110,6 @@
                     <input type="color" name="background_color" id="f-background" value="#F5F5F5">
                 </div>
             </div>
-
             <div class="form-group">
                 <label>URL do Logo <small>(opcional)</small></label>
                 <input type="url" name="logo_url" id="f-logo" placeholder="https://...">
@@ -128,30 +126,31 @@
 const modal = document.getElementById('modal');
 
 function abrirNovo() {
-    document.getElementById('modal-titulo').textContent = 'Novo Tema';
-    document.getElementById('form-action').value = 'criar';
-    document.getElementById('form-id').value = '';
-    document.getElementById('field-company').value = '';
-    document.getElementById('f-primary').value    = '#F47B20';
-    document.getElementById('f-secondary').value  = '#0057A8';
-    document.getElementById('f-accent').value     = '#FFFFFF';
-    document.getElementById('f-text').value       = '#000000';
-    document.getElementById('f-background').value = '#F5F5F5';
-    document.getElementById('f-logo').value       = '';
+    document.getElementById('modal-titulo').textContent   = 'Novo Tema';
+    document.getElementById('form-action').value          = 'criar';
+    document.getElementById('form-id').value              = '';
+    document.getElementById('field-company').value        = '';
+    document.getElementById('f-primary').value            = '#F47B20';
+    document.getElementById('f-secondary').value          = '#0057A8';
+    document.getElementById('f-accent').value             = '#FFFFFF';
+    document.getElementById('f-text').value               = '#000000';
+    document.getElementById('f-background').value         = '#F5F5F5';
+    document.getElementById('f-logo').value               = '';
     modal.showModal();
 }
 
-function abrirEditar(id, companyId, primary, secondary, accent, text, background, logo) {
-    document.getElementById('modal-titulo').textContent = 'Editar Tema';
-    document.getElementById('form-action').value = 'editar';
-    document.getElementById('form-id').value = id;
-    document.getElementById('field-company').value = companyId;
-    document.getElementById('f-primary').value    = primary;
-    document.getElementById('f-secondary').value  = secondary;
-    document.getElementById('f-accent').value     = accent;
-    document.getElementById('f-text').value       = text;
-    document.getElementById('f-background').value = background;
-    document.getElementById('f-logo').value       = logo;
+function abrirEditar(btn) {
+    const d = btn.dataset;
+    document.getElementById('modal-titulo').textContent   = 'Editar Tema';
+    document.getElementById('form-action').value          = 'editar';
+    document.getElementById('form-id').value              = d.id;
+    document.getElementById('field-company').value        = d.company;
+    document.getElementById('f-primary').value            = d.primary;
+    document.getElementById('f-secondary').value          = d.secondary;
+    document.getElementById('f-accent').value             = d.accent;
+    document.getElementById('f-text').value               = d.text;
+    document.getElementById('f-background').value         = d.background;
+    document.getElementById('f-logo').value               = d.logo;
     modal.showModal();
 }
 
