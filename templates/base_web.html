@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block body %}
+
+<nav class="navbar">
+    <a class="navbar-brand" href="{{ url_for('auth.dashboard') }}">
+        <svg width="28" height="28" viewBox="0 0 48 48" fill="none">
+            <rect width="48" height="48" rx="10" fill="#F47B20"/>
+            <path d="M10 35L18 13H22L24 21L26 13H30L38 35H34L28 18L24 28L20 18L14 35H10Z" fill="white"/>
+        </svg>
+        <span>Retail Analytics</span>
+    </a>
+
+    <div class="navbar-links">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('cadastros.') %}active{% endif %}"
+           href="{{ url_for('cadastros.index') }}">Cadastros</a>
+        <a class="nav-link {% if request.endpoint == 'auth.dashboard' %}active{% endif %}"
+           href="{{ url_for('auth.dashboard') }}">Dashboard</a>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('conta.') %}active{% endif %}"
+           href="{{ url_for('conta.trocar_senha') }}">Trocar Senha</a>
+    </div>
+
+    <div class="navbar-user">
+        <span class="navbar-username">{{ session['full_name'] }}</span>
+        <a class="nav-logout" href="{{ url_for('auth.logout') }}">Sair</a>
+    </div>
+</nav>
+
+<main class="page-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-container">
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</main>
+
+{% endblock %}

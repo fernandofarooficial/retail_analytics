@@ -1,18 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session
 from werkzeug.security import check_password_hash
+from routes.utils import login_required
 import db
 
 auth_bp = Blueprint('auth', __name__)
-
-
-def login_required(f):
-    from functools import wraps
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if 'user_id' not in session:
-            return redirect(url_for('auth.login'))
-        return f(*args, **kwargs)
-    return decorated
 
 
 @auth_bp.route('/')

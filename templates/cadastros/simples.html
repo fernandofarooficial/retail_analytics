@@ -1,0 +1,119 @@
+{% extends 'base_web.html' %}
+{% block title %}{{ config['titulo'] }} — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <a class="back-link" href="{{ url_for('cadastros.index') }}">Cadastros</a>
+        <span class="breadcrumb-sep">/</span>
+        <h1>{{ config['titulo'] }}</h1>
+    </div>
+    <button class="btn-primary" onclick="abrirNovo()">+ Novo</button>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:80px">ID</th>
+                <th>{{ config['label_nome'] }}</th>
+                <th class="col-actions">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in registros %}
+            <tr>
+                <td><span class="badge">{{ r[config['pk']] }}</span></td>
+                <td>{{ r[config['campo_nome']] }}</td>
+                <td class="col-actions">
+                    <button class="btn-edit"
+                        onclick="abrirEditar({{ r[config['pk']] | tojson }}, {{ r[config['campo_nome']] | tojson }})">
+                        Editar
+                    </button>
+                    <form method="POST" style="display:inline"
+                          onsubmit="return confirm('Confirma a exclusão deste registro?')">
+                        <input type="hidden" name="_action" value="excluir">
+                        <input type="hidden" name="_id"    value="{{ r[config['pk']] }}">
+                        <button type="submit" class="btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="3" class="table-empty">Nenhum registro cadastrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<dialog id="modal">
+    <form method="POST">
+        <div class="modal-header">
+            <h2 id="modal-titulo">Novo Registro</h2>
+            <button type="button" class="modal-close" onclick="fecharModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="_action" id="form-action">
+            <input type="hidden" name="_id"     id="form-id">
+
+            {% if config['pk_tipo'] == 'char1' %}
+            <div class="form-group" id="grupo-id">
+                <label for="field-id">ID <small>(1 caractere)</small></label>
+                <input type="text" id="field-id" name="id_val" maxlength="1"
+                       style="text-transform:uppercase; width:80px">
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="field-nome">{{ config['label_nome'] }}</label>
+                <input type="text" id="field-nome" name="nome" required>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button type="submit" class="btn-primary">Salvar</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+const modal = document.getElementById('modal');
+{% set is_char1 = config['pk_tipo'] == 'char1' %}
+
+function abrirNovo() {
+    document.getElementById('modal-titulo').textContent = 'Novo Registro';
+    document.getElementById('form-action').value = 'criar';
+    document.getElementById('form-id').value = '';
+    document.getElementById('field-nome').value = '';
+    {% if is_char1 %}
+    document.getElementById('field-id').value = '';
+    document.getElementById('field-id').readOnly = false;
+    document.getElementById('grupo-id').style.display = '';
+    {% endif %}
+    modal.showModal();
+}
+
+function abrirEditar(id, nome) {
+    document.getElementById('modal-titulo').textContent = 'Editar Registro';
+    document.getElementById('form-action').value = 'editar';
+    document.getElementById('form-id').value = id;
+    document.getElementById('field-nome').value = nome;
+    {% if is_char1 %}
+    document.getElementById('field-id').value = id;
+    document.getElementById('field-id').readOnly = true;
+    document.getElementById('grupo-id').style.display = 'none';
+    {% endif %}
+    modal.showModal();
+}
+
+function fecharModal() {
+    modal.close();
+}
+
+modal.addEventListener('click', function(e) {
+    if (e.target === modal) fecharModal();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'base_web.html' %}
+{% block title %}Cadastros — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Cadastros</h1>
+</div>
+
+<div class="crud-grid">
+
+    <a class="crud-card" href="{{ url_for('cadastros.simples', slug='grupo-empresarial') }}">
+        <div class="crud-card-icon" style="background:#0057A8">GE</div>
+        <div class="crud-card-label">Grupos Empresariais</div>
+    </a>
+
+    <a class="crud-card" href="{{ url_for('cadastros.simples', slug='tipo-empresa') }}">
+        <div class="crud-card-icon" style="background:#0057A8">TE</div>
+        <div class="crud-card-label">Tipos de Empresa</div>
+    </a>
+
+    <a class="crud-card" href="{{ url_for('cadastros.empresas') }}">
+        <div class="crud-card-icon" style="background:#F47B20">EM</div>
+        <div class="crud-card-label">Empresas</div>
+    </a>
+
+    <a class="crud-card" href="{{ url_for('cadastros.temas') }}">
+        <div class="crud-card-icon" style="background:#F47B20">CR</div>
+        <div class="crud-card-label">Cores por Empresa</div>
+    </a>
+
+    <a class="crud-card" href="{{ url_for('cadastros.simples', slug='lojistas') }}">
+        <div class="crud-card-icon" style="background:#0057A8">LJ</div>
+        <div class="crud-card-label">Lojistas</div>
+    </a>
+
+    <a class="crud-card" href="{{ url_for('cadastros.lojas') }}">
+        <div class="crud-card-icon" style="background:#F47B20">LO</div>
+        <div class="crud-card-label">Lojas</div>
+    </a>
+
+    <a class="crud-card" href="{{ url_for('cadastros.simples', slug='tipo-camera') }}">
+        <div class="crud-card-icon" style="background:#0057A8">TC</div>
+        <div class="crud-card-label">Tipos de Câmera</div>
+    </a>
+
+    <a class="crud-card" href="{{ url_for('cadastros.cameras') }}">
+        <div class="crud-card-icon" style="background:#F47B20">CA</div>
+        <div class="crud-card-label">Câmeras</div>
+    </a>
+
+    <a class="crud-card" href="{{ url_for('cadastros.simples', slug='generos') }}">
+        <div class="crud-card-icon" style="background:#0057A8">GN</div>
+        <div class="crud-card-label">Gêneros</div>
+    </a>
+
+    <a class="crud-card" href="{{ url_for('cadastros.simples', slug='tipo-pessoa') }}">
+        <div class="crud-card-icon" style="background:#0057A8">TP</div>
+        <div class="crud-card-label">Tipos de Pessoa</div>
+    </a>
+
+</div>
+{% endblock %}

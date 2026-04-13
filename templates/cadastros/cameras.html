@@ -1,0 +1,131 @@
+{% extends 'base_web.html' %}
+{% block title %}Câmeras — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <a class="back-link" href="{{ url_for('cadastros.index') }}">Cadastros</a>
+        <span class="breadcrumb-sep">/</span>
+        <h1>Câmeras</h1>
+    </div>
+    <button class="btn-primary" onclick="abrirNovo()">+ Nova Câmera</button>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:60px">ID</th>
+                <th>Nome</th>
+                <th>Tipo</th>
+                <th>Loja</th>
+                <th>URL RTSP</th>
+                <th class="col-actions">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in registros %}
+            <tr>
+                <td><span class="badge">{{ r.camera_id }}</span></td>
+                <td>{{ r.camera_name }}</td>
+                <td>{{ r.camera_type_name or '—' }}</td>
+                <td>{{ r.store_name or '—' }}</td>
+                <td class="td-truncate">{{ r.rtsp_url or '—' }}</td>
+                <td class="col-actions">
+                    <button class="btn-edit" onclick="abrirEditar(
+                        {{ r.camera_id | tojson }},
+                        {{ r.camera_name | tojson }},
+                        {{ (r.camera_type_id or '') | tojson }},
+                        {{ (r.store_id | string) | tojson }},
+                        {{ (r.rtsp_url or '') | tojson }}
+                    )">Editar</button>
+                    <form method="POST" style="display:inline"
+                          onsubmit="return confirm('Confirma a exclusão desta câmera?')">
+                        <input type="hidden" name="_action" value="excluir">
+                        <input type="hidden" name="_id"    value="{{ r.camera_id }}">
+                        <button type="submit" class="btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="table-empty">Nenhuma câmera cadastrada.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<dialog id="modal">
+    <form method="POST">
+        <div class="modal-header">
+            <h2 id="modal-titulo">Nova Câmera</h2>
+            <button type="button" class="modal-close" onclick="fecharModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="_action" id="form-action">
+            <input type="hidden" name="_id"     id="form-id">
+
+            <div class="form-group">
+                <label>Nome da Câmera</label>
+                <input type="text" id="f-name" name="camera_name" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tipo</label>
+                    <select id="f-type" name="camera_type_id">
+                        <option value="">— Selecione —</option>
+                        {% for t in tipos_cam %}
+                        <option value="{{ t.camera_type_id }}">{{ t.camera_type_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" style="flex:2">
+                    <label>Loja</label>
+                    <select id="f-store" name="store_id">
+                        <option value="">— Selecione —</option>
+                        {% for s in stores %}
+                        <option value="{{ s.store_id }}">{{ s.store_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>URL RTSP <small>(opcional)</small></label>
+                <input type="text" id="f-rtsp" name="rtsp_url" placeholder="rtsp://...">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button type="submit" class="btn-primary">Salvar</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+const modal = document.getElementById('modal');
+
+function abrirNovo() {
+    document.getElementById('modal-titulo').textContent = 'Nova Câmera';
+    document.getElementById('form-action').value = 'criar';
+    document.getElementById('form-id').value = '';
+    document.getElementById('f-name').value  = '';
+    document.getElementById('f-type').value  = '';
+    document.getElementById('f-store').value = '';
+    document.getElementById('f-rtsp').value  = '';
+    modal.showModal();
+}
+
+function abrirEditar(id, nome, tipoId, storeId, rtsp) {
+    document.getElementById('modal-titulo').textContent = 'Editar Câmera';
+    document.getElementById('form-action').value = 'editar';
+    document.getElementById('form-id').value = id;
+    document.getElementById('f-name').value  = nome;
+    document.getElementById('f-type').value  = tipoId;
+    document.getElementById('f-store').value = storeId !== 'None' ? storeId : '';
+    document.getElementById('f-rtsp').value  = rtsp;
+    modal.showModal();
+}
+
+function fecharModal() { modal.close(); }
+modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
+</script>
+{% endblock %}

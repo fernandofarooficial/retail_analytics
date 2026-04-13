@@ -1,0 +1,161 @@
+{% extends 'base_web.html' %}
+{% block title %}Cores por Empresa — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <a class="back-link" href="{{ url_for('cadastros.index') }}">Cadastros</a>
+        <span class="breadcrumb-sep">/</span>
+        <h1>Cores por Empresa</h1>
+    </div>
+    <button class="btn-primary" onclick="abrirNovo()">+ Novo Tema</button>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:60px">ID</th>
+                <th>Empresa</th>
+                <th>Primária</th>
+                <th>Secundária</th>
+                <th>Destaque</th>
+                <th>Texto</th>
+                <th>Fundo</th>
+                <th>Logo</th>
+                <th class="col-actions">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in registros %}
+            <tr>
+                <td><span class="badge">{{ r.company_theme_id }}</span></td>
+                <td>{{ r.company_name or '—' }}</td>
+                <td><span class="color-swatch" style="background:{{ r.primary_color }}"></span> {{ r.primary_color }}</td>
+                <td><span class="color-swatch" style="background:{{ r.secondary_color }}"></span> {{ r.secondary_color }}</td>
+                <td><span class="color-swatch" style="background:{{ r.accent_color }}; border:1px solid #ccc"></span> {{ r.accent_color }}</td>
+                <td><span class="color-swatch" style="background:{{ r.text_color }}"></span> {{ r.text_color }}</td>
+                <td><span class="color-swatch" style="background:{{ r.background_color }}; border:1px solid #ccc"></span> {{ r.background_color }}</td>
+                <td>
+                    {% if r.logo_url %}
+                        <a href="{{ r.logo_url }}" target="_blank" class="link-small">Ver</a>
+                    {% else %}—{% endif %}
+                </td>
+                <td class="col-actions">
+                    <button class="btn-edit" onclick="abrirEditar(
+                        {{ r.company_theme_id | tojson }},
+                        {{ r.company_id | tojson }},
+                        {{ r.primary_color | tojson }},
+                        {{ r.secondary_color | tojson }},
+                        {{ r.accent_color | tojson }},
+                        {{ r.text_color | tojson }},
+                        {{ r.background_color | tojson }},
+                        {{ (r.logo_url or '') | tojson }}
+                    )">Editar</button>
+                    <form method="POST" style="display:inline"
+                          onsubmit="return confirm('Confirma a exclusão deste tema?')">
+                        <input type="hidden" name="_action" value="excluir">
+                        <input type="hidden" name="_id"    value="{{ r.company_theme_id }}">
+                        <button type="submit" class="btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="9" class="table-empty">Nenhum tema cadastrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<dialog id="modal">
+    <form method="POST">
+        <div class="modal-header">
+            <h2 id="modal-titulo">Novo Tema</h2>
+            <button type="button" class="modal-close" onclick="fecharModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="_action" id="form-action">
+            <input type="hidden" name="_id"     id="form-id">
+
+            <div class="form-group">
+                <label>Empresa</label>
+                <select id="field-company" name="company_id" required>
+                    <option value="">— Selecione —</option>
+                    {% for c in companies %}
+                    <option value="{{ c.company_id }}">{{ c.company_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Cor Primária</label>
+                    <input type="color" name="primary_color"    id="f-primary"    value="#F47B20">
+                </div>
+                <div class="form-group">
+                    <label>Cor Secundária</label>
+                    <input type="color" name="secondary_color"  id="f-secondary"  value="#0057A8">
+                </div>
+                <div class="form-group">
+                    <label>Destaque</label>
+                    <input type="color" name="accent_color"     id="f-accent"     value="#FFFFFF">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Cor do Texto</label>
+                    <input type="color" name="text_color"       id="f-text"       value="#000000">
+                </div>
+                <div class="form-group">
+                    <label>Cor de Fundo</label>
+                    <input type="color" name="background_color" id="f-background" value="#F5F5F5">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>URL do Logo <small>(opcional)</small></label>
+                <input type="url" name="logo_url" id="f-logo" placeholder="https://...">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button type="submit" class="btn-primary">Salvar</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+const modal = document.getElementById('modal');
+
+function abrirNovo() {
+    document.getElementById('modal-titulo').textContent = 'Novo Tema';
+    document.getElementById('form-action').value = 'criar';
+    document.getElementById('form-id').value = '';
+    document.getElementById('field-company').value = '';
+    document.getElementById('f-primary').value    = '#F47B20';
+    document.getElementById('f-secondary').value  = '#0057A8';
+    document.getElementById('f-accent').value     = '#FFFFFF';
+    document.getElementById('f-text').value       = '#000000';
+    document.getElementById('f-background').value = '#F5F5F5';
+    document.getElementById('f-logo').value       = '';
+    modal.showModal();
+}
+
+function abrirEditar(id, companyId, primary, secondary, accent, text, background, logo) {
+    document.getElementById('modal-titulo').textContent = 'Editar Tema';
+    document.getElementById('form-action').value = 'editar';
+    document.getElementById('form-id').value = id;
+    document.getElementById('field-company').value = companyId;
+    document.getElementById('f-primary').value    = primary;
+    document.getElementById('f-secondary').value  = secondary;
+    document.getElementById('f-accent').value     = accent;
+    document.getElementById('f-text').value       = text;
+    document.getElementById('f-background').value = background;
+    document.getElementById('f-logo').value       = logo;
+    modal.showModal();
+}
+
+function fecharModal() { modal.close(); }
+modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
+</script>
+{% endblock %}

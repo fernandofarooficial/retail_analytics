@@ -1,0 +1,156 @@
+{% extends 'base_web.html' %}
+{% block title %}Lojas — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <a class="back-link" href="{{ url_for('cadastros.index') }}">Cadastros</a>
+        <span class="breadcrumb-sep">/</span>
+        <h1>Lojas</h1>
+    </div>
+    <button class="btn-primary" onclick="abrirNovo()">+ Nova Loja</button>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:60px">ID</th>
+                <th>Nome</th>
+                <th>Empresa</th>
+                <th>Lojista</th>
+                <th>CNPJ</th>
+                <th>CEP</th>
+                <th class="col-actions">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in registros %}
+            <tr>
+                <td><span class="badge">{{ r.store_id }}</span></td>
+                <td>{{ r.store_name }}</td>
+                <td>{{ r.company_name or '—' }}</td>
+                <td>{{ r.retailer_group_name or '—' }}</td>
+                <td>{{ r.cnpj or '—' }}</td>
+                <td>{{ r.cep or '—' }}</td>
+                <td class="col-actions">
+                    <button class="btn-edit" onclick="abrirEditar(
+                        {{ r.store_id | tojson }},
+                        {{ r.store_name | tojson }},
+                        {{ (r.company_id | string) | tojson }},
+                        {{ (r.retailer_group_id | string) | tojson }},
+                        {{ (r.cnpj | string) | tojson }},
+                        {{ (r.cep | string) | tojson }},
+                        {{ (r.address_number or '') | tojson }},
+                        {{ (r.address_complement or '') | tojson }}
+                    )">Editar</button>
+                    <form method="POST" style="display:inline"
+                          onsubmit="return confirm('Confirma a exclusão desta loja?')">
+                        <input type="hidden" name="_action" value="excluir">
+                        <input type="hidden" name="_id"    value="{{ r.store_id }}">
+                        <button type="submit" class="btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="table-empty">Nenhuma loja cadastrada.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<dialog id="modal">
+    <form method="POST">
+        <div class="modal-header">
+            <h2 id="modal-titulo">Nova Loja</h2>
+            <button type="button" class="modal-close" onclick="fecharModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="_action" id="form-action">
+            <input type="hidden" name="_id"     id="form-id">
+
+            <div class="form-group">
+                <label>Nome da Loja</label>
+                <input type="text" id="f-name" name="store_name" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Empresa</label>
+                    <select id="f-company" name="company_id">
+                        <option value="">— Selecione —</option>
+                        {% for c in companies %}
+                        <option value="{{ c.company_id }}">{{ c.company_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Lojista</label>
+                    <select id="f-lojista" name="retailer_group_id">
+                        <option value="">— Selecione —</option>
+                        {% for l in lojistas %}
+                        <option value="{{ l.retailer_group_id }}">{{ l.retailer_group_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>CNPJ</label>
+                    <input type="number" id="f-cnpj" name="cnpj" maxlength="14" placeholder="00000000000000">
+                </div>
+                <div class="form-group">
+                    <label>CEP</label>
+                    <input type="number" id="f-cep" name="cep" maxlength="8" placeholder="00000000">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Número</label>
+                    <input type="text" id="f-number" name="address_number" maxlength="10">
+                </div>
+                <div class="form-group" style="flex:2">
+                    <label>Complemento</label>
+                    <input type="text" id="f-complement" name="address_complement" maxlength="30">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button type="submit" class="btn-primary">Salvar</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+const modal = document.getElementById('modal');
+
+function abrirNovo() {
+    document.getElementById('modal-titulo').textContent = 'Nova Loja';
+    document.getElementById('form-action').value = 'criar';
+    document.getElementById('form-id').value = '';
+    ['f-name','f-cnpj','f-cep','f-number','f-complement'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    document.getElementById('f-company').value = '';
+    document.getElementById('f-lojista').value = '';
+    modal.showModal();
+}
+
+function abrirEditar(id, nome, companyId, lojistaId, cnpj, cep, numero, complemento) {
+    document.getElementById('modal-titulo').textContent = 'Editar Loja';
+    document.getElementById('form-action').value = 'editar';
+    document.getElementById('form-id').value     = id;
+    document.getElementById('f-name').value      = nome;
+    document.getElementById('f-company').value   = companyId !== 'None' ? companyId : '';
+    document.getElementById('f-lojista').value   = lojistaId !== 'None' ? lojistaId : '';
+    document.getElementById('f-cnpj').value      = cnpj !== 'None' ? cnpj : '';
+    document.getElementById('f-cep').value       = cep  !== 'None' ? cep  : '';
+    document.getElementById('f-number').value    = numero;
+    document.getElementById('f-complement').value= complemento;
+    modal.showModal();
+}
+
+function fecharModal() { modal.close(); }
+modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
+</script>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends 'base_web.html' %}
+{% block title %}Trocar Senha — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Trocar Senha</h1>
+</div>
+
+<div class="form-card">
+    <form method="POST" action="{{ url_for('conta.trocar_senha') }}">
+
+        <div class="form-group">
+            <label for="senha_atual">Senha Atual</label>
+            <input type="password" id="senha_atual" name="senha_atual" required autocomplete="current-password">
+        </div>
+
+        <div class="form-group">
+            <label for="nova_senha">Nova Senha <small>(mínimo 6 caracteres)</small></label>
+            <input type="password" id="nova_senha" name="nova_senha" required minlength="6" autocomplete="new-password">
+        </div>
+
+        <div class="form-group">
+            <label for="confirmacao">Confirmar Nova Senha</label>
+            <input type="password" id="confirmacao" name="confirmacao" required minlength="6" autocomplete="new-password">
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Salvar Nova Senha</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
