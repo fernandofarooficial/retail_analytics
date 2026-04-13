@@ -16,6 +16,10 @@ def login_required(f):
 
 
 @auth_bp.route('/')
+def index():
+    return redirect(url_for('auth.login'))
+
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user_id' in session:
