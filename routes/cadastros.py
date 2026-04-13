@@ -1,5 +1,4 @@
 import threading
-import cv2
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, Response
 from routes.utils import login_required
 import db
@@ -398,14 +397,17 @@ def cameras():
 
 # ── Snapshot de câmera ────────────────────────────────────────────────────────
 
-def _capturar_frame(rtsp_url, resultado, timeout_seg=8):
+def _capturar_frame(rtsp_url, resultado):
     """Captura um frame do stream RTSP em thread separada."""
     try:
+        import cv2
         cap = cv2.VideoCapture(rtsp_url)
         ret, frame = cap.read()
         cap.release()
         if ret:
             resultado['frame'] = frame
+        else:
+            resultado['erro'] = 'read() retornou False'
     except Exception as e:
         resultado['erro'] = str(e)
 
@@ -413,6 +415,7 @@ def _capturar_frame(rtsp_url, resultado, timeout_seg=8):
 @cadastros_bp.route('/cameras/<int:camera_id>/snapshot')
 @login_required
 def camera_snapshot(camera_id):
+    import logging
     camera = db.query_one(
         "SELECT rtsp_url FROM faciais.cameras WHERE camera_id = %s",
         (camera_id,)
@@ -424,12 +427,18 @@ def camera_snapshot(camera_id):
     resultado = {}
     t = threading.Thread(target=_capturar_frame, args=(camera['rtsp_url'], resultado))
     t.start()
-    t.join(timeout=8)
+    t.join(timeout=10)
 
     if 'frame' not in resultado:
+        logging.warning(f'[snapshot] camera_id={camera_id} falhou: {resultado.get("erro", "timeout")}')
         abort(503)
 
-    _, buffer = cv2.imencode('.jpg', resultado['frame'], [cv2.IMWRITE_JPEG_QUALITY, 80])
+    try:
+        import cv2
+        _, buffer = cv2.imencode('.jpg', resultado['frame'], [cv2.IMWRITE_JPEG_QUALITY, 80])
+    except Exception as e:
+        logging.warning(f'[snapshot] encode falhou: {e}')
+        abort(503)
 
     return Response(
         buffer.tobytes(),
