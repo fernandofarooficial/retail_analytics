@@ -1,0 +1,120 @@
+{% extends 'base_web.html' %}
+{% block title %}Empresas — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <a class="back-link" href="{{ url_for('cadastros.index') }}">Cadastros</a>
+        <span class="breadcrumb-sep">/</span>
+        <h1>Empresas</h1>
+    </div>
+    <button class="btn-primary" onclick="abrirNovo()">+ Nova Empresa</button>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:60px">ID</th>
+                <th>Nome</th>
+                <th>Grupo Empresarial</th>
+                <th>Tipo</th>
+                <th class="col-actions">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in registros %}
+            <tr>
+                <td><span class="badge">{{ r.company_id }}</span></td>
+                <td>{{ r.company_name }}</td>
+                <td>{{ r.company_group_name or '—' }}</td>
+                <td>{{ r.company_type_name or '—' }}</td>
+                <td class="col-actions">
+                    <button class="btn-edit" onclick="abrirEditar(
+                        {{ r.company_id | tojson }},
+                        {{ r.company_name | tojson }},
+                        {{ (r.company_group_id | string) | tojson }},
+                        {{ (r.company_type_id | string) | tojson }}
+                    )">Editar</button>
+                    <form method="POST" style="display:inline"
+                          onsubmit="return confirm('Confirma a exclusão desta empresa?')">
+                        <input type="hidden" name="_action" value="excluir">
+                        <input type="hidden" name="_id"    value="{{ r.company_id }}">
+                        <button type="submit" class="btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="table-empty">Nenhuma empresa cadastrada.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<dialog id="modal">
+    <form method="POST">
+        <div class="modal-header">
+            <h2 id="modal-titulo">Nova Empresa</h2>
+            <button type="button" class="modal-close" onclick="fecharModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="_action" id="form-action">
+            <input type="hidden" name="_id"     id="form-id">
+
+            <div class="form-group">
+                <label>Nome da Empresa</label>
+                <input type="text" id="field-nome" name="nome" required>
+            </div>
+            <div class="form-group">
+                <label>Grupo Empresarial</label>
+                <select id="field-grupo" name="grupo">
+                    <option value="">— Selecione —</option>
+                    {% for g in grupos %}
+                    <option value="{{ g.company_group_id }}">{{ g.company_group_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Tipo de Empresa</label>
+                <select id="field-tipo" name="tipo">
+                    <option value="">— Selecione —</option>
+                    {% for t in tipos %}
+                    <option value="{{ t.company_type_id }}">{{ t.company_type_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button type="submit" class="btn-primary">Salvar</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+const modal = document.getElementById('modal');
+
+function abrirNovo() {
+    document.getElementById('modal-titulo').textContent = 'Nova Empresa';
+    document.getElementById('form-action').value = 'criar';
+    document.getElementById('form-id').value = '';
+    document.getElementById('field-nome').value = '';
+    document.getElementById('field-grupo').value = '';
+    document.getElementById('field-tipo').value = '';
+    modal.showModal();
+}
+
+function abrirEditar(id, nome, grupoId, tipoId) {
+    document.getElementById('modal-titulo').textContent = 'Editar Empresa';
+    document.getElementById('form-action').value = 'editar';
+    document.getElementById('form-id').value = id;
+    document.getElementById('field-nome').value = nome;
+    document.getElementById('field-grupo').value = grupoId !== 'None' ? grupoId : '';
+    document.getElementById('field-tipo').value  = tipoId  !== 'None' ? tipoId  : '';
+    modal.showModal();
+}
+
+function fecharModal() { modal.close(); }
+modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
+</script>
+{% endblock %}

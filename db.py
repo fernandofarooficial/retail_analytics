@@ -19,3 +19,10 @@ def query_all(sql, params=None):
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(sql, params)
             return cur.fetchall()
+
+
+def execute(sql, params=None):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+        conn.commit()
