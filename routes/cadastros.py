@@ -342,9 +342,10 @@ def cameras():
         try:
             if action == 'criar':
                 db.execute(
-                    """INSERT INTO faciais.cameras (camera_type_id, store_id, camera_name, rtsp_url)
-                       VALUES (%s,%s,%s,%s)""",
+                    """INSERT INTO faciais.cameras (camera_id, camera_type_id, store_id, camera_name, rtsp_url)
+                       VALUES (%s,%s,%s,%s,%s)""",
                     (
+                        request.form['camera_id'],
                         request.form.get('camera_type_id') or None,
                         request.form.get('store_id') or None,
                         request.form['camera_name'].strip(),
