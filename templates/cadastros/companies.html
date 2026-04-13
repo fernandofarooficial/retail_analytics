@@ -30,12 +30,12 @@
                 <td>{{ r.company_group_name or '—' }}</td>
                 <td>{{ r.company_type_name or '—' }}</td>
                 <td class="col-actions">
-                    <button class="btn-edit" onclick="abrirEditar(
-                        {{ r.company_id | tojson }},
-                        {{ r.company_name | tojson }},
-                        {{ (r.company_group_id | string) | tojson }},
-                        {{ (r.company_type_id | string) | tojson }}
-                    )">Editar</button>
+                    <button class="btn-edit"
+                        data-id="{{ r.company_id }}"
+                        data-nome="{{ r.company_name | e }}"
+                        data-grupo="{{ r.company_group_id or '' }}"
+                        data-tipo="{{ r.company_type_id or '' }}"
+                        onclick="abrirEditar(this)">Editar</button>
                     <form method="POST" style="display:inline"
                           onsubmit="return confirm('Confirma a exclusão desta empresa?')">
                         <input type="hidden" name="_action" value="excluir">
@@ -97,20 +97,21 @@ const modal = document.getElementById('modal');
 function abrirNovo() {
     document.getElementById('modal-titulo').textContent = 'Nova Empresa';
     document.getElementById('form-action').value = 'criar';
-    document.getElementById('form-id').value = '';
-    document.getElementById('field-nome').value = '';
+    document.getElementById('form-id').value     = '';
+    document.getElementById('field-nome').value  = '';
     document.getElementById('field-grupo').value = '';
-    document.getElementById('field-tipo').value = '';
+    document.getElementById('field-tipo').value  = '';
     modal.showModal();
 }
 
-function abrirEditar(id, nome, grupoId, tipoId) {
+function abrirEditar(btn) {
+    const d = btn.dataset;
     document.getElementById('modal-titulo').textContent = 'Editar Empresa';
     document.getElementById('form-action').value = 'editar';
-    document.getElementById('form-id').value = id;
-    document.getElementById('field-nome').value = nome;
-    document.getElementById('field-grupo').value = grupoId !== 'None' ? grupoId : '';
-    document.getElementById('field-tipo').value  = tipoId  !== 'None' ? tipoId  : '';
+    document.getElementById('form-id').value     = d.id;
+    document.getElementById('field-nome').value  = d.nome;
+    document.getElementById('field-grupo').value = d.grupo;
+    document.getElementById('field-tipo').value  = d.tipo;
     modal.showModal();
 }
 

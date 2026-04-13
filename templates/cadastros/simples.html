@@ -27,9 +27,9 @@
                 <td>{{ r[config['campo_nome']] }}</td>
                 <td class="col-actions">
                     <button class="btn-edit"
-                        onclick="abrirEditar({{ r[config['pk']] | tojson }}, {{ r[config['campo_nome']] | tojson }})">
-                        Editar
-                    </button>
+                        data-id="{{ r[config['pk']] }}"
+                        data-nome="{{ r[config['campo_nome']] | e }}"
+                        onclick="abrirEditar(this)">Editar</button>
                     <form method="POST" style="display:inline"
                           onsubmit="return confirm('Confirma a exclusão deste registro?')">
                         <input type="hidden" name="_action" value="excluir">
@@ -47,7 +47,6 @@
     </table>
 </div>
 
-<!-- Modal -->
 <dialog id="modal">
     <form method="POST">
         <div class="modal-header">
@@ -95,25 +94,21 @@ function abrirNovo() {
     modal.showModal();
 }
 
-function abrirEditar(id, nome) {
+function abrirEditar(btn) {
+    const d = btn.dataset;
     document.getElementById('modal-titulo').textContent = 'Editar Registro';
     document.getElementById('form-action').value = 'editar';
-    document.getElementById('form-id').value = id;
-    document.getElementById('field-nome').value = nome;
+    document.getElementById('form-id').value = d.id;
+    document.getElementById('field-nome').value = d.nome;
     {% if is_char1 %}
-    document.getElementById('field-id').value = id;
+    document.getElementById('field-id').value = d.id;
     document.getElementById('field-id').readOnly = true;
     document.getElementById('grupo-id').style.display = 'none';
     {% endif %}
     modal.showModal();
 }
 
-function fecharModal() {
-    modal.close();
-}
-
-modal.addEventListener('click', function(e) {
-    if (e.target === modal) fecharModal();
-});
+function fecharModal() { modal.close(); }
+modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
 </script>
 {% endblock %}

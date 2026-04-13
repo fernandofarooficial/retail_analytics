@@ -34,16 +34,16 @@
                 <td>{{ r.cnpj or '—' }}</td>
                 <td>{{ r.cep or '—' }}</td>
                 <td class="col-actions">
-                    <button class="btn-edit" onclick="abrirEditar(
-                        {{ r.store_id | tojson }},
-                        {{ r.store_name | tojson }},
-                        {{ (r.company_id | string) | tojson }},
-                        {{ (r.retailer_group_id | string) | tojson }},
-                        {{ (r.cnpj | string) | tojson }},
-                        {{ (r.cep | string) | tojson }},
-                        {{ (r.address_number or '') | tojson }},
-                        {{ (r.address_complement or '') | tojson }}
-                    )">Editar</button>
+                    <button class="btn-edit"
+                        data-id="{{ r.store_id }}"
+                        data-nome="{{ r.store_name | e }}"
+                        data-company="{{ r.company_id or '' }}"
+                        data-lojista="{{ r.retailer_group_id or '' }}"
+                        data-cnpj="{{ r.cnpj or '' }}"
+                        data-cep="{{ r.cep or '' }}"
+                        data-number="{{ r.address_number or '' | e }}"
+                        data-complement="{{ r.address_complement or '' | e }}"
+                        onclick="abrirEditar(this)">Editar</button>
                     <form method="POST" style="display:inline"
                           onsubmit="return confirm('Confirma a exclusão desta loja?')">
                         <input type="hidden" name="_action" value="excluir">
@@ -96,11 +96,11 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>CNPJ</label>
-                    <input type="number" id="f-cnpj" name="cnpj" maxlength="14" placeholder="00000000000000">
+                    <input type="number" id="f-cnpj" name="cnpj" placeholder="00000000000000">
                 </div>
                 <div class="form-group">
                     <label>CEP</label>
-                    <input type="number" id="f-cep" name="cep" maxlength="8" placeholder="00000000">
+                    <input type="number" id="f-cep" name="cep" placeholder="00000000">
                 </div>
             </div>
             <div class="form-row">
@@ -136,17 +136,18 @@ function abrirNovo() {
     modal.showModal();
 }
 
-function abrirEditar(id, nome, companyId, lojistaId, cnpj, cep, numero, complemento) {
+function abrirEditar(btn) {
+    const d = btn.dataset;
     document.getElementById('modal-titulo').textContent = 'Editar Loja';
     document.getElementById('form-action').value = 'editar';
-    document.getElementById('form-id').value     = id;
-    document.getElementById('f-name').value      = nome;
-    document.getElementById('f-company').value   = companyId !== 'None' ? companyId : '';
-    document.getElementById('f-lojista').value   = lojistaId !== 'None' ? lojistaId : '';
-    document.getElementById('f-cnpj').value      = cnpj !== 'None' ? cnpj : '';
-    document.getElementById('f-cep').value       = cep  !== 'None' ? cep  : '';
-    document.getElementById('f-number').value    = numero;
-    document.getElementById('f-complement').value= complemento;
+    document.getElementById('form-id').value     = d.id;
+    document.getElementById('f-name').value      = d.nome;
+    document.getElementById('f-company').value   = d.company;
+    document.getElementById('f-lojista').value   = d.lojista;
+    document.getElementById('f-cnpj').value      = d.cnpj;
+    document.getElementById('f-cep').value       = d.cep;
+    document.getElementById('f-number').value    = d.number;
+    document.getElementById('f-complement').value= d.complement;
     modal.showModal();
 }
 
