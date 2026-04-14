@@ -19,22 +19,23 @@ def login():
     error = None
 
     if request.method == 'POST':
-        email    = request.form.get('email', '').strip().lower()
+        username = request.form.get('username', '').strip().lower()
         password = request.form.get('password', '')
 
         user = db.query_one(
-            "SELECT user_id, full_name, password_hash "
+            "SELECT user_id, full_name, password_hash, user_type_id "
             "FROM faciais.users "
-            "WHERE lower(email) = %s AND is_active = TRUE",
-            (email,)
+            "WHERE lower(username) = %s AND is_active = TRUE",
+            (username,)
         )
 
         if user and check_password_hash(user['password_hash'], password):
-            session['user_id']   = user['user_id']
-            session['full_name'] = user['full_name']
+            session['user_id']      = user['user_id']
+            session['full_name']    = user['full_name']
+            session['user_type_id'] = user['user_type_id']
             return redirect(url_for('auth.dashboard'))
 
-        error = 'E-mail ou senha incorretos.'
+        error = 'Usuário ou senha incorretos.'
 
     return render_template('auth/login.html', error=error)
 

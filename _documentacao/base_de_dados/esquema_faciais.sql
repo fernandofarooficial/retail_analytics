@@ -2,15 +2,25 @@
 -- SCHEMA: faciais
 -- Projeto: Retail Analytics BR
 -- Banco: PostgreSQL
--- Versão: 1.1
+-- Versão: 2.0
 -- ============================================================
+-- TABELAS:
+--   Empresas:   company_groups, company_types, companies, company_themes
+--   Lojas:      retailer_groups, stores
+--   Câmeras:    camera_types, cameras
+--   Pessoas:    genders, person_types, people
+--   Detecção:   json_records, detection_records
+--   Usuários:   user_types, users, user_company_groups,
+--               user_retailer_groups, user_stores
+-- VIEWS:
+--   vw_user_store_access
+-- ============================================================
+
 
 -- ============================================================
 -- CRIAÇÃO DO SCHEMA
 -- ============================================================
 CREATE SCHEMA IF NOT EXISTS faciais;
-
--- Define faciais como schema padrão da sessão
 SET search_path TO faciais, public;
 
 
@@ -45,7 +55,7 @@ $$ LANGUAGE plpgsql;
 
 
 -- ============================================================
--- TABELA: Grupo de Empresas
+-- TABELA: Grupos de Empresas
 -- ============================================================
 CREATE TABLE faciais.company_groups (
     company_group_id    SERIAL PRIMARY KEY,
@@ -113,6 +123,9 @@ COMMENT ON COLUMN faciais.companies.created_at       IS 'Data de criação do re
 COMMENT ON COLUMN faciais.companies.updated_at       IS 'Data da última atualização do registro';
 
 SELECT faciais.create_updated_at_trigger('companies');
+
+CREATE INDEX idx_companies_group ON faciais.companies(company_group_id);
+CREATE INDEX idx_companies_type  ON faciais.companies(company_type_id);
 
 
 -- ============================================================
@@ -216,6 +229,10 @@ COMMENT ON COLUMN faciais.stores.updated_at         IS 'Data da última atualiza
 
 SELECT faciais.create_updated_at_trigger('stores');
 
+CREATE INDEX idx_stores_company        ON faciais.stores(company_id);
+CREATE INDEX idx_stores_retailer_group ON faciais.stores(retailer_group_id);
+CREATE INDEX idx_stores_cnpj           ON faciais.stores(cnpj);
+
 
 -- ============================================================
 -- TABELA: Tipos de Câmera
@@ -238,6 +255,7 @@ SELECT faciais.create_updated_at_trigger('camera_types');
 
 -- ============================================================
 -- TABELA: Câmeras
+-- camera_id informado manualmente pelo usuário (sem SERIAL)
 -- ============================================================
 CREATE TABLE faciais.cameras (
     camera_id           INT PRIMARY KEY,
@@ -260,7 +278,7 @@ CREATE TABLE faciais.cameras (
 );
 
 COMMENT ON TABLE  faciais.cameras                IS 'Câmeras instaladas nas lojas';
-COMMENT ON COLUMN faciais.cameras.camera_id      IS 'Identificador da câmera';
+COMMENT ON COLUMN faciais.cameras.camera_id      IS 'Identificador da câmera (informado pelo usuário)';
 COMMENT ON COLUMN faciais.cameras.camera_type_id IS 'Identificador do tipo de câmera';
 COMMENT ON COLUMN faciais.cameras.store_id       IS 'Identificador da loja onde a câmera está instalada';
 COMMENT ON COLUMN faciais.cameras.camera_name    IS 'Nome da câmera';
@@ -269,6 +287,9 @@ COMMENT ON COLUMN faciais.cameras.created_at     IS 'Data de criação do regist
 COMMENT ON COLUMN faciais.cameras.updated_at     IS 'Data da última atualização do registro';
 
 SELECT faciais.create_updated_at_trigger('cameras');
+
+CREATE INDEX idx_cameras_store ON faciais.cameras(store_id);
+CREATE INDEX idx_cameras_type  ON faciais.cameras(camera_type_id);
 
 
 -- ============================================================
@@ -293,6 +314,7 @@ INSERT INTO faciais.genders (gender_id, gender_name) VALUES
     ('M', 'Masculino'),
     ('F', 'Feminino'),
     ('O', 'Outro'),
+    ('A', 'Anônimo'),
     ('N', 'Não informado');
 
 
@@ -352,22 +374,27 @@ CREATE TABLE faciais.people (
         ON DELETE SET NULL
 );
 
-COMMENT ON TABLE  faciais.people                     IS 'Pessoas identificadas ou rastreadas nas lojas';
-COMMENT ON COLUMN faciais.people.person_id           IS 'Identificador único da pessoa';
-COMMENT ON COLUMN faciais.people.full_name           IS 'Nome completo da pessoa';
-COMMENT ON COLUMN faciais.people.nickname            IS 'Apelido ou nome social';
-COMMENT ON COLUMN faciais.people.document            IS 'Documento de identificação (CPF/CNPJ)';
-COMMENT ON COLUMN faciais.people.crm_key             IS 'Chave de integração com CRM';
-COMMENT ON COLUMN faciais.people.birth_date          IS 'Data de nascimento';
-COMMENT ON COLUMN faciais.people.age                 IS 'Idade estimada da pessoa';
-COMMENT ON COLUMN faciais.people.gender_id           IS 'Identificador do gênero';
-COMMENT ON COLUMN faciais.people.person_type_id      IS 'Tipo de pessoa na loja';
-COMMENT ON COLUMN faciais.people.reference_track_id  IS 'Identificador de rastreamento facial de referência';
-COMMENT ON COLUMN faciais.people.notes               IS 'Observações gerais sobre a pessoa';
-COMMENT ON COLUMN faciais.people.created_at          IS 'Data de criação do registro';
-COMMENT ON COLUMN faciais.people.updated_at          IS 'Data da última atualização do registro';
+COMMENT ON TABLE  faciais.people                    IS 'Pessoas identificadas ou rastreadas nas lojas';
+COMMENT ON COLUMN faciais.people.person_id          IS 'Identificador único da pessoa';
+COMMENT ON COLUMN faciais.people.full_name          IS 'Nome completo da pessoa';
+COMMENT ON COLUMN faciais.people.nickname           IS 'Apelido ou nome social';
+COMMENT ON COLUMN faciais.people.document           IS 'Documento de identificação (CPF/CNPJ)';
+COMMENT ON COLUMN faciais.people.crm_key            IS 'Chave de integração com CRM';
+COMMENT ON COLUMN faciais.people.birth_date         IS 'Data de nascimento';
+COMMENT ON COLUMN faciais.people.age                IS 'Idade estimada da pessoa';
+COMMENT ON COLUMN faciais.people.gender_id          IS 'Identificador do gênero';
+COMMENT ON COLUMN faciais.people.person_type_id     IS 'Tipo de pessoa na loja';
+COMMENT ON COLUMN faciais.people.reference_track_id IS 'Identificador de rastreamento facial de referência';
+COMMENT ON COLUMN faciais.people.notes              IS 'Observações gerais sobre a pessoa';
+COMMENT ON COLUMN faciais.people.created_at         IS 'Data de criação do registro';
+COMMENT ON COLUMN faciais.people.updated_at         IS 'Data da última atualização do registro';
 
 SELECT faciais.create_updated_at_trigger('people');
+
+CREATE INDEX idx_people_gender   ON faciais.people(gender_id);
+CREATE INDEX idx_people_type     ON faciais.people(person_type_id);
+CREATE INDEX idx_people_document ON faciais.people(document);
+CREATE INDEX idx_people_track    ON faciais.people(reference_track_id);
 
 
 -- ============================================================
@@ -383,6 +410,8 @@ COMMENT ON TABLE  faciais.json_records                IS 'Dados brutos recebidos
 COMMENT ON COLUMN faciais.json_records.json_record_id IS 'Identificador do registro JSON';
 COMMENT ON COLUMN faciais.json_records.payload        IS 'Payload bruto recebido';
 COMMENT ON COLUMN faciais.json_records.created_at     IS 'Data de criação do registro';
+
+CREATE INDEX idx_json_records_payload ON faciais.json_records USING GIN(payload);
 
 
 -- ============================================================
@@ -433,34 +462,146 @@ COMMENT ON COLUMN faciais.detection_records.updated_at          IS 'Data da últ
 
 SELECT faciais.create_updated_at_trigger('detection_records');
 
+CREATE INDEX idx_detection_camera  ON faciais.detection_records(camera_id);
+CREATE INDEX idx_detection_person  ON faciais.detection_records(person_id);
+CREATE INDEX idx_detection_track   ON faciais.detection_records(track_id);
+CREATE INDEX idx_detection_json    ON faciais.detection_records(json_record_id);
+CREATE INDEX idx_detection_created ON faciais.detection_records(created_at);
+
+
+-- ============================================================
+-- TABELA: Tipos de Usuário
+-- ============================================================
+CREATE TABLE faciais.user_types (
+    user_type_id    CHAR(3) PRIMARY KEY,
+    user_type_name  VARCHAR(50) NOT NULL,
+    description     VARCHAR(255),
+    created_at      TIMESTAMP DEFAULT NOW(),
+    updated_at      TIMESTAMP DEFAULT NOW()
+);
+
+COMMENT ON TABLE  faciais.user_types              IS 'Tipos de usuário da plataforma';
+COMMENT ON COLUMN faciais.user_types.user_type_id   IS 'Identificador do tipo (adm, man, ret, emp)';
+COMMENT ON COLUMN faciais.user_types.user_type_name IS 'Nome do tipo de usuário';
+COMMENT ON COLUMN faciais.user_types.description    IS 'Descrição do nível de acesso';
+COMMENT ON COLUMN faciais.user_types.created_at     IS 'Data de criação do registro';
+COMMENT ON COLUMN faciais.user_types.updated_at     IS 'Data da última atualização do registro';
+
+SELECT faciais.create_updated_at_trigger('user_types');
+
+INSERT INTO faciais.user_types (user_type_id, user_type_name, description) VALUES
+    ('adm', 'Administrador', 'Acesso total ao sistema, sem restrições'),
+    ('man', 'Gestor',        'Acesso às empresas de um ou mais grupos de empresas'),
+    ('ret', 'Lojista',       'Acesso às lojas de um ou mais grupos de lojistas'),
+    ('emp', 'Empregado',     'Acesso direto a lojas específicas');
+
 
 -- ============================================================
 -- TABELA: Usuários
 -- ============================================================
 CREATE TABLE faciais.users (
     user_id         SERIAL PRIMARY KEY,
+    username        VARCHAR(50)  NOT NULL UNIQUE,
     full_name       VARCHAR(100) NOT NULL,
-    email           VARCHAR(255) NOT NULL UNIQUE,
+    email           VARCHAR(255) UNIQUE,
     password_hash   VARCHAR(255) NOT NULL,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMP DEFAULT NOW(),
-    updated_at      TIMESTAMP DEFAULT NOW()
+    user_type_id    CHAR(3)      NOT NULL,
+    is_active       BOOLEAN      DEFAULT TRUE,
+    created_at      TIMESTAMP    DEFAULT NOW(),
+    updated_at      TIMESTAMP    DEFAULT NOW(),
+
+    CONSTRAINT fk_users_type
+        FOREIGN KEY (user_type_id)
+        REFERENCES faciais.user_types(user_type_id)
+        ON DELETE RESTRICT
 );
 
 COMMENT ON TABLE  faciais.users               IS 'Usuários da plataforma';
 COMMENT ON COLUMN faciais.users.user_id       IS 'Identificador do usuário';
+COMMENT ON COLUMN faciais.users.username      IS 'Nome de login curto e único (ex: jsilva)';
 COMMENT ON COLUMN faciais.users.full_name     IS 'Nome completo do usuário';
-COMMENT ON COLUMN faciais.users.email         IS 'E-mail de acesso (único)';
+COMMENT ON COLUMN faciais.users.email         IS 'E-mail do usuário (opcional)';
 COMMENT ON COLUMN faciais.users.password_hash IS 'Senha armazenada em hash (bcrypt)';
+COMMENT ON COLUMN faciais.users.user_type_id  IS 'Tipo do usuário (adm, man, ret, emp)';
 COMMENT ON COLUMN faciais.users.is_active     IS 'Indica se o usuário está ativo';
 COMMENT ON COLUMN faciais.users.created_at    IS 'Data de criação do registro';
 COMMENT ON COLUMN faciais.users.updated_at    IS 'Data da última atualização do registro';
 
 SELECT faciais.create_updated_at_trigger('users');
 
+CREATE INDEX idx_users_username     ON faciais.users(username);
+CREATE INDEX idx_users_user_type_id ON faciais.users(user_type_id);
+
 
 -- ============================================================
--- TABELA: Acesso de Usuários por Loja (N:N)
+-- TABELA: Acesso man → company_groups
+-- Gestor pode gerenciar múltiplos grupos de empresas
+-- ============================================================
+CREATE TABLE faciais.user_company_groups (
+    user_company_group_id   SERIAL PRIMARY KEY,
+    user_id                 INT NOT NULL,
+    company_group_id        INT NOT NULL,
+    created_at              TIMESTAMP DEFAULT NOW(),
+
+    CONSTRAINT fk_ucg_user
+        FOREIGN KEY (user_id)
+        REFERENCES faciais.users(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_ucg_company_group
+        FOREIGN KEY (company_group_id)
+        REFERENCES faciais.company_groups(company_group_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_user_company_group UNIQUE (user_id, company_group_id)
+);
+
+COMMENT ON TABLE  faciais.user_company_groups                       IS 'Vínculo de acesso: Gestor (man) → Grupos de empresa';
+COMMENT ON COLUMN faciais.user_company_groups.user_company_group_id IS 'Identificador do vínculo';
+COMMENT ON COLUMN faciais.user_company_groups.user_id               IS 'Identificador do usuário gestor';
+COMMENT ON COLUMN faciais.user_company_groups.company_group_id      IS 'Identificador do grupo de empresas';
+COMMENT ON COLUMN faciais.user_company_groups.created_at            IS 'Data de criação do vínculo';
+
+CREATE INDEX idx_ucg_user          ON faciais.user_company_groups(user_id);
+CREATE INDEX idx_ucg_company_group ON faciais.user_company_groups(company_group_id);
+
+
+-- ============================================================
+-- TABELA: Acesso ret → retailer_groups
+-- Lojista pode pertencer a múltiplos grupos de lojistas
+-- ============================================================
+CREATE TABLE faciais.user_retailer_groups (
+    user_retailer_group_id  SERIAL PRIMARY KEY,
+    user_id                 INT NOT NULL,
+    retailer_group_id       INT NOT NULL,
+    created_at              TIMESTAMP DEFAULT NOW(),
+
+    CONSTRAINT fk_urg_user
+        FOREIGN KEY (user_id)
+        REFERENCES faciais.users(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_urg_retailer_group
+        FOREIGN KEY (retailer_group_id)
+        REFERENCES faciais.retailer_groups(retailer_group_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_user_retailer_group UNIQUE (user_id, retailer_group_id)
+);
+
+COMMENT ON TABLE  faciais.user_retailer_groups                         IS 'Vínculo de acesso: Lojista (ret) → Grupos de lojistas';
+COMMENT ON COLUMN faciais.user_retailer_groups.user_retailer_group_id  IS 'Identificador do vínculo';
+COMMENT ON COLUMN faciais.user_retailer_groups.user_id                 IS 'Identificador do usuário lojista';
+COMMENT ON COLUMN faciais.user_retailer_groups.retailer_group_id       IS 'Identificador do grupo de lojistas';
+COMMENT ON COLUMN faciais.user_retailer_groups.created_at              IS 'Data de criação do vínculo';
+
+CREATE INDEX idx_urg_user           ON faciais.user_retailer_groups(user_id);
+CREATE INDEX idx_urg_retailer_group ON faciais.user_retailer_groups(retailer_group_id);
+
+
+-- ============================================================
+-- TABELA: Acesso emp → stores
+-- Empregado tem acesso direto a lojas específicas
 -- ============================================================
 CREATE TABLE faciais.user_stores (
     user_store_id   SERIAL PRIMARY KEY,
@@ -468,12 +609,12 @@ CREATE TABLE faciais.user_stores (
     store_id        INT NOT NULL,
     created_at      TIMESTAMP DEFAULT NOW(),
 
-    CONSTRAINT fk_user_stores_user
+    CONSTRAINT fk_us_user
         FOREIGN KEY (user_id)
         REFERENCES faciais.users(user_id)
         ON DELETE CASCADE,
 
-    CONSTRAINT fk_user_stores_store
+    CONSTRAINT fk_us_store
         FOREIGN KEY (store_id)
         REFERENCES faciais.stores(store_id)
         ON DELETE CASCADE,
@@ -481,53 +622,90 @@ CREATE TABLE faciais.user_stores (
     CONSTRAINT uq_user_store UNIQUE (user_id, store_id)
 );
 
-COMMENT ON TABLE  faciais.user_stores               IS 'Controle de acesso de usuários por loja';
+COMMENT ON TABLE  faciais.user_stores               IS 'Vínculo de acesso: Empregado (emp) → Lojas';
 COMMENT ON COLUMN faciais.user_stores.user_store_id IS 'Identificador do vínculo';
-COMMENT ON COLUMN faciais.user_stores.user_id       IS 'Identificador do usuário';
+COMMENT ON COLUMN faciais.user_stores.user_id       IS 'Identificador do usuário empregado';
 COMMENT ON COLUMN faciais.user_stores.store_id      IS 'Identificador da loja';
 COMMENT ON COLUMN faciais.user_stores.created_at    IS 'Data de criação do vínculo';
 
+CREATE INDEX idx_us_user  ON faciais.user_stores(user_id);
+CREATE INDEX idx_us_store ON faciais.user_stores(store_id);
+
 
 -- ============================================================
--- ÍNDICES
+-- VIEW: Resolução de acesso por usuário
+-- Retorna todas as stores acessíveis por usuário,
+-- independente do tipo. Útil para validação nas telas.
+--
+-- Uso: SELECT * FROM faciais.vw_user_store_access
+--      WHERE user_id = 42 AND store_id = 10;
+--      → retornou linha = acesso liberado
+--      → retornou vazio = acesso negado
 -- ============================================================
+CREATE OR REPLACE VIEW faciais.vw_user_store_access AS
 
--- companies
-CREATE INDEX idx_companies_group ON faciais.companies(company_group_id);
-CREATE INDEX idx_companies_type  ON faciais.companies(company_type_id);
+    -- adm: acesso a todas as lojas
+    SELECT
+        u.user_id,
+        u.username,
+        u.user_type_id,
+        s.store_id,
+        s.store_name
+    FROM faciais.users u
+    CROSS JOIN faciais.stores s
+    WHERE u.user_type_id = 'adm'
+      AND u.is_active = TRUE
 
--- stores
-CREATE INDEX idx_stores_company        ON faciais.stores(company_id);
-CREATE INDEX idx_stores_retailer_group ON faciais.stores(retailer_group_id);
-CREATE INDEX idx_stores_cnpj           ON faciais.stores(cnpj);
+    UNION ALL
 
--- cameras
-CREATE INDEX idx_cameras_store ON faciais.cameras(store_id);
-CREATE INDEX idx_cameras_type  ON faciais.cameras(camera_type_id);
+    -- man: acesso via company_group → companies → stores
+    SELECT
+        u.user_id,
+        u.username,
+        u.user_type_id,
+        s.store_id,
+        s.store_name
+    FROM faciais.users u
+    JOIN faciais.user_company_groups ucg ON ucg.user_id = u.user_id
+    JOIN faciais.companies c             ON c.company_group_id = ucg.company_group_id
+    JOIN faciais.stores s                ON s.company_id = c.company_id
+    WHERE u.user_type_id = 'man'
+      AND u.is_active = TRUE
 
--- people
-CREATE INDEX idx_people_gender   ON faciais.people(gender_id);
-CREATE INDEX idx_people_type     ON faciais.people(person_type_id);
-CREATE INDEX idx_people_document ON faciais.people(document);
-CREATE INDEX idx_people_track    ON faciais.people(reference_track_id);
+    UNION ALL
 
--- detection_records
-CREATE INDEX idx_detection_camera  ON faciais.detection_records(camera_id);
-CREATE INDEX idx_detection_person  ON faciais.detection_records(person_id);
-CREATE INDEX idx_detection_track   ON faciais.detection_records(track_id);
-CREATE INDEX idx_detection_json    ON faciais.detection_records(json_record_id);
-CREATE INDEX idx_detection_created ON faciais.detection_records(created_at);
+    -- ret: acesso via retailer_group → stores
+    SELECT
+        u.user_id,
+        u.username,
+        u.user_type_id,
+        s.store_id,
+        s.store_name
+    FROM faciais.users u
+    JOIN faciais.user_retailer_groups urg ON urg.user_id = u.user_id
+    JOIN faciais.stores s                 ON s.retailer_group_id = urg.retailer_group_id
+    WHERE u.user_type_id = 'ret'
+      AND u.is_active = TRUE
 
--- json_records
-CREATE INDEX idx_json_records_payload ON faciais.json_records USING GIN(payload);
+    UNION ALL
 
--- users
-CREATE INDEX idx_users_email ON faciais.users(email);
+    -- emp: acesso direto a stores
+    SELECT
+        u.user_id,
+        u.username,
+        u.user_type_id,
+        s.store_id,
+        s.store_name
+    FROM faciais.users u
+    JOIN faciais.user_stores us ON us.user_id = u.user_id
+    JOIN faciais.stores s       ON s.store_id = us.store_id
+    WHERE u.user_type_id = 'emp'
+      AND u.is_active = TRUE;
 
--- user_stores
-CREATE INDEX idx_user_stores_user  ON faciais.user_stores(user_id);
-CREATE INDEX idx_user_stores_store ON faciais.user_stores(store_id);
+COMMENT ON VIEW faciais.vw_user_store_access IS
+    'Resolução completa de acesso: retorna todas as lojas acessíveis por usuário considerando seu tipo';
+
 
 -- ============================================================
--- FIM DO SCHEMA faciais
+-- FIM DO SCHEMA faciais — v2.0
 -- ============================================================

@@ -10,15 +10,33 @@ import db
 
 load_dotenv()
 
+USER_TYPES = {
+    'adm': 'Administrador',
+    'man': 'Gestor',
+    'ret': 'Lojista',
+    'emp': 'Empregado',
+}
+
 print("=== Criar usuário — Retail Analytics ===\n")
 
 full_name = input("Nome completo: ").strip()
-email     = input("E-mail: ").strip().lower()
-password  = getpass.getpass("Senha: ")
-confirm   = getpass.getpass("Confirme a senha: ")
+username  = input("Username (login): ").strip().lower()
+email     = input("E-mail (opcional, Enter para pular): ").strip().lower() or None
 
-if not full_name or not email or not password:
-    print("\nErro: todos os campos são obrigatórios.")
+print("\nTipos de usuário disponíveis:")
+for tid, tname in USER_TYPES.items():
+    print(f"  {tid} — {tname}")
+user_type_id = input("Tipo de usuário [adm/man/ret/emp]: ").strip().lower()
+
+password = getpass.getpass("\nSenha: ")
+confirm  = getpass.getpass("Confirme a senha: ")
+
+if not full_name or not username or not password:
+    print("\nErro: nome completo, username e senha são obrigatórios.")
+    exit(1)
+
+if user_type_id not in USER_TYPES:
+    print(f"\nErro: tipo de usuário inválido. Use: {', '.join(USER_TYPES)}")
     exit(1)
 
 if password != confirm:
@@ -32,19 +50,25 @@ try:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO faciais.users (full_name, email, password_hash)
-                VALUES (%s, %s, %s)
+                INSERT INTO faciais.users (username, full_name, email, password_hash, user_type_id)
+                VALUES (%s, %s, %s, %s, %s)
                 RETURNING user_id
                 """,
-                (full_name, email, password_hash)
+                (username, full_name, email, password_hash, user_type_id)
             )
             user_id = cur.fetchone()[0]
         conn.commit()
 
-    print(f"\nUsuário criado com sucesso! (user_id={user_id})")
+    print(f"\nUsuário criado com sucesso!")
+    print(f"  user_id  : {user_id}")
+    print(f"  username : {username}")
+    print(f"  tipo     : {user_type_id} — {USER_TYPES[user_type_id]}")
 
 except Exception as e:
-    if 'unique' in str(e).lower():
+    err = str(e).lower()
+    if 'unique' in err and 'username' in err:
+        print(f"\nErro: já existe um usuário com o username '{username}'.")
+    elif 'unique' in err and 'email' in err:
         print(f"\nErro: já existe um usuário com o e-mail '{email}'.")
     else:
         print(f"\nErro ao criar usuário: {e}")
