@@ -17,11 +17,14 @@
                 <th>E-mail</th>
                 <th>Tipo</th>
                 <th style="width:90px">Status</th>
+                <th style="width:110px">Escopos</th>
                 <th class="col-actions">Ações</th>
             </tr>
         </thead>
         <tbody>
             {% for u in usuarios %}
+            {% set uid = u.user_id | string %}
+            {% set scope = escopos.get(uid, {}) %}
             <tr>
                 <td><span class="badge">{{ u.user_id }}</span></td>
                 <td><strong>{{ u.username }}</strong></td>
@@ -35,6 +38,20 @@
                         <span class="status-badge status-inativo">Inativo</span>
                     {% endif %}
                 </td>
+                <td>
+                    {% if u.user_type_id == 'adm' %}
+                        <span class="escopo-total">Total</span>
+                    {% elif u.user_type_id == 'man' %}
+                        {% set n = scope.get('company_groups', []) | length %}
+                        <span class="escopo-count {% if n == 0 %}escopo-zero{% endif %}">{{ n }} grupo{{ 's' if n != 1 }}</span>
+                    {% elif u.user_type_id == 'ret' %}
+                        {% set n = scope.get('retailer_groups', []) | length %}
+                        <span class="escopo-count {% if n == 0 %}escopo-zero{% endif %}">{{ n }} lojista{{ 's' if n != 1 }}</span>
+                    {% elif u.user_type_id == 'emp' %}
+                        {% set n = scope.get('stores', []) | length %}
+                        <span class="escopo-count {% if n == 0 %}escopo-zero{% endif %}">{{ n }} loja{{ 's' if n != 1 }}</span>
+                    {% endif %}
+                </td>
                 <td class="col-actions">
                     <button class="btn-edit"
                         data-id="{{ u.user_id }}"
@@ -43,6 +60,14 @@
                         data-email="{{ u.email or '' | e }}"
                         data-tipo="{{ u.user_type_id }}"
                         onclick="abrirEditar(this)">Editar</button>
+
+                    {% if u.user_type_id != 'adm' %}
+                    <button class="btn-ver"
+                        data-id="{{ u.user_id }}"
+                        data-username="{{ u.username | e }}"
+                        data-tipo="{{ u.user_type_id }}"
+                        onclick="abrirEscopos(this)">Escopos</button>
+                    {% endif %}
 
                     <button class="btn-ver"
                         data-id="{{ u.user_id }}"
@@ -60,7 +85,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="7" class="table-empty">Nenhum usuário cadastrado.</td></tr>
+            <tr><td colspan="8" class="table-empty">Nenhum usuário cadastrado.</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -119,6 +144,19 @@
 </dialog>
 
 
+<!-- Modal: Escopos -->
+<dialog id="modal-escopos">
+    <div class="modal-header">
+        <h2 id="escopos-titulo">Escopos</h2>
+        <button type="button" class="modal-close" onclick="fecharEscopos()">&times;</button>
+    </div>
+    <div class="modal-body" id="escopos-body"></div>
+    <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="fecharEscopos()">Fechar</button>
+    </div>
+</dialog>
+
+
 <!-- Modal: Redefinir senha -->
 <dialog id="modal-senha">
     <form method="POST">
@@ -133,7 +171,7 @@
             <div class="form-group">
                 <label for="f-nova-senha">Nova Senha</label>
                 <input type="password" id="f-nova-senha" name="password"
-                       placeholder="mínimo 6 caracteres" minlength="6" required autofocus>
+                       placeholder="mínimo 6 caracteres" minlength="6" required>
             </div>
         </div>
         <div class="modal-footer">
@@ -154,38 +192,85 @@
 }
 .status-ativo   { background: #d4edda; color: #155724; }
 .status-inativo { background: #f8d7da; color: #721c24; }
+
+.escopo-count { font-size: 0.82rem; color: #333; }
+.escopo-zero  { color: #c0392b; font-weight: 600; }
+.escopo-total { font-size: 0.82rem; color: #155724; font-weight: 600; }
+
+.escopo-list  { list-style: none; padding: 0; margin: 0 0 16px; }
+.escopo-item  {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 0.9rem;
+}
+.escopo-item:last-child { border-bottom: none; }
+
+.escopo-add { margin-top: 12px; }
+.escopo-add-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.escopo-select { flex: 1; }
+.btn-sm { padding: 4px 12px; font-size: 0.82rem; }
+.escopo-vazio { color: #666; font-size: 0.88rem; margin-bottom: 12px; }
+.escopo-aviso { color: #666; font-size: 0.88rem; font-style: italic; }
 </style>
 
+
 <script>
-const modal      = document.getElementById('modal');
-const modalSenha = document.getElementById('modal-senha');
+const ESCOPOS         = {{ escopos | tojson }};
+const COMPANY_GROUPS  = {{ company_groups | tojson }};
+const RETAILER_GROUPS = {{ retailer_groups | tojson }};
+const STORES          = {{ stores | tojson }};
+
+const ESCOPO_CONFIG = {
+    man: { key: 'company_groups',  label: 'Grupo Empresarial',  opcoes: () => COMPANY_GROUPS  },
+    ret: { key: 'retailer_groups', label: 'Grupo de Lojistas',  opcoes: () => RETAILER_GROUPS },
+    emp: { key: 'stores',          label: 'Loja',               opcoes: () => STORES          },
+};
+
+function esc(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+// ── Modal Criar/Editar ────────────────────────────────────────────────────────
+
+const modal = document.getElementById('modal');
 
 function abrirNovo() {
-    document.getElementById('modal-titulo').textContent = 'Novo Usuário';
-    document.getElementById('form-action').value = 'criar';
-    document.getElementById('form-id').value     = '';
-    document.getElementById('f-username').value  = '';
-    document.getElementById('f-username').readOnly = false;
-    document.getElementById('f-fullname').value  = '';
-    document.getElementById('f-email').value     = '';
-    document.getElementById('f-tipo').value      = '';
-    document.getElementById('f-password').value  = '';
-    document.getElementById('f-password').required = true;
+    document.getElementById('modal-titulo').textContent  = 'Novo Usuário';
+    document.getElementById('form-action').value         = 'criar';
+    document.getElementById('form-id').value             = '';
+    document.getElementById('f-username').value          = '';
+    document.getElementById('f-username').readOnly       = false;
+    document.getElementById('f-fullname').value          = '';
+    document.getElementById('f-email').value             = '';
+    document.getElementById('f-tipo').value              = '';
+    document.getElementById('f-password').value          = '';
+    document.getElementById('f-password').required       = true;
     document.getElementById('grupo-senha').style.display = '';
     modal.showModal();
 }
 
 function abrirEditar(btn) {
     const d = btn.dataset;
-    document.getElementById('modal-titulo').textContent = 'Editar Usuário';
-    document.getElementById('form-action').value = 'editar';
-    document.getElementById('form-id').value     = d.id;
-    document.getElementById('f-username').value  = d.username;
-    document.getElementById('f-username').readOnly = false;
-    document.getElementById('f-fullname').value  = d.fullname;
-    document.getElementById('f-email').value     = d.email;
-    document.getElementById('f-tipo').value      = d.tipo;
-    document.getElementById('f-password').required = false;
+    document.getElementById('modal-titulo').textContent  = 'Editar Usuário';
+    document.getElementById('form-action').value         = 'editar';
+    document.getElementById('form-id').value             = d.id;
+    document.getElementById('f-username').value          = d.username;
+    document.getElementById('f-username').readOnly       = false;
+    document.getElementById('f-fullname').value          = d.fullname;
+    document.getElementById('f-email').value             = d.email;
+    document.getElementById('f-tipo').value              = d.tipo;
+    document.getElementById('f-password').required       = false;
     document.getElementById('grupo-senha').style.display = 'none';
     modal.showModal();
 }
@@ -193,10 +278,82 @@ function abrirEditar(btn) {
 function fecharModal() { modal.close(); }
 modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
 
+
+// ── Modal Escopos ─────────────────────────────────────────────────────────────
+
+const modalEscopos = document.getElementById('modal-escopos');
+
+function abrirEscopos(btn) {
+    const uid   = btn.dataset.id;
+    const tipo  = btn.dataset.tipo;
+    const nome  = btn.dataset.username;
+    const cfg   = ESCOPO_CONFIG[tipo];
+    const dados = ESCOPOS[uid] || { company_groups: [], retailer_groups: [], stores: [] };
+    const atual = dados[cfg.key] || [];
+    const linkedIds = new Set(atual.map(i => i.escopo_id));
+    const disponiveis = cfg.opcoes().filter(o => !linkedIds.has(o.id));
+
+    document.getElementById('escopos-titulo').textContent = `Escopos — ${nome}`;
+
+    let html = '';
+
+    // Lista de vínculos atuais
+    if (atual.length === 0) {
+        html += `<p class="escopo-vazio">Nenhum vínculo cadastrado.</p>`;
+    } else {
+        html += '<ul class="escopo-list">';
+        for (const item of atual) {
+            html += `
+            <li class="escopo-item">
+                <span>${esc(item.escopo_nome)}</span>
+                <form method="POST" style="display:inline">
+                    <input type="hidden" name="_action"      value="desvincular">
+                    <input type="hidden" name="user_type_id" value="${esc(tipo)}">
+                    <input type="hidden" name="link_id"      value="${esc(item.link_id)}">
+                    <button type="submit" class="btn-danger btn-sm">Remover</button>
+                </form>
+            </li>`;
+        }
+        html += '</ul>';
+    }
+
+    // Formulário para adicionar novo vínculo
+    html += '<div class="escopo-add">';
+    if (disponiveis.length > 0) {
+        html += `
+        <form method="POST" class="escopo-add-form">
+            <input type="hidden" name="_action"      value="vincular">
+            <input type="hidden" name="_id"          value="${esc(uid)}">
+            <input type="hidden" name="user_type_id" value="${esc(tipo)}">
+            <select name="escopo_id" required class="escopo-select">
+                <option value="">— ${esc(cfg.label)} —</option>`;
+        for (const op of disponiveis) {
+            html += `<option value="${esc(op.id)}">${esc(op.nome)}</option>`;
+        }
+        html += `
+            </select>
+            <button type="submit" class="btn-primary btn-sm">+ Vincular</button>
+        </form>`;
+    } else {
+        html += `<p class="escopo-aviso">Todos os registros disponíveis já estão vinculados.</p>`;
+    }
+    html += '</div>';
+
+    document.getElementById('escopos-body').innerHTML = html;
+    modalEscopos.showModal();
+}
+
+function fecharEscopos() { modalEscopos.close(); }
+modalEscopos.addEventListener('click', e => { if (e.target === modalEscopos) fecharEscopos(); });
+
+
+// ── Modal Redefinir Senha ─────────────────────────────────────────────────────
+
+const modalSenha = document.getElementById('modal-senha');
+
 function abrirSenha(btn) {
-    const d = btn.dataset;
-    document.getElementById('senha-username').textContent = d.username;
-    document.getElementById('senha-id').value            = d.id;
+    document.getElementById('senha-username').textContent = btn.dataset.username;
+    document.getElementById('senha-id').value            = btn.dataset.id;
     document.getElementById('f-nova-senha').value        = '';
     modalSenha.showModal();
 }
