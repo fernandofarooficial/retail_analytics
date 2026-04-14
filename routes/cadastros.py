@@ -1,11 +1,20 @@
 import threading
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, Response
-from routes.utils import login_required
+from routes.utils import login_required, screen_required, check_screen
 import db
 
 cadastros_bp = Blueprint('cadastros', __name__, url_prefix='/retail_analytics/cadastros')
 
 # ── Tabelas simples: apenas id + nome ────────────────────────────────────────
+
+SLUG_TO_SCREEN = {
+    'grupo-empresarial': 'cad_grupo_empresarial',
+    'tipo-empresa':      'cad_tipo_empresa',
+    'lojistas':          'cad_lojistas',
+    'generos':           'cad_generos',
+    'tipo-pessoa':       'cad_tipo_pessoa',
+    'tipo-camera':       'cad_tipo_camera',
+}
 
 SIMPLES = {
     'grupo-empresarial': {
@@ -61,6 +70,7 @@ SIMPLES = {
 
 @cadastros_bp.route('/')
 @login_required
+@screen_required('cadastros')
 def index():
     return render_template('cadastros/index.html')
 
@@ -70,6 +80,7 @@ def index():
 def simples(slug):
     if slug not in SIMPLES:
         abort(404)
+    check_screen(SLUG_TO_SCREEN[slug])
 
     config = SIMPLES[slug]
 
@@ -128,6 +139,7 @@ def simples(slug):
 
 @cadastros_bp.route('/empresas', methods=['GET', 'POST'])
 @login_required
+@screen_required('cad_empresas')
 def empresas():
     if request.method == 'POST':
         action = request.form.get('_action')
@@ -194,6 +206,7 @@ def empresas():
 
 @cadastros_bp.route('/temas', methods=['GET', 'POST'])
 @login_required
+@screen_required('cad_temas')
 def temas():
     if request.method == 'POST':
         action = request.form.get('_action')
@@ -263,6 +276,7 @@ def temas():
 
 @cadastros_bp.route('/lojas', methods=['GET', 'POST'])
 @login_required
+@screen_required('cad_lojas')
 def lojas():
     if request.method == 'POST':
         action = request.form.get('_action')
@@ -337,6 +351,7 @@ def lojas():
 
 @cadastros_bp.route('/cameras', methods=['GET', 'POST'])
 @login_required
+@screen_required('cad_cameras')
 def cameras():
     if request.method == 'POST':
         action = request.form.get('_action')

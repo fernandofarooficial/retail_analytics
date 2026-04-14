@@ -500,38 +500,58 @@ INSERT INTO faciais.user_types (user_type_id, user_type_name, description) VALUE
 -- TABELA: Usuários
 -- ============================================================
 CREATE TABLE faciais.users (
-    user_id         SERIAL PRIMARY KEY,
-    username        VARCHAR(50)  NOT NULL UNIQUE,
-    full_name       VARCHAR(100) NOT NULL,
-    email           VARCHAR(255) UNIQUE,
-    password_hash   VARCHAR(255) NOT NULL,
-    user_type_id    CHAR(3)      NOT NULL,
-    is_active       BOOLEAN      DEFAULT TRUE,
-    created_at      TIMESTAMP    DEFAULT NOW(),
-    updated_at      TIMESTAMP    DEFAULT NOW(),
+    user_id                 SERIAL PRIMARY KEY,
+    username                VARCHAR(50)  NOT NULL UNIQUE,
+    full_name               VARCHAR(100) NOT NULL,
+    email                   VARCHAR(255) UNIQUE,
+    password_hash           VARCHAR(255) NOT NULL,
+    user_type_id            CHAR(3)      NOT NULL,
+    is_active               BOOLEAN      DEFAULT TRUE,
+    last_company_group_id   INT          DEFAULT NULL,
+    last_retailer_group_id  INT          DEFAULT NULL,
+    last_store_id           INT          DEFAULT NULL,
+    created_at              TIMESTAMP    DEFAULT NOW(),
+    updated_at              TIMESTAMP    DEFAULT NOW(),
 
     CONSTRAINT fk_users_type
         FOREIGN KEY (user_type_id)
         REFERENCES faciais.user_types(user_type_id)
-        ON DELETE RESTRICT
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_users_last_company_group
+        FOREIGN KEY (last_company_group_id)
+        REFERENCES faciais.company_groups(company_group_id)
+        ON DELETE SET NULL,
+
+    CONSTRAINT fk_users_last_retailer_group
+        FOREIGN KEY (last_retailer_group_id)
+        REFERENCES faciais.retailer_groups(retailer_group_id)
+        ON DELETE SET NULL,
+
+    CONSTRAINT fk_users_last_store
+        FOREIGN KEY (last_store_id)
+        REFERENCES faciais.stores(store_id)
+        ON DELETE SET NULL
 );
 
-COMMENT ON TABLE  faciais.users               IS 'Usuários da plataforma';
-COMMENT ON COLUMN faciais.users.user_id       IS 'Identificador do usuário';
-COMMENT ON COLUMN faciais.users.username      IS 'Nome de login curto e único (ex: jsilva)';
-COMMENT ON COLUMN faciais.users.full_name     IS 'Nome completo do usuário';
-COMMENT ON COLUMN faciais.users.email         IS 'E-mail do usuário (opcional)';
-COMMENT ON COLUMN faciais.users.password_hash IS 'Senha armazenada em hash (bcrypt)';
-COMMENT ON COLUMN faciais.users.user_type_id  IS 'Tipo do usuário (adm, man, ret, emp)';
-COMMENT ON COLUMN faciais.users.is_active     IS 'Indica se o usuário está ativo';
-COMMENT ON COLUMN faciais.users.created_at    IS 'Data de criação do registro';
-COMMENT ON COLUMN faciais.users.updated_at    IS 'Data da última atualização do registro';
+COMMENT ON TABLE  faciais.users                        IS 'Usuários da plataforma';
+COMMENT ON COLUMN faciais.users.user_id                IS 'Identificador do usuário';
+COMMENT ON COLUMN faciais.users.username               IS 'Nome de login curto e único (ex: jsilva)';
+COMMENT ON COLUMN faciais.users.full_name              IS 'Nome completo do usuário';
+COMMENT ON COLUMN faciais.users.email                  IS 'E-mail do usuário (opcional)';
+COMMENT ON COLUMN faciais.users.password_hash          IS 'Senha armazenada em hash (bcrypt)';
+COMMENT ON COLUMN faciais.users.user_type_id           IS 'Tipo do usuário (adm, man, ret, emp)';
+COMMENT ON COLUMN faciais.users.is_active              IS 'Indica se o usuário está ativo';
+COMMENT ON COLUMN faciais.users.last_company_group_id  IS 'Último grupo de empresas selecionado (man)';
+COMMENT ON COLUMN faciais.users.last_retailer_group_id IS 'Último grupo de lojistas selecionado (ret)';
+COMMENT ON COLUMN faciais.users.last_store_id          IS 'Última loja selecionada (emp / adm)';
+COMMENT ON COLUMN faciais.users.created_at             IS 'Data de criação do registro';
+COMMENT ON COLUMN faciais.users.updated_at             IS 'Data da última atualização do registro';
 
 SELECT faciais.create_updated_at_trigger('users');
 
 CREATE INDEX idx_users_username     ON faciais.users(username);
 CREATE INDEX idx_users_user_type_id ON faciais.users(user_type_id);
-
 
 -- ============================================================
 -- TABELA: Acesso man → company_groups
@@ -705,6 +725,100 @@ CREATE OR REPLACE VIEW faciais.vw_user_store_access AS
 COMMENT ON VIEW faciais.vw_user_store_access IS
     'Resolução completa de acesso: retorna todas as lojas acessíveis por usuário considerando seu tipo';
 
+-- ============================================================
+-- TABELA: Telas do sistema
+-- ============================================================
+CREATE TABLE faciais.screens (
+    screen_id       VARCHAR(50) PRIMARY KEY,
+    screen_name     VARCHAR(100) NOT NULL,
+    screen_group    VARCHAR(50),
+    description     VARCHAR(255),
+    created_at      TIMESTAMP DEFAULT NOW(),
+    updated_at      TIMESTAMP DEFAULT NOW()
+);
+
+COMMENT ON TABLE  faciais.screens              IS 'Telas disponíveis no sistema';
+COMMENT ON COLUMN faciais.screens.screen_id    IS 'Identificador da tela (ex: cadastro_cameras, gerencial_1)';
+COMMENT ON COLUMN faciais.screens.screen_name  IS 'Nome amigável da tela';
+COMMENT ON COLUMN faciais.screens.screen_group IS 'Agrupamento da tela (ex: cadastro, gerencial, operacional)';
+COMMENT ON COLUMN faciais.screens.description  IS 'Descrição do que a tela exibe ou faz';
+COMMENT ON COLUMN faciais.screens.created_at   IS 'Data de criação do registro';
+COMMENT ON COLUMN faciais.screens.updated_at   IS 'Data da última atualização do registro';
+
+SELECT faciais.create_updated_at_trigger('screens');
+
+-- ============================================================
+-- TABELA: Permissões por tipo de usuário
+-- adm não entra aqui — tem acesso total automaticamente
+-- ============================================================
+CREATE TABLE faciais.user_type_screens (
+    user_type_screen_id SERIAL PRIMARY KEY,
+    user_type_id        CHAR(3)     NOT NULL,
+    screen_id           VARCHAR(50) NOT NULL,
+    created_at          TIMESTAMP DEFAULT NOW(),
+
+    CONSTRAINT fk_uts_user_type
+        FOREIGN KEY (user_type_id)
+        REFERENCES faciais.user_types(user_type_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_uts_screen
+        FOREIGN KEY (screen_id)
+        REFERENCES faciais.screens(screen_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_user_type_screen UNIQUE (user_type_id, screen_id)
+);
+
+COMMENT ON TABLE  faciais.user_type_screens                     IS 'Permissões de acesso a telas por tipo de usuário (exceto adm)';
+COMMENT ON COLUMN faciais.user_type_screens.user_type_screen_id IS 'Identificador do vínculo';
+COMMENT ON COLUMN faciais.user_type_screens.user_type_id        IS 'Tipo de usuário';
+COMMENT ON COLUMN faciais.user_type_screens.screen_id           IS 'Tela liberada para o tipo';
+COMMENT ON COLUMN faciais.user_type_screens.created_at          IS 'Data de criação do vínculo';
+
+CREATE INDEX idx_uts_user_type ON faciais.user_type_screens(user_type_id);
+CREATE INDEX idx_uts_screen    ON faciais.user_type_screens(screen_id);
+
+-- ============================================================
+-- VIEW: Resolução de permissão por usuário e tela
+-- Uso: SELECT * FROM faciais.vw_user_screen_access
+--      WHERE user_id = 42 AND screen_id = 'gerencial_1';
+--      → retornou linha = acesso liberado
+--      → retornou vazio = acesso negado
+-- ============================================================
+CREATE OR REPLACE VIEW faciais.vw_user_screen_access AS
+
+    -- adm: acesso a todas as telas automaticamente
+    SELECT
+        u.user_id,
+        u.username,
+        u.user_type_id,
+        s.screen_id,
+        s.screen_name,
+        s.screen_group
+    FROM faciais.users u
+    CROSS JOIN faciais.screens s
+    WHERE u.user_type_id = 'adm'
+      AND u.is_active = TRUE
+
+    UNION ALL
+
+    -- demais tipos: acesso conforme user_type_screens
+    SELECT
+        u.user_id,
+        u.username,
+        u.user_type_id,
+        s.screen_id,
+        s.screen_name,
+        s.screen_group
+    FROM faciais.users u
+    JOIN faciais.user_type_screens uts ON uts.user_type_id = u.user_type_id
+    JOIN faciais.screens s             ON s.screen_id = uts.screen_id
+    WHERE u.user_type_id != 'adm'
+      AND u.is_active = TRUE;
+
+COMMENT ON VIEW faciais.vw_user_screen_access IS
+    'Resolução completa de permissões: retorna todas as telas acessíveis por usuário';
 
 -- ============================================================
 -- FIM DO SCHEMA faciais — v2.0

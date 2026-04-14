@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session
 from werkzeug.security import check_password_hash
-from routes.utils import login_required
+from routes.utils import login_required, screen_required
 import db
 
 auth_bp = Blueprint('auth', __name__)
@@ -48,5 +48,6 @@ def logout():
 
 @auth_bp.route('/dashboard')
 @login_required
+@screen_required('dashboard')
 def dashboard():
     return render_template('dashboard.html')

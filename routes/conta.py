@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import check_password_hash, generate_password_hash
-from routes.utils import login_required
+from routes.utils import login_required, screen_required
 import db
 
 conta_bp = Blueprint('conta', __name__, url_prefix='/retail_analytics/conta')
@@ -8,6 +8,7 @@ conta_bp = Blueprint('conta', __name__, url_prefix='/retail_analytics/conta')
 
 @conta_bp.route('/trocar-senha', methods=['GET', 'POST'])
 @login_required
+@screen_required('conta_trocar_senha')
 def trocar_senha():
     if request.method == 'POST':
         senha_atual = request.form.get('senha_atual', '')
