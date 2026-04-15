@@ -19,6 +19,7 @@
                 <th>Nome</th>
                 <th>Grupo Empresarial</th>
                 <th>Tipo</th>
+                <th style="width:110px">Portal Microvix</th>
                 <th class="col-actions">Ações</th>
             </tr>
         </thead>
@@ -29,12 +30,18 @@
                 <td>{{ r.company_name }}</td>
                 <td>{{ r.company_group_name or '—' }}</td>
                 <td>{{ r.company_type_name or '—' }}</td>
+                <td>
+                    {% if r.microvix_portal %}
+                        <span class="badge">{{ r.microvix_portal }}</span>
+                    {% else %}—{% endif %}
+                </td>
                 <td class="col-actions">
                     <button class="btn-edit"
                         data-id="{{ r.company_id }}"
                         data-nome="{{ r.company_name | e }}"
                         data-grupo="{{ r.company_group_id or '' }}"
                         data-tipo="{{ r.company_type_id or '' }}"
+                        data-portal="{{ r.microvix_portal or '' }}"
                         onclick="abrirEditar(this)">Editar</button>
                     <form method="POST" style="display:inline"
                           onsubmit="return confirm('Confirma a exclusão desta empresa?')">
@@ -45,7 +52,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="5" class="table-empty">Nenhuma empresa cadastrada.</td></tr>
+            <tr><td colspan="6" class="table-empty">Nenhuma empresa cadastrada.</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -83,6 +90,10 @@
                     {% endfor %}
                 </select>
             </div>
+            <div class="form-group">
+                <label>Portal Microvix <small>(opcional)</small></label>
+                <input type="number" id="field-portal" name="microvix_portal" min="1" placeholder="ex: 123456">
+            </div>
         </div>
         <div class="modal-footer">
             <button type="button" class="btn-secondary" onclick="fecharModal()">Cancelar</button>
@@ -95,23 +106,25 @@
 const modal = document.getElementById('modal');
 
 function abrirNovo() {
-    document.getElementById('modal-titulo').textContent = 'Nova Empresa';
+    document.getElementById('modal-titulo').textContent  = 'Nova Empresa';
     document.getElementById('form-action').value = 'criar';
     document.getElementById('form-id').value     = '';
     document.getElementById('field-nome').value  = '';
     document.getElementById('field-grupo').value = '';
     document.getElementById('field-tipo').value  = '';
+    document.getElementById('field-portal').value = '';
     modal.showModal();
 }
 
 function abrirEditar(btn) {
     const d = btn.dataset;
-    document.getElementById('modal-titulo').textContent = 'Editar Empresa';
+    document.getElementById('modal-titulo').textContent  = 'Editar Empresa';
     document.getElementById('form-action').value = 'editar';
     document.getElementById('form-id').value     = d.id;
     document.getElementById('field-nome').value  = d.nome;
     document.getElementById('field-grupo').value = d.grupo;
     document.getElementById('field-tipo').value  = d.tipo;
+    document.getElementById('field-portal').value = d.portal;
     modal.showModal();
 }
 

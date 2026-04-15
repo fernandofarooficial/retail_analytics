@@ -163,12 +163,14 @@ def empresas():
         try:
             if action == 'criar':
                 db.execute(
-                    "INSERT INTO faciais.companies (company_name, company_group_id, company_type_id) "
-                    "VALUES (%s, %s, %s)",
+                    "INSERT INTO faciais.companies "
+                    "(company_name, company_group_id, company_type_id, microvix_portal) "
+                    "VALUES (%s, %s, %s, %s)",
                     (
                         request.form['nome'].strip(),
                         request.form.get('grupo') or None,
                         request.form.get('tipo') or None,
+                        request.form.get('microvix_portal') or None,
                     )
                 )
                 flash('Empresa criada com sucesso.', 'success')
@@ -176,12 +178,13 @@ def empresas():
             elif action == 'editar':
                 db.execute(
                     "UPDATE faciais.companies "
-                    "SET company_name=%s, company_group_id=%s, company_type_id=%s "
+                    "SET company_name=%s, company_group_id=%s, company_type_id=%s, microvix_portal=%s "
                     "WHERE company_id=%s",
                     (
                         request.form['nome'].strip(),
                         request.form.get('grupo') or None,
                         request.form.get('tipo') or None,
+                        request.form.get('microvix_portal') or None,
                         request.form['_id'],
                     )
                 )
