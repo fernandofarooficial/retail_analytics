@@ -27,6 +27,7 @@ def sw():
     resp = make_response(send_from_directory(static_dir, 'sw.js'))
     resp.headers['Service-Worker-Allowed'] = '/retail_analytics/m/'
     resp.headers['Content-Type'] = 'application/javascript'
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     return resp
 
 
