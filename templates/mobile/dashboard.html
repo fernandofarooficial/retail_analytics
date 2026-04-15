@@ -4,7 +4,7 @@
 {% block body %}
 <div class="m-app">
 
-  <!-- Header -->
+  <!-- ── Header ─────────────────────────────────────────────────────── -->
   <header class="m-header">
     <img src="/retail_analytics/static/img/logo_retail_analytics_br_1.png"
          alt="Retail Analytics" class="m-header-logo">
@@ -23,10 +23,24 @@
     </div>
   </header>
 
-  <!-- Conteúdo -->
+  <!-- ── Barra de abas (laranja) ────────────────────────────────────── -->
+  <div class="m-tabs-bar">
+    <div class="m-tabs-l1">
+      <button class="m-tab-l1 active" data-l1="operacional" onclick="ativarL1(this)">Operacional</button>
+      <button class="m-tab-l1"        data-l1="comercial"   onclick="ativarL1(this)">Comercial</button>
+      <button class="m-tab-l1"        data-l1="estrategico" onclick="ativarL1(this)">Estratégico</button>
+    </div>
+    <div class="m-tabs-l2">
+      <button class="m-tab-l2 active" data-l2="dia"    onclick="ativarL2(this)">Dia</button>
+      <button class="m-tab-l2"        data-l2="semana" onclick="ativarL2(this)">Semana</button>
+      <button class="m-tab-l2"        data-l2="mes"    onclick="ativarL2(this)">Mês</button>
+    </div>
+  </div>
+
+  <!-- ── Conteúdo ───────────────────────────────────────────────────── -->
   <main class="m-content">
 
-    {# ── Seletor de empresa (adm e man) ─────────────────────────────────── #}
+    {# ── Seletores de empresa e loja ──────────────────────────────── #}
     {% if session.get('user_type_id') in ('adm', 'man') and companies %}
     <div class="m-select-group">
       <div class="m-select-row">
@@ -44,7 +58,6 @@
     </div>
     {% endif %}
 
-    {# ── Seletor de loja ─────────────────────────────────────────────────── #}
     {% if stores %}
     <div class="m-select-group">
       <div class="m-select-row">
@@ -64,71 +77,89 @@
     </div>
     {% endif %}
 
-    {# ── Painel Operacional – Dia ─────────────────────────────────────────── #}
-    {% if not active_store %}
-    <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
-    {% else %}
+    {# ── Painéis ──────────────────────────────────────────────────── #}
 
-    <!-- Barra de data -->
-    <div class="m-date-row">
-      <span class="m-date-label">Data</span>
-      <input type="date" class="m-date-input" value="{{ data_str }}"
-             onchange="mudarData(this.value)">
-      <span class="m-store-name">{{ active_store.store_name }}</span>
+    <!-- OPERACIONAL – DIA -->
+    <div class="m-panel active" data-panel="operacional-dia">
+
+      {% if not active_store %}
+      <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
+      {% else %}
+
+      <!-- Barra de data -->
+      <div class="m-date-row">
+        <span class="m-date-label">Data</span>
+        <input type="date" class="m-date-input" value="{{ data_str }}"
+               onchange="mudarData(this.value)">
+        <span class="m-store-name">{{ active_store.store_name }}</span>
+      </div>
+
+      <!-- KPIs -->
+      <div class="m-kpi-grid">
+
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Visitantes</span>
+          <span class="m-kpi-value">
+            {% if kpi.visitantes is not none %}
+              {{ '{:,.0f}'.format(kpi.visitantes).replace(',', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+          <span class="m-kpi-sub">clientes únicos no dia</span>
+        </div>
+
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Recorrentes</span>
+          <span class="m-kpi-value">
+            {% if kpi.recorrentes is not none %}
+              {{ '{:,.0f}'.format(kpi.recorrentes).replace(',', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+          <span class="m-kpi-sub">já visitaram antes</span>
+        </div>
+
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Vendas</span>
+          <span class="m-kpi-value">
+            {% if kpi.vendas is not none %}
+              {{ '{:,.0f}'.format(kpi.vendas).replace(',', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+          <span class="m-kpi-sub">
+            {% if kpi.vendas is none %}Microvix não configurado
+            {% else %}notas fiscais emitidas{% endif %}
+          </span>
+        </div>
+
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Conversão</span>
+          <span class="m-kpi-value">
+            {% if kpi.conversao is not none %}
+              {{ kpi.conversao|string|replace('.', ',') }}%
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+          <span class="m-kpi-sub">vendas ÷ visitantes</span>
+        </div>
+
+      </div>
+      {% endif %}
+
+    </div><!-- /operacional-dia -->
+
+    <!-- demais painéis (em construção) -->
+    {% for l1, l2 in [
+        ('operacional','semana'), ('operacional','mes'),
+        ('comercial','dia'), ('comercial','semana'), ('comercial','mes'),
+        ('estrategico','dia'), ('estrategico','semana'), ('estrategico','mes')
+    ] %}
+    <div class="m-panel" data-panel="{{ l1 }}-{{ l2 }}">
+      <p class="m-hint">{{ l1|capitalize }} — {{ l2|capitalize }}<br>em construção</p>
     </div>
-
-    <!-- KPIs -->
-    <div class="m-kpi-grid">
-
-      <div class="m-kpi-card">
-        <span class="m-kpi-label">Visitantes</span>
-        <span class="m-kpi-value">
-          {% if kpi.visitantes is not none %}
-            {{ '{:,.0f}'.format(kpi.visitantes).replace(',', '.') }}
-          {% else %}<span class="m-kpi-na">—</span>{% endif %}
-        </span>
-        <span class="m-kpi-sub">clientes únicos no dia</span>
-      </div>
-
-      <div class="m-kpi-card">
-        <span class="m-kpi-label">Recorrentes</span>
-        <span class="m-kpi-value">
-          {% if kpi.recorrentes is not none %}
-            {{ '{:,.0f}'.format(kpi.recorrentes).replace(',', '.') }}
-          {% else %}<span class="m-kpi-na">—</span>{% endif %}
-        </span>
-        <span class="m-kpi-sub">já visitaram antes</span>
-      </div>
-
-      <div class="m-kpi-card">
-        <span class="m-kpi-label">Vendas</span>
-        <span class="m-kpi-value">
-          {% if kpi.vendas is not none %}
-            {{ '{:,.0f}'.format(kpi.vendas).replace(',', '.') }}
-          {% else %}<span class="m-kpi-na">—</span>{% endif %}
-        </span>
-        <span class="m-kpi-sub">
-          {% if kpi.vendas is none %}portal Microvix não configurado
-          {% else %}notas fiscais emitidas{% endif %}
-        </span>
-      </div>
-
-      <div class="m-kpi-card">
-        <span class="m-kpi-label">Conversão</span>
-        <span class="m-kpi-value">
-          {% if kpi.conversao is not none %}
-            {{ kpi.conversao|string|replace('.', ',') }}%
-          {% else %}<span class="m-kpi-na">—</span>{% endif %}
-        </span>
-        <span class="m-kpi-sub">vendas ÷ visitantes</span>
-      </div>
-
-    </div>
-    {% endif %}
+    {% endfor %}
 
     <!-- Link trocar senha -->
-    <a href="{{ url_for('mobile.trocar_senha') }}" class="m-back-link"
-       style="margin-top:auto;justify-content:center;color:var(--muted);font-size:0.8rem;">
+    <a href="{{ url_for('mobile.trocar_senha') }}"
+       style="text-align:center;font-size:0.8rem;color:var(--muted);text-decoration:none;
+              margin-top:auto;padding-top:0.5rem;">
       Trocar senha
     </a>
 
@@ -138,6 +169,30 @@
 
 {% block scripts %}
 <script>
+let l1Ativo = 'operacional';
+let l2Ativo = 'dia';
+
+function ativarL1(btn) {
+  document.querySelectorAll('.m-tab-l1').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  l1Ativo = btn.dataset.l1;
+  atualizarPainel();
+}
+
+function ativarL2(btn) {
+  document.querySelectorAll('.m-tab-l2').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  l2Ativo = btn.dataset.l2;
+  atualizarPainel();
+}
+
+function atualizarPainel() {
+  const chave = l1Ativo + '-' + l2Ativo;
+  document.querySelectorAll('.m-panel').forEach(p => {
+    p.classList.toggle('active', p.dataset.panel === chave);
+  });
+}
+
 function mudarData(valor) {
   const url = new URL(window.location.href);
   url.searchParams.set('date', valor);
