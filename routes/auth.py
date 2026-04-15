@@ -7,13 +7,22 @@ import db
 auth_bp = Blueprint('auth', __name__)
 
 
+def _is_mobile():
+    ua = request.headers.get('User-Agent', '').lower()
+    return any(k in ua for k in ('iphone', 'android', 'mobile', 'ipad'))
+
+
 @auth_bp.route('/')
 def index():
+    if _is_mobile():
+        return redirect(url_for('mobile.index'))
     return redirect(url_for('auth.login'))
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
+    if _is_mobile():
+        return redirect(url_for('mobile.login'))
     if 'user_id' in session:
         return redirect(url_for('auth.dashboard'))
 
