@@ -1,0 +1,162 @@
+{% extends 'mobile/base_mobile.html' %}
+{% block title %}Dashboard — Retail Analytics{% endblock %}
+
+{% block body %}
+<div class="m-app">
+
+  <!-- Header -->
+  <header class="m-header">
+    <img src="/retail_analytics/static/img/logo_retail_analytics_br_1.png"
+         alt="Retail Analytics" class="m-header-logo">
+
+    {% if company_logo %}
+    <span class="m-header-sep"></span>
+    <img src="/retail_analytics/static/{{ company_logo }}"
+         alt="{{ company_name }}" class="m-header-company-logo">
+    {% else %}
+    <span class="m-header-title">Retail Analytics</span>
+    {% endif %}
+
+    <div class="m-header-user">
+      <span class="m-header-name">{{ session.full_name }}</span>
+      <a href="{{ url_for('mobile.logout') }}" class="m-logout">Sair</a>
+    </div>
+  </header>
+
+  <!-- Conteúdo -->
+  <main class="m-content">
+
+    {# ── Seletor de empresa (adm e man) ─────────────────────────────────── #}
+    {% if session.get('user_type_id') in ('adm', 'man') and companies %}
+    <div class="m-select-group">
+      <div class="m-select-row">
+        <span class="m-select-label">Empresa</span>
+        <select class="m-select" onchange="selecionarEmpresa(this.value)">
+          <option value="">— Selecione —</option>
+          {% for c in companies %}
+          <option value="{{ c.company_id }}"
+              {% if c.company_id == selected_company_id %}selected{% endif %}>
+            {{ c.company_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Seletor de loja ─────────────────────────────────────────────────── #}
+    {% if stores %}
+    <div class="m-select-group">
+      <div class="m-select-row">
+        <span class="m-select-label">Loja</span>
+        <select class="m-select" onchange="selecionarLoja(this.value)">
+          {% if stores|length > 1 %}
+          <option value="">— Selecione —</option>
+          {% endif %}
+          {% for s in stores %}
+          <option value="{{ s.store_id }}"
+              {% if s.store_id == selected_store_id %}selected{% endif %}>
+            {{ s.store_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Painel Operacional – Dia ─────────────────────────────────────────── #}
+    {% if not active_store %}
+    <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
+    {% else %}
+
+    <!-- Barra de data -->
+    <div class="m-date-row">
+      <span class="m-date-label">Data</span>
+      <input type="date" class="m-date-input" value="{{ data_str }}"
+             onchange="mudarData(this.value)">
+      <span class="m-store-name">{{ active_store.store_name }}</span>
+    </div>
+
+    <!-- KPIs -->
+    <div class="m-kpi-grid">
+
+      <div class="m-kpi-card">
+        <span class="m-kpi-label">Visitantes</span>
+        <span class="m-kpi-value">
+          {% if kpi.visitantes is not none %}
+            {{ '{:,.0f}'.format(kpi.visitantes).replace(',', '.') }}
+          {% else %}<span class="m-kpi-na">—</span>{% endif %}
+        </span>
+        <span class="m-kpi-sub">clientes únicos no dia</span>
+      </div>
+
+      <div class="m-kpi-card">
+        <span class="m-kpi-label">Recorrentes</span>
+        <span class="m-kpi-value">
+          {% if kpi.recorrentes is not none %}
+            {{ '{:,.0f}'.format(kpi.recorrentes).replace(',', '.') }}
+          {% else %}<span class="m-kpi-na">—</span>{% endif %}
+        </span>
+        <span class="m-kpi-sub">já visitaram antes</span>
+      </div>
+
+      <div class="m-kpi-card">
+        <span class="m-kpi-label">Vendas</span>
+        <span class="m-kpi-value">
+          {% if kpi.vendas is not none %}
+            {{ '{:,.0f}'.format(kpi.vendas).replace(',', '.') }}
+          {% else %}<span class="m-kpi-na">—</span>{% endif %}
+        </span>
+        <span class="m-kpi-sub">
+          {% if kpi.vendas is none %}portal Microvix não configurado
+          {% else %}notas fiscais emitidas{% endif %}
+        </span>
+      </div>
+
+      <div class="m-kpi-card">
+        <span class="m-kpi-label">Conversão</span>
+        <span class="m-kpi-value">
+          {% if kpi.conversao is not none %}
+            {{ kpi.conversao|string|replace('.', ',') }}%
+          {% else %}<span class="m-kpi-na">—</span>{% endif %}
+        </span>
+        <span class="m-kpi-sub">vendas ÷ visitantes</span>
+      </div>
+
+    </div>
+    {% endif %}
+
+    <!-- Link trocar senha -->
+    <a href="{{ url_for('mobile.trocar_senha') }}" class="m-back-link"
+       style="margin-top:auto;justify-content:center;color:var(--muted);font-size:0.8rem;">
+      Trocar senha
+    </a>
+
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function mudarData(valor) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('date', valor);
+  window.location.href = url.toString();
+}
+
+function selecionarEmpresa(id) {
+  const url = new URL(window.location.href);
+  if (id) { url.searchParams.set('company_id', id); }
+  else     { url.searchParams.delete('company_id'); }
+  url.searchParams.delete('store_id');
+  window.location.href = url.toString();
+}
+
+function selecionarLoja(id) {
+  const url = new URL(window.location.href);
+  if (id) { url.searchParams.set('store_id', id); }
+  else     { url.searchParams.delete('store_id'); }
+  window.location.href = url.toString();
+}
+</script>
+{% endblock %}

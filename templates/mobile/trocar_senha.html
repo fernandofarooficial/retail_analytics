@@ -1,0 +1,113 @@
+{% extends 'mobile/base_mobile.html' %}
+{% block title %}Trocar Senha — Retail Analytics{% endblock %}
+
+{% block body %}
+<div class="m-app">
+
+  <!-- Header -->
+  <header class="m-header">
+    <img src="/retail_analytics/static/img/logo_retail_analytics_br_1.png"
+         alt="Retail Analytics" class="m-header-logo">
+    <span class="m-header-title">Trocar Senha</span>
+    <div class="m-header-user">
+      <a href="{{ url_for('mobile.logout') }}" class="m-logout">Sair</a>
+    </div>
+  </header>
+
+  <main class="m-content">
+
+    <a href="{{ url_for('mobile.dashboard') }}" class="m-back-link">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+           viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Voltar ao Dashboard
+    </a>
+
+    {% if msg_text %}
+    <div class="m-alert {% if msg_type == 'success' %}m-alert-success{% else %}m-alert-error{% endif %}">
+      {{ msg_text }}
+    </div>
+    {% endif %}
+
+    <div class="m-form-card">
+      <p class="m-page-title">Alterar senha</p>
+
+      <form method="post" autocomplete="off">
+
+        <div class="m-field">
+          <label class="m-label" for="senha_atual">Senha atual</label>
+          <div class="m-input-wrap">
+            <input class="m-input" type="password" id="senha_atual"
+                   name="senha_atual" required>
+            <button type="button" class="m-eye" onclick="toggleCampo('senha_atual')"
+                    aria-label="Mostrar senha atual">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                   fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943
+                         9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="m-field" style="margin-top:0.75rem;">
+          <label class="m-label" for="nova_senha">Nova senha</label>
+          <div class="m-input-wrap">
+            <input class="m-input" type="password" id="nova_senha"
+                   name="nova_senha" minlength="6" required>
+            <button type="button" class="m-eye" onclick="toggleCampo('nova_senha')"
+                    aria-label="Mostrar nova senha">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                   fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943
+                         9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="m-field" style="margin-top:0.75rem;">
+          <label class="m-label" for="confirmacao">Confirmar nova senha</label>
+          <div class="m-input-wrap">
+            <input class="m-input" type="password" id="confirmacao"
+                   name="confirmacao" minlength="6" required>
+            <button type="button" class="m-eye" onclick="toggleCampo('confirmacao')"
+                    aria-label="Mostrar confirmação">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                   fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943
+                         9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="m-btn-primary" style="margin-top:1.25rem;">
+          Salvar nova senha
+        </button>
+
+      </form>
+    </div>
+
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleCampo(id) {
+  const inp = document.getElementById(id);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+</script>
+{% endblock %}

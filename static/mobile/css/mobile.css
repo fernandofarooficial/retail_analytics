@@ -1,0 +1,426 @@
+/* =============================================
+   Retail Analytics — Mobile / PWA
+   ============================================= */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary:    #F47B20;
+  --blue:       #0057A8;
+  --bg:         #F5F5F5;
+  --white:      #FFFFFF;
+  --text:       #111827;
+  --muted:      #6B7280;
+  --border:     #E5E7EB;
+  --danger:     #EF4444;
+  --success-bg: #F0FDF4;
+  --success-fg: #166534;
+  --error-bg:   #FEF2F2;
+  --error-fg:   #991B1B;
+  --safe-top:    env(safe-area-inset-top,    0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left,   0px);
+  --safe-right:  env(safe-area-inset-right,  0px);
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── LOGIN ─────────────────────────────────── */
+
+.m-login {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(1.5rem + var(--safe-top)) 1.5rem
+           calc(1.5rem + var(--safe-bottom));
+  background: var(--white);
+}
+
+.m-login-logo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  margin-bottom: 1.5rem;
+}
+
+.m-login-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--blue);
+  text-align: center;
+  margin-bottom: 0.25rem;
+}
+
+.m-login-sub {
+  font-size: 0.875rem;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.m-login-form {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── FORM ELEMENTS ─────────────────────────── */
+
+.m-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.m-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.m-input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--white);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none;
+}
+
+.m-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(0, 87, 168, 0.12);
+}
+
+.m-input-wrap {
+  position: relative;
+}
+
+.m-input-wrap .m-input { padding-right: 3rem; }
+
+.m-eye {
+  position: absolute;
+  right: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.m-btn-primary {
+  width: 100%;
+  padding: 0.9375rem;
+  background: var(--primary);
+  color: var(--white);
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: background 0.2s, transform 0.1s;
+  -webkit-appearance: none;
+}
+
+.m-btn-primary:active { transform: scale(0.98); }
+.m-btn-primary:hover  { background: #e06b10; }
+
+.m-btn-secondary {
+  width: 100%;
+  padding: 0.9375rem;
+  background: var(--white);
+  color: #374151;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+  -webkit-appearance: none;
+}
+
+.m-btn-secondary:active { background: var(--bg); }
+
+/* ── ALERT ─────────────────────────────────── */
+
+.m-alert {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.m-alert-error   { background: var(--error-bg);   color: var(--error-fg);   border: 1px solid #FECACA; }
+.m-alert-success { background: var(--success-bg);  color: var(--success-fg); border: 1px solid #BBF7D0; }
+
+/* ── APP SHELL (header + layout) ───────────── */
+
+.m-app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.m-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: calc(0.75rem + var(--safe-top)) 1rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.m-header-logo {
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.m-header-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.m-header-company-logo {
+  height: 28px;
+  max-width: 90px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.m-header-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--blue);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.m-header-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.m-header-name {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m-logout {
+  font-size: 0.8125rem;
+  color: var(--danger);
+  text-decoration: none;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+}
+
+/* ── PAGE CONTENT ──────────────────────────── */
+
+.m-content {
+  flex: 1;
+  padding: 1.25rem 1rem calc(1.25rem + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── SELECTORS ─────────────────────────────── */
+
+.m-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.m-select-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.m-select-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+  min-width: 52px;
+}
+
+.m-select {
+  flex: 1;
+  padding: 0.625rem 2.25rem 0.625rem 0.875rem;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  color: var(--text);
+  background: var(--white);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239CA3AF' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+}
+
+.m-select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(0, 87, 168, 0.12);
+}
+
+/* ── DATE TOOLBAR ──────────────────────────── */
+
+.m-date-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background: var(--white);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.m-date-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.m-date-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 0.9375rem;
+  color: var(--text);
+  background: transparent;
+  -webkit-appearance: none;
+}
+
+.m-store-name {
+  font-size: 0.8125rem;
+  color: var(--blue);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+/* ── KPI CARDS ─────────────────────────────── */
+
+.m-kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.m-kpi-card {
+  background: var(--white);
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  padding: 1.125rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.m-kpi-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.m-kpi-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.m-kpi-sub {
+  font-size: 0.72rem;
+  color: #9CA3AF;
+  margin-top: 0.125rem;
+  line-height: 1.3;
+}
+
+.m-kpi-na {
+  font-size: 1.5rem;
+  color: var(--border);
+}
+
+/* ── HINT ──────────────────────────────────── */
+
+.m-hint {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-style: italic;
+  padding: 2rem 0;
+}
+
+/* ── TROCAR SENHA ──────────────────────────── */
+
+.m-form-card {
+  background: var(--white);
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  padding: 1.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.m-page-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+}
+
+.m-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--blue);
+  text-decoration: none;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}

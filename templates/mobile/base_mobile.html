@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0057A8">
+  <title>{% block title %}Retail Analytics{% endblock %}</title>
+  <link rel="manifest" href="/retail_analytics/static/manifest.json">
+  <link rel="apple-touch-icon" href="/retail_analytics/static/icons/icon-180.png">
+  <link rel="stylesheet" href="/retail_analytics/static/mobile/css/mobile.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  {% block body %}{% endblock %}
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register(
+        '/retail_analytics/m/sw.js',
+        { scope: '/retail_analytics/m/' }
+      ).catch(err => console.warn('SW register failed:', err));
+    }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

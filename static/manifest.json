@@ -1,0 +1,19 @@
+{
+  "name": "Retail Analytics",
+  "short_name": "RetailBI",
+  "description": "Analytics de varejo com reconhecimento facial",
+  "start_url": "/retail_analytics/m/",
+  "scope": "/retail_analytics/m/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F5F5",
+  "theme_color": "#0057A8",
+  "icons": [
+    { "src": "/retail_analytics/static/icons/icon-72.png",  "sizes": "72x72",   "type": "image/png" },
+    { "src": "/retail_analytics/static/icons/icon-96.png",  "sizes": "96x96",   "type": "image/png" },
+    { "src": "/retail_analytics/static/icons/icon-144.png", "sizes": "144x144", "type": "image/png" },
+    { "src": "/retail_analytics/static/icons/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/retail_analytics/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/retail_analytics/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

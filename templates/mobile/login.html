@@ -1,0 +1,76 @@
+{% extends 'mobile/base_mobile.html' %}
+{% block title %}Login — Retail Analytics{% endblock %}
+
+{% block body %}
+<main class="m-login">
+
+  <img src="/retail_analytics/static/img/logo_retail_analytics_br_1.png"
+       alt="Retail Analytics" class="m-login-logo">
+
+  <h1 class="m-login-title">Retail Analytics</h1>
+  <p class="m-login-sub">Acesse sua conta para continuar</p>
+
+  {% if error %}
+  <div class="m-alert m-alert-error" style="width:100%;max-width:360px;margin-bottom:0.5rem;">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <form class="m-login-form" method="post" autocomplete="on">
+    <div class="m-field">
+      <label class="m-label" for="username">Usuário</label>
+      <input class="m-input" type="text" id="username" name="username"
+             autocomplete="username" autocapitalize="none"
+             inputmode="email" required>
+    </div>
+
+    <div class="m-field">
+      <label class="m-label" for="password">Senha</label>
+      <div class="m-input-wrap">
+        <input class="m-input" type="password" id="password" name="password"
+               autocomplete="current-password" required>
+        <button type="button" class="m-eye" onclick="toggleSenha()" aria-label="Mostrar senha">
+          <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+               fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943
+                     9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <button type="submit" class="m-btn-primary">Entrar</button>
+  </form>
+
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleSenha() {
+  const inp  = document.getElementById('password');
+  const icon = document.getElementById('eye-icon');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.innerHTML = `
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
+               a9.97 9.97 0 012.127-3.51M6.343 6.343A9.97 9.97 0 0112 5
+               c4.477 0 8.268 2.943 9.542 7a9.97 9.97 0 01-1.356 2.664
+               M6.343 6.343L3 3m3.343 3.343L12 9m0 0l2.828 2.828
+               M12 9l-2.828 2.828M15 12a3 3 0 01-3 3m3-3l3 3M3 3l18 18"/>`;
+  } else {
+    inp.type = 'password';
+    icon.innerHTML = `
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943
+               9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>`;
+  }
+}
+</script>
+{% endblock %}
