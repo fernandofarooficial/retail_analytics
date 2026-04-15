@@ -211,5 +211,11 @@ function selecionarLoja(id) {
   else     { url.searchParams.delete('store_id'); }
   window.location.href = url.toString();
 }
+
+setInterval(() => {
+  if (l1Ativo === 'operacional' && l2Ativo === 'dia') {
+    window.location.reload();
+  }
+}, 10 * 60 * 1000);
 </script>
 {% endblock %}
