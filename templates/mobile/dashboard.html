@@ -2,6 +2,12 @@
 {% block title %}Dashboard — Retail Analytics{% endblock %}
 
 {% block body %}
+<style>
+  :root {
+    --secondary: {{ theme.secondary_color }};
+    --accent:    {{ theme.accent_color }};
+  }
+</style>
 <div class="m-app">
 
   <!-- ── Header ─────────────────────────────────────────────────────── -->
@@ -18,7 +24,7 @@
     {% endif %}
 
     <div class="m-header-user">
-      <span class="m-header-name">{{ session.full_name }}</span>
+      <span class="m-header-name">{{ session.username }}</span>
       <a href="{{ url_for('mobile.logout') }}" class="m-logout">Sair</a>
     </div>
   </header>
@@ -91,7 +97,6 @@
         <span class="m-date-label">Data</span>
         <input type="date" class="m-date-input" value="{{ data_str }}"
                onchange="mudarData(this.value)">
-        <span class="m-store-name">{{ active_store.store_name }}</span>
       </div>
 
       <!-- KPIs -->
@@ -128,7 +133,7 @@
           <span class="m-kpi-label">Conversão</span>
           <span class="m-kpi-value">
             {% if kpi.conversao is not none %}
-              {{ kpi.conversao|string|replace('.', ',') }}%
+              {{ '{:.0f}'.format(kpi.conversao) }}%
             {% else %}<span class="m-kpi-na">—</span>{% endif %}
           </span>
         </div>

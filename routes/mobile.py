@@ -63,6 +63,7 @@ def login():
         if user and check_password_hash(user['password_hash'], password):
             session['user_id']      = user['user_id']
             session['full_name']    = user['full_name']
+            session['username']     = username
             session['user_type_id'] = user['user_type_id']
             return redirect(url_for('mobile.dashboard'))
 
@@ -269,6 +270,25 @@ def dashboard():
         else:
             kpi['conversao'] = 0.0
 
+    # ── Tema da empresa ──────────────────────────────────────────────────────
+    theme = dict(secondary_color='#0057A8', accent_color='#FFFFFF')
+    theme_company_id = selected_company_id
+    if not theme_company_id and active_store:
+        row = db.query_one(
+            "SELECT company_id FROM faciais.stores WHERE store_id = %s",
+            (active_store['store_id'],)
+        )
+        if row:
+            theme_company_id = row['company_id']
+    if theme_company_id:
+        row = db.query_one(
+            "SELECT secondary_color, accent_color FROM faciais.company_themes WHERE company_id = %s",
+            (theme_company_id,)
+        )
+        if row:
+            theme['secondary_color'] = row['secondary_color']
+            theme['accent_color']    = row['accent_color']
+
     return render_template(
         'mobile/dashboard.html',
         company_logo=company_logo,
@@ -280,6 +300,7 @@ def dashboard():
         active_store=active_store,
         data_str=data_str,
         kpi=kpi,
+        theme=theme,
     )
 
 

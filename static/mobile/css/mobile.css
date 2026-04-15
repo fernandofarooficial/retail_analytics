@@ -283,7 +283,8 @@ html, body {
   font-weight: 600;
   color: #374151;
   white-space: nowrap;
-  min-width: 52px;
+  width: 60px;
+  flex-shrink: 0;
 }
 
 .m-select {
@@ -389,8 +390,8 @@ html, body {
 
 .m-tab-l1.active,
 .m-tab-l2.active {
-  background: var(--white);
-  color: var(--primary);
+  background: var(--secondary, #0057A8);
+  color: var(--accent, #FFFFFF);
 }
 
 /* ── KPI CARDS ─────────────────────────────── */
@@ -408,6 +409,7 @@ html, body {
   padding: 0.625rem 0.5rem;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.125rem;
   min-width: 0;
 }
