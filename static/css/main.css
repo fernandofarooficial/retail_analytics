@@ -64,6 +64,12 @@ body {
     margin-top: 0.25rem;
 }
 
+.login-version {
+    font-size: 0.75rem;
+    color: #aaa;
+    margin-top: 0.5rem;
+}
+
 /* Alert */
 .alert {
     display: flex;

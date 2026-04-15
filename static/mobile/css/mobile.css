@@ -64,6 +64,13 @@ html, body {
   font-size: 0.875rem;
   color: var(--muted);
   text-align: center;
+  margin-bottom: 0.25rem;
+}
+
+.m-login-version {
+  font-size: 0.75rem;
+  color: var(--border);
+  text-align: center;
   margin-bottom: 2rem;
 }
 
