@@ -36,16 +36,74 @@
 
 <!-- Painéis de conteúdo (9 combinações) -->
 <div class="tab-panels">
-    {% for l1 in ['operacional', 'comercial', 'estrategico'] %}
-    {% for l2 in ['dia', 'semana', 'mes'] %}
-    <div class="tab-panel{% if l1 == 'operacional' and l2 == 'dia' %} active{% endif %}"
-         data-panel="{{ l1 }}-{{ l2 }}">
+
+    <!-- OPERACIONAL – DIA -->
+    <div class="tab-panel active" data-panel="operacional-dia">
+
+        <div class="kpi-toolbar">
+            <label for="kpi-date">Data</label>
+            <input type="date" id="kpi-date" value="{{ data_str }}"
+                   onchange="mudarData(this.value)">
+        </div>
+
+        <div class="kpi-grid">
+
+            <div class="kpi-card">
+                <span class="kpi-label">Visitantes</span>
+                <span class="kpi-value">
+                    {% if kpi.visitantes is not none %}
+                        {{ '{:,.0f}'.format(kpi.visitantes).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">clientes únicos no dia</span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-label">Recorrentes</span>
+                <span class="kpi-value">
+                    {% if kpi.recorrentes is not none %}
+                        {{ '{:,.0f}'.format(kpi.recorrentes).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">já visitaram antes</span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-label">Vendas</span>
+                <span class="kpi-value">
+                    {% if kpi.vendas is not none %}
+                        {{ '{:,.0f}'.format(kpi.vendas).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">notas fiscais emitidas</span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-label">Conversão</span>
+                <span class="kpi-value">
+                    {% if kpi.conversao is not none %}
+                        {{ kpi.conversao|string|replace('.', ',') }}%
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">vendas ÷ visitantes</span>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- demais painéis -->
+    {% for l1, l2 in [
+        ('operacional','semana'), ('operacional','mes'),
+        ('comercial','dia'), ('comercial','semana'), ('comercial','mes'),
+        ('estrategico','dia'), ('estrategico','semana'), ('estrategico','mes')
+    ] %}
+    <div class="tab-panel" data-panel="{{ l1 }}-{{ l2 }}">
         <p style="color:#9CA3AF; font-style:italic; padding:2rem 0;">
             {{ l1|capitalize }} — {{ l2|capitalize }} (em construção)
         </p>
     </div>
     {% endfor %}
-    {% endfor %}
+
 </div>
 
 <script>
@@ -71,6 +129,12 @@ function atualizarPainel() {
     document.querySelectorAll('.tab-panel').forEach(p => {
         p.classList.toggle('active', p.dataset.panel === chave);
     });
+}
+
+function mudarData(valor) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('date', valor);
+    window.location.href = url.toString();
 }
 
 {% if session.get('user_type_id') == 'adm' and companies %}
