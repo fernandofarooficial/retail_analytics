@@ -1,4 +1,4 @@
-const CACHE = 'retail-mobile-v2';
+const CACHE = 'retail-mobile-v3';
 
 const APP_SHELL = [
   '/retail_analytics/m/',
