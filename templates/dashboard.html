@@ -4,6 +4,34 @@
 {% block content %}
 <div class="page-header">
     <h1>Dashboard</h1>
+    {% if session.get('user_type_id') == 'adm' and companies %}
+    <div class="dashboard-company-select">
+        <label for="company-select">Empresa:</label>
+        <select id="company-select" onchange="selecionarEmpresa(this.value)">
+            <option value="">— Selecione —</option>
+            {% for c in companies %}
+            <option value="{{ c.company_id }}"
+                {% if c.company_id == selected_company_id %}selected{% endif %}>
+                {{ c.company_name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
 </div>
 <p style="color:#666;">Em construção.</p>
+
+{% if session.get('user_type_id') == 'adm' and companies %}
+<script>
+function selecionarEmpresa(id) {
+    const url = new URL(window.location.href);
+    if (id) {
+        url.searchParams.set('company_id', id);
+    } else {
+        url.searchParams.delete('company_id');
+    }
+    window.location.href = url.toString();
+}
+</script>
+{% endif %}
 {% endblock %}

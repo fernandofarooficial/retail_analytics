@@ -4,6 +4,10 @@
 <nav class="navbar">
     <a class="navbar-brand" href="{{ url_for('auth.dashboard') }}">
         <img src="{{ url_for('static', filename='img/logo_retail_analytics_br_1.png') }}" height="32" alt="Retail Analytics BR">
+        {% if company_logo is defined and company_logo %}
+        <span class="navbar-logo-sep"></span>
+        <img src="{{ url_for('static', filename=company_logo) }}" height="32" alt="{{ company_name or 'Empresa' }}" class="navbar-company-logo">
+        {% endif %}
     </a>
 
     <div class="navbar-links">

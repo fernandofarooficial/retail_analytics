@@ -50,4 +50,73 @@ def logout():
 @login_required
 @screen_required('dashboard')
 def dashboard():
-    return render_template('dashboard.html')
+    user_id   = session['user_id']
+    user_type = session['user_type_id']
+    company_logo = None
+    company_name = None
+    companies    = []
+    selected_company_id = None
+
+    if user_type == 'adm':
+        companies = db.query_all("""
+            SELECT c.company_id, c.company_name, ct.logo_url
+            FROM   faciais.companies c
+            JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
+            WHERE  ct.logo_url IS NOT NULL
+            ORDER  BY c.company_name
+        """)
+        selected_company_id = request.args.get('company_id', type=int)
+        if selected_company_id:
+            match = next((c for c in companies if c['company_id'] == selected_company_id), None)
+            if match:
+                company_logo = match['logo_url']
+                company_name = match['company_name']
+
+    elif user_type == 'man':
+        row = db.query_one("""
+            SELECT c.company_name, ct.logo_url
+            FROM   faciais.user_company_groups ucg
+            JOIN   faciais.companies c        ON c.company_group_id = ucg.company_group_id
+            JOIN   faciais.company_themes ct  ON ct.company_id = c.company_id
+            WHERE  ucg.user_id = %s AND ct.logo_url IS NOT NULL
+            LIMIT  1
+        """, (user_id,))
+        if row:
+            company_logo = row['logo_url']
+            company_name = row['company_name']
+
+    elif user_type == 'ret':
+        row = db.query_one("""
+            SELECT c.company_name, ct.logo_url
+            FROM   faciais.user_retailer_groups urg
+            JOIN   faciais.stores s           ON s.retailer_group_id = urg.retailer_group_id
+            JOIN   faciais.companies c        ON c.company_id = s.company_id
+            JOIN   faciais.company_themes ct  ON ct.company_id = c.company_id
+            WHERE  urg.user_id = %s AND ct.logo_url IS NOT NULL
+            LIMIT  1
+        """, (user_id,))
+        if row:
+            company_logo = row['logo_url']
+            company_name = row['company_name']
+
+    elif user_type == 'emp':
+        row = db.query_one("""
+            SELECT c.company_name, ct.logo_url
+            FROM   faciais.user_stores us
+            JOIN   faciais.stores s           ON s.store_id = us.store_id
+            JOIN   faciais.companies c        ON c.company_id = s.company_id
+            JOIN   faciais.company_themes ct  ON ct.company_id = c.company_id
+            WHERE  us.user_id = %s AND ct.logo_url IS NOT NULL
+            LIMIT  1
+        """, (user_id,))
+        if row:
+            company_logo = row['logo_url']
+            company_name = row['company_name']
+
+    return render_template(
+        'dashboard.html',
+        company_logo=company_logo,
+        company_name=company_name,
+        companies=companies,
+        selected_company_id=selected_company_id,
+    )
