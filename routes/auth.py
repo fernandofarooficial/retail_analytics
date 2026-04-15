@@ -85,25 +85,33 @@ def dashboard():
             """, (selected_company_id,))
 
     elif user_type == 'man':
-        row = db.query_one("""
-            SELECT c.company_name, ct.logo_url
+        companies = db.query_all("""
+            SELECT DISTINCT c.company_id, c.company_name,
+                   ct.logo_url
             FROM   faciais.user_company_groups ucg
             JOIN   faciais.companies c       ON c.company_group_id = ucg.company_group_id
-            JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
-            WHERE  ucg.user_id = %s AND ct.logo_url IS NOT NULL
-            LIMIT  1
-        """, (user_id,))
-        if row:
-            company_logo = row['logo_url']
-            company_name = row['company_name']
-        stores = db.query_all("""
-            SELECT DISTINCT s.store_id, s.store_name, s.cnpj
-            FROM   faciais.user_company_groups ucg
-            JOIN   faciais.companies c ON c.company_group_id = ucg.company_group_id
-            JOIN   faciais.stores    s ON s.company_id       = c.company_id
+            LEFT JOIN faciais.company_themes ct ON ct.company_id = c.company_id
             WHERE  ucg.user_id = %s
-            ORDER  BY s.store_name
+            ORDER  BY c.company_name
         """, (user_id,))
+        selected_company_id = request.args.get('company_id', type=int)
+        if selected_company_id:
+            match = next((c for c in companies if c['company_id'] == selected_company_id), None)
+            if match:
+                company_logo = match['logo_url']
+                company_name = match['company_name']
+            stores = db.query_all("""
+                SELECT store_id, store_name, cnpj
+                FROM   faciais.stores
+                WHERE  company_id = %s
+                ORDER  BY store_name
+            """, (selected_company_id,))
+        else:
+            # Sem empresa selecionada: pega logo da primeira com tema
+            first = next((c for c in companies if c.get('logo_url')), None)
+            if first:
+                company_logo = first['logo_url']
+                company_name = first['company_name']
 
     elif user_type == 'ret':
         row = db.query_one("""

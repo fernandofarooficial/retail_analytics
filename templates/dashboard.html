@@ -6,8 +6,8 @@
     <h1>Dashboard</h1>
     <div class="dashboard-selectors">
 
-        {# Seletor de empresa — apenas adm #}
-        {% if session.get('user_type_id') == 'adm' and companies %}
+        {# Seletor de empresa — adm e man #}
+        {% if session.get('user_type_id') in ('adm', 'man') and companies %}
         <div class="dashboard-company-select">
             <label for="company-select">Empresa:</label>
             <select id="company-select" onchange="selecionarEmpresa(this.value)">
