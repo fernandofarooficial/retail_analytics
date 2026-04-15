@@ -19,10 +19,61 @@
     </div>
     {% endif %}
 </div>
-<p style="color:#666;">Em construção.</p>
+
+<!-- Abas nível 1 -->
+<div class="tabs-l1">
+    <button class="tab-l1 active" data-l1="operacional" onclick="ativarL1(this)">Operacional</button>
+    <button class="tab-l1"       data-l1="comercial"   onclick="ativarL1(this)">Comercial</button>
+    <button class="tab-l1"       data-l1="estrategico" onclick="ativarL1(this)">Estratégico</button>
+</div>
+
+<!-- Abas nível 2 -->
+<div class="tabs-l2">
+    <button class="tab-l2 active" data-l2="dia"    onclick="ativarL2(this)">Dia</button>
+    <button class="tab-l2"        data-l2="semana" onclick="ativarL2(this)">Semana</button>
+    <button class="tab-l2"        data-l2="mes"    onclick="ativarL2(this)">Mês</button>
+</div>
+
+<!-- Painéis de conteúdo (9 combinações) -->
+<div class="tab-panels">
+    {% for l1 in ['operacional', 'comercial', 'estrategico'] %}
+    {% for l2 in ['dia', 'semana', 'mes'] %}
+    <div class="tab-panel{% if l1 == 'operacional' and l2 == 'dia' %} active{% endif %}"
+         data-panel="{{ l1 }}-{{ l2 }}">
+        <p style="color:#9CA3AF; font-style:italic; padding:2rem 0;">
+            {{ l1|capitalize }} — {{ l2|capitalize }} (em construção)
+        </p>
+    </div>
+    {% endfor %}
+    {% endfor %}
+</div>
+
+<script>
+let l1Ativo = 'operacional';
+let l2Ativo = 'dia';
+
+function ativarL1(btn) {
+    document.querySelectorAll('.tab-l1').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    l1Ativo = btn.dataset.l1;
+    atualizarPainel();
+}
+
+function ativarL2(btn) {
+    document.querySelectorAll('.tab-l2').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    l2Ativo = btn.dataset.l2;
+    atualizarPainel();
+}
+
+function atualizarPainel() {
+    const chave = l1Ativo + '-' + l2Ativo;
+    document.querySelectorAll('.tab-panel').forEach(p => {
+        p.classList.toggle('active', p.dataset.panel === chave);
+    });
+}
 
 {% if session.get('user_type_id') == 'adm' and companies %}
-<script>
 function selecionarEmpresa(id) {
     const url = new URL(window.location.href);
     if (id) {
@@ -32,6 +83,6 @@ function selecionarEmpresa(id) {
     }
     window.location.href = url.toString();
 }
-</script>
 {% endif %}
+</script>
 {% endblock %}
