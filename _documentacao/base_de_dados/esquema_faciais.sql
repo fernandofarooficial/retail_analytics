@@ -402,16 +402,19 @@ CREATE INDEX idx_people_track    ON faciais.people(reference_track_id);
 -- ============================================================
 CREATE TABLE faciais.json_records (
     json_record_id  SERIAL PRIMARY KEY,
+    log_id          INT DEFAULT NULL,
     payload         JSONB,
     created_at      TIMESTAMP DEFAULT NOW()
 );
 
 COMMENT ON TABLE  faciais.json_records                IS 'Dados brutos recebidos pelas câmeras em formato JSON';
 COMMENT ON COLUMN faciais.json_records.json_record_id IS 'Identificador do registro JSON';
+COMMENT ON COLUMN faciais.json_records.log_id         IS 'Identificador do log gerado pelo analítico de IA';
 COMMENT ON COLUMN faciais.json_records.payload        IS 'Payload bruto recebido';
 COMMENT ON COLUMN faciais.json_records.created_at     IS 'Data de criação do registro';
 
 CREATE INDEX idx_json_records_payload ON faciais.json_records USING GIN(payload);
+CREATE INDEX idx_json_records_log_id  ON faciais.json_records(log_id);
 
 
 -- ============================================================
@@ -419,6 +422,7 @@ CREATE INDEX idx_json_records_payload ON faciais.json_records USING GIN(payload)
 -- ============================================================
 CREATE TABLE faciais.detection_records (
     detection_record_id SERIAL PRIMARY KEY,
+    log_id              INT DEFAULT NULL,
     json_record_id      INT,
     track_id            VARCHAR(100),
     detection_score     FLOAT,
@@ -450,6 +454,7 @@ CREATE TABLE faciais.detection_records (
 
 COMMENT ON TABLE  faciais.detection_records                     IS 'Registros de detecção e reconhecimento facial';
 COMMENT ON COLUMN faciais.detection_records.detection_record_id IS 'Identificador do registro de detecção';
+COMMENT ON COLUMN faciais.detection_records.log_id              IS 'Identificador do log gerado pelo analítico de IA (propagado do json_records após processamento)';
 COMMENT ON COLUMN faciais.detection_records.json_record_id      IS 'Identificador do registro JSON de origem';
 COMMENT ON COLUMN faciais.detection_records.track_id            IS 'Identificador de rastreamento facial';
 COMMENT ON COLUMN faciais.detection_records.detection_score     IS 'Score de detecção facial (0 a 1)';
@@ -462,6 +467,7 @@ COMMENT ON COLUMN faciais.detection_records.updated_at          IS 'Data da últ
 
 SELECT faciais.create_updated_at_trigger('detection_records');
 
+CREATE INDEX idx_detection_log_id  ON faciais.detection_records(log_id);
 CREATE INDEX idx_detection_camera  ON faciais.detection_records(camera_id);
 CREATE INDEX idx_detection_person  ON faciais.detection_records(person_id);
 CREATE INDEX idx_detection_track   ON faciais.detection_records(track_id);

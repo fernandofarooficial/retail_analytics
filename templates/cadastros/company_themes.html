@@ -38,7 +38,8 @@
                 <td><span class="color-swatch" style="background:{{ r.background_color }}; border:1px solid #ccc"></span> {{ r.background_color }}</td>
                 <td>
                     {% if r.logo_url %}
-                        <a href="{{ r.logo_url }}" target="_blank" class="link-small">Ver</a>
+                        <img src="{{ url_for('static', filename=r.logo_url) }}"
+                             alt="{{ r.company_name }}" class="logo-thumb">
                     {% else %}—{% endif %}
                 </td>
                 <td class="col-actions">
@@ -50,7 +51,7 @@
                         data-accent="{{ r.accent_color }}"
                         data-text="{{ r.text_color }}"
                         data-background="{{ r.background_color }}"
-                        data-logo="{{ r.logo_url or '' | e }}"
+                        data-logo="{{ r.logo_url or '' }}"
                         onclick="abrirEditar(this)">Editar</button>
                     <form method="POST" style="display:inline"
                           onsubmit="return confirm('Confirma a exclusão deste tema?')">
@@ -68,7 +69,7 @@
 </div>
 
 <dialog id="modal">
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
         <div class="modal-header">
             <h2 id="modal-titulo">Novo Tema</h2>
             <button type="button" class="modal-close" onclick="fecharModal()">&times;</button>
@@ -111,8 +112,13 @@
                 </div>
             </div>
             <div class="form-group">
-                <label>URL do Logo <small>(opcional)</small></label>
-                <input type="url" name="logo_url" id="f-logo" placeholder="https://...">
+                <label>Logo <small>(PNG, JPG, SVG — opcional)</small></label>
+                <input type="hidden" name="logo_url_existing" id="f-logo-existing">
+                <div id="f-logo-preview-wrap" style="display:none; margin-bottom:0.5rem">
+                    <img id="f-logo-preview" src="" alt="Logo atual" class="logo-thumb">
+                    <span class="logo-thumb-label">Logo atual — envie um novo arquivo para substituir</span>
+                </div>
+                <input type="file" name="logo_file" id="f-logo-file" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="input-file">
             </div>
         </div>
         <div class="modal-footer">
@@ -125,32 +131,47 @@
 <script>
 const modal = document.getElementById('modal');
 
+const staticBase = "{{ url_for('static', filename='') }}";
+
+function _setLogoPreview(logoPath) {
+    const wrap    = document.getElementById('f-logo-preview-wrap');
+    const preview = document.getElementById('f-logo-preview');
+    document.getElementById('f-logo-existing').value = logoPath || '';
+    document.getElementById('f-logo-file').value = '';
+    if (logoPath) {
+        preview.src = staticBase + logoPath;
+        wrap.style.display = 'flex';
+    } else {
+        wrap.style.display = 'none';
+    }
+}
+
 function abrirNovo() {
-    document.getElementById('modal-titulo').textContent   = 'Novo Tema';
-    document.getElementById('form-action').value          = 'criar';
-    document.getElementById('form-id').value              = '';
-    document.getElementById('field-company').value        = '';
-    document.getElementById('f-primary').value            = '#F47B20';
-    document.getElementById('f-secondary').value          = '#0057A8';
-    document.getElementById('f-accent').value             = '#FFFFFF';
-    document.getElementById('f-text').value               = '#000000';
-    document.getElementById('f-background').value         = '#F5F5F5';
-    document.getElementById('f-logo').value               = '';
+    document.getElementById('modal-titulo').textContent = 'Novo Tema';
+    document.getElementById('form-action').value        = 'criar';
+    document.getElementById('form-id').value            = '';
+    document.getElementById('field-company').value      = '';
+    document.getElementById('f-primary').value          = '#F47B20';
+    document.getElementById('f-secondary').value        = '#0057A8';
+    document.getElementById('f-accent').value           = '#FFFFFF';
+    document.getElementById('f-text').value             = '#000000';
+    document.getElementById('f-background').value       = '#F5F5F5';
+    _setLogoPreview('');
     modal.showModal();
 }
 
 function abrirEditar(btn) {
     const d = btn.dataset;
-    document.getElementById('modal-titulo').textContent   = 'Editar Tema';
-    document.getElementById('form-action').value          = 'editar';
-    document.getElementById('form-id').value              = d.id;
-    document.getElementById('field-company').value        = d.company;
-    document.getElementById('f-primary').value            = d.primary;
-    document.getElementById('f-secondary').value          = d.secondary;
-    document.getElementById('f-accent').value             = d.accent;
-    document.getElementById('f-text').value               = d.text;
-    document.getElementById('f-background').value         = d.background;
-    document.getElementById('f-logo').value               = d.logo;
+    document.getElementById('modal-titulo').textContent = 'Editar Tema';
+    document.getElementById('form-action').value        = 'editar';
+    document.getElementById('form-id').value            = d.id;
+    document.getElementById('field-company').value      = d.company;
+    document.getElementById('f-primary').value          = d.primary;
+    document.getElementById('f-secondary').value        = d.secondary;
+    document.getElementById('f-accent').value           = d.accent;
+    document.getElementById('f-text').value             = d.text;
+    document.getElementById('f-background').value       = d.background;
+    _setLogoPreview(d.logo || '');
     modal.showModal();
 }
 

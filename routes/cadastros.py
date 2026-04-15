@@ -1,7 +1,24 @@
+import os
 import threading
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, Response
 from routes.utils import login_required, screen_required, check_screen
 import db
+
+_LOGO_DIR  = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'img', 'logos')
+_LOGO_EXTS = {'png', 'jpg', 'jpeg', 'webp', 'svg'}
+
+
+def _salvar_logo(file, company_id):
+    """Salva o arquivo de logo enviado e retorna o caminho relativo ao static/."""
+    if not file or not file.filename:
+        return None
+    ext = file.filename.rsplit('.', 1)[-1].lower()
+    if ext not in _LOGO_EXTS:
+        return None
+    os.makedirs(_LOGO_DIR, exist_ok=True)
+    filename = f'company_{company_id}.{ext}'
+    file.save(os.path.join(_LOGO_DIR, filename))
+    return f'img/logos/{filename}'
 
 cadastros_bp = Blueprint('cadastros', __name__, url_prefix='/retail_analytics/cadastros')
 
@@ -212,37 +229,43 @@ def temas():
         action = request.form.get('_action')
         try:
             if action == 'criar':
+                company_id = request.form['company_id']
+                logo_url = _salvar_logo(request.files.get('logo_file'), company_id)
                 db.execute(
                     """INSERT INTO faciais.company_themes
                        (company_id, primary_color, secondary_color, accent_color,
                         text_color, background_color, logo_url)
                        VALUES (%s,%s,%s,%s,%s,%s,%s)""",
                     (
-                        request.form['company_id'],
+                        company_id,
                         request.form.get('primary_color', '#F47B20'),
                         request.form.get('secondary_color', '#0057A8'),
                         request.form.get('accent_color', '#FFFFFF'),
                         request.form.get('text_color', '#000000'),
                         request.form.get('background_color', '#F5F5F5'),
-                        request.form.get('logo_url', '').strip() or None,
+                        logo_url,
                     )
                 )
                 flash('Tema criado com sucesso.', 'success')
 
             elif action == 'editar':
+                company_id = request.form['company_id']
+                logo_url = _salvar_logo(request.files.get('logo_file'), company_id)
+                if logo_url is None:
+                    logo_url = request.form.get('logo_url_existing', '').strip() or None
                 db.execute(
                     """UPDATE faciais.company_themes SET
                        company_id=%s, primary_color=%s, secondary_color=%s, accent_color=%s,
                        text_color=%s, background_color=%s, logo_url=%s
                        WHERE company_theme_id=%s""",
                     (
-                        request.form['company_id'],
+                        company_id,
                         request.form.get('primary_color', '#F47B20'),
                         request.form.get('secondary_color', '#0057A8'),
                         request.form.get('accent_color', '#FFFFFF'),
                         request.form.get('text_color', '#000000'),
                         request.form.get('background_color', '#F5F5F5'),
-                        request.form.get('logo_url', '').strip() or None,
+                        logo_url,
                         request.form['_id'],
                     )
                 )
