@@ -104,7 +104,6 @@
               {{ '{:,.0f}'.format(kpi.visitantes).replace(',', '.') }}
             {% else %}<span class="m-kpi-na">—</span>{% endif %}
           </span>
-          <span class="m-kpi-sub">clientes únicos no dia</span>
         </div>
 
         <div class="m-kpi-card">
@@ -114,7 +113,6 @@
               {{ '{:,.0f}'.format(kpi.recorrentes).replace(',', '.') }}
             {% else %}<span class="m-kpi-na">—</span>{% endif %}
           </span>
-          <span class="m-kpi-sub">já visitaram antes</span>
         </div>
 
         <div class="m-kpi-card">
@@ -123,10 +121,6 @@
             {% if kpi.vendas is not none %}
               {{ '{:,.0f}'.format(kpi.vendas).replace(',', '.') }}
             {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
-          <span class="m-kpi-sub">
-            {% if kpi.vendas is none %}Microvix não configurado
-            {% else %}notas fiscais emitidas{% endif %}
           </span>
         </div>
 
@@ -137,7 +131,6 @@
               {{ kpi.conversao|string|replace('.', ',') }}%
             {% else %}<span class="m-kpi-na">—</span>{% endif %}
           </span>
-          <span class="m-kpi-sub">vendas ÷ visitantes</span>
         </div>
 
       </div>
