@@ -934,3 +934,23 @@ dialog::backdrop {
     border-color: #0057A8;
     box-shadow: 0 0 0 3px rgba(0, 87, 168, 0.12);
 }
+
+.dashboard-selectors {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.kpi-hint {
+    color: #9CA3AF;
+    font-style: italic;
+    padding: 2rem 0;
+}
+
+.kpi-store-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #0057A8;
+    margin-left: 0.5rem;
+}
