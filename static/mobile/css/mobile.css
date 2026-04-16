@@ -427,7 +427,7 @@ html, body {
 .m-kpi-value {
   font-size: 1.375rem;
   font-weight: 700;
-  color: var(--primary);
+  color: #111827;
   line-height: 1.1;
   letter-spacing: -0.02em;
 }
