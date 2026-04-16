@@ -71,6 +71,52 @@ def dashboard():
     selected_company_id = None
     selected_store_id   = request.args.get('store_id', type=int)
 
+    # ── Restaurar última seleção (quando não há parâmetros na URL) ────────────
+    if not selected_store_id and 'company_id' not in request.args:
+        saved = db.query_one(
+            "SELECT last_store_id FROM faciais.users WHERE user_id = %s",
+            (user_id,)
+        )
+        if saved and saved['last_store_id']:
+            last_sid = saved['last_store_id']
+            if user_type in ('adm', 'man'):
+                if user_type == 'adm':
+                    row = db.query_one(
+                        "SELECT company_id FROM faciais.stores WHERE store_id = %s",
+                        (last_sid,)
+                    )
+                else:
+                    row = db.query_one("""
+                        SELECT s.company_id
+                        FROM   faciais.stores s
+                        JOIN   faciais.companies c  ON c.company_id = s.company_id
+                        JOIN   faciais.user_company_groups ucg
+                               ON ucg.company_group_id = c.company_group_id
+                        WHERE  s.store_id = %s AND ucg.user_id = %s
+                    """, (last_sid, user_id))
+                if row:
+                    return redirect(url_for('auth.dashboard',
+                                            company_id=row['company_id'],
+                                            store_id=last_sid))
+            elif user_type == 'ret':
+                row = db.query_one("""
+                    SELECT s.store_id
+                    FROM   faciais.stores s
+                    JOIN   faciais.user_retailer_groups urg
+                           ON urg.retailer_group_id = s.retailer_group_id
+                    WHERE  s.store_id = %s AND urg.user_id = %s
+                """, (last_sid, user_id))
+                if row:
+                    return redirect(url_for('auth.dashboard', store_id=last_sid))
+            elif user_type == 'emp':
+                row = db.query_one(
+                    "SELECT store_id FROM faciais.user_stores "
+                    "WHERE store_id = %s AND user_id = %s",
+                    (last_sid, user_id)
+                )
+                if row:
+                    return redirect(url_for('auth.dashboard', store_id=last_sid))
+
     # ── Carrega empresas (adm) e lojas (todos os tipos) ───────────────────────
     if user_type == 'adm':
         companies = db.query_all("""
@@ -172,6 +218,37 @@ def dashboard():
         if active_store is None and len(stores) == 1:
             active_store      = stores[0]
             selected_store_id = active_store['store_id']
+
+    # ── Salvar última seleção no banco ────────────────────────────────────────
+    if active_store:
+        _sid = active_store['store_id']
+        if user_type in ('adm', 'man'):
+            db.execute("""
+                UPDATE faciais.users
+                SET    last_store_id         = %s,
+                       last_company_group_id = (
+                           SELECT c.company_group_id
+                           FROM   faciais.stores s
+                           JOIN   faciais.companies c ON c.company_id = s.company_id
+                           WHERE  s.store_id = %s
+                       )
+                WHERE  user_id = %s
+            """, (_sid, _sid, user_id))
+        elif user_type == 'ret':
+            db.execute("""
+                UPDATE faciais.users
+                SET    last_store_id          = %s,
+                       last_retailer_group_id = (
+                           SELECT retailer_group_id
+                           FROM   faciais.stores WHERE store_id = %s
+                       )
+                WHERE  user_id = %s
+            """, (_sid, _sid, user_id))
+        else:
+            db.execute(
+                "UPDATE faciais.users SET last_store_id = %s WHERE user_id = %s",
+                (_sid, user_id)
+            )
 
     # CNPJ da loja (14 dígitos com zeros à esquerda) para filtro no microvix
     active_store_cnpj = None
