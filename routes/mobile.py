@@ -92,6 +92,52 @@ def dashboard():
     selected_store_id    = request.args.get('store_id',   type=int)
     stores               = []
 
+    # ── Restaurar última seleção (quando não há parâmetros na URL) ────────────
+    if not selected_store_id and 'company_id' not in request.args:
+        saved = db.query_one(
+            "SELECT last_store_id FROM faciais.users WHERE user_id = %s",
+            (user_id,)
+        )
+        if saved and saved['last_store_id']:
+            last_sid = saved['last_store_id']
+            if user_type in ('adm', 'man'):
+                if user_type == 'adm':
+                    row = db.query_one(
+                        "SELECT company_id FROM faciais.stores WHERE store_id = %s",
+                        (last_sid,)
+                    )
+                else:
+                    row = db.query_one("""
+                        SELECT s.company_id
+                        FROM   faciais.stores s
+                        JOIN   faciais.companies c  ON c.company_id = s.company_id
+                        JOIN   faciais.user_company_groups ucg
+                               ON ucg.company_group_id = c.company_group_id
+                        WHERE  s.store_id = %s AND ucg.user_id = %s
+                    """, (last_sid, user_id))
+                if row:
+                    return redirect(url_for('mobile.dashboard',
+                                            company_id=row['company_id'],
+                                            store_id=last_sid))
+            elif user_type == 'ret':
+                row = db.query_one("""
+                    SELECT s.store_id
+                    FROM   faciais.stores s
+                    JOIN   faciais.user_retailer_groups urg
+                           ON urg.retailer_group_id = s.retailer_group_id
+                    WHERE  s.store_id = %s AND urg.user_id = %s
+                """, (last_sid, user_id))
+                if row:
+                    return redirect(url_for('mobile.dashboard', store_id=last_sid))
+            elif user_type == 'emp':
+                row = db.query_one(
+                    "SELECT store_id FROM faciais.user_stores "
+                    "WHERE store_id = %s AND user_id = %s",
+                    (last_sid, user_id)
+                )
+                if row:
+                    return redirect(url_for('mobile.dashboard', store_id=last_sid))
+
     # ── Carrega empresas e lojas por tipo de usuário ─────────────────────────
     if user_type == 'adm':
         companies = db.query_all("""
@@ -190,6 +236,37 @@ def dashboard():
             active_store      = stores[0]
             selected_store_id = active_store['store_id']
 
+    # ── Salvar última seleção no banco ──────────────────────────────────────
+    if active_store:
+        _sid = active_store['store_id']
+        if user_type in ('adm', 'man'):
+            db.execute("""
+                UPDATE faciais.users
+                SET    last_store_id         = %s,
+                       last_company_group_id = (
+                           SELECT c.company_group_id
+                           FROM   faciais.stores s
+                           JOIN   faciais.companies c ON c.company_id = s.company_id
+                           WHERE  s.store_id = %s
+                       )
+                WHERE  user_id = %s
+            """, (_sid, _sid, user_id))
+        elif user_type == 'ret':
+            db.execute("""
+                UPDATE faciais.users
+                SET    last_store_id          = %s,
+                       last_retailer_group_id = (
+                           SELECT retailer_group_id
+                           FROM   faciais.stores WHERE store_id = %s
+                       )
+                WHERE  user_id = %s
+            """, (_sid, _sid, user_id))
+        else:
+            db.execute(
+                "UPDATE faciais.users SET last_store_id = %s WHERE user_id = %s",
+                (_sid, user_id)
+            )
+
     # ── CNPJ e portal Microvix ───────────────────────────────────────────────
     active_store_cnpj      = None
     active_microvix_portal = None
@@ -214,6 +291,9 @@ def dashboard():
 
     # ── KPIs Operacional – Dia ───────────────────────────────────────────────
     kpi = dict(visitantes=None, recorrentes=None, vendas=None, conversao=None)
+
+    # ── KPIs Comercial – Dia ─────────────────────────────────────────────────
+    kpi_com = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
 
     if active_store:
         sid = active_store['store_id']
@@ -270,6 +350,35 @@ def dashboard():
         else:
             kpi['conversao'] = 0.0
 
+        # ── Comercial – Dia ──────────────────────────────────────────────────
+        if active_microvix_portal and active_store_cnpj:
+            r = db.query_one("""
+                SELECT COUNT(DISTINCT documento)          AS vendas,
+                       SUM(valor_liquido)                 AS faturamento,
+                       SUM(quantidade)                    AS total_itens
+                FROM   microvix.microvix_movimento
+                WHERE  portal           = %s
+                  AND  cnpj_emp         = %s
+                  AND  DATE(data_documento) = %s
+                  AND  cancelado        <> 'S'
+                  AND  excluido         <> 'S'
+                  AND  soma_relatorio   =  'S'
+            """, (active_microvix_portal, active_store_cnpj, data_str))
+
+            if r and r['vendas']:
+                v = int(r['vendas'])
+                f = float(r['faturamento'] or 0)
+                t = float(r['total_itens'] or 0)
+                kpi_com['vendas']       = v
+                kpi_com['faturamento']  = round(f, 2)
+                kpi_com['ticket_medio'] = round(f / v, 2) if v else 0.0
+                kpi_com['itens_venda']  = round(t / v, 1) if v else 0.0
+            else:
+                kpi_com['vendas']       = 0
+                kpi_com['faturamento']  = 0.0
+                kpi_com['ticket_medio'] = 0.0
+                kpi_com['itens_venda']  = 0.0
+
     # ── Tema da empresa ──────────────────────────────────────────────────────
     theme = dict(secondary_color='#0057A8', accent_color='#FFFFFF')
     theme_company_id = selected_company_id
@@ -300,6 +409,7 @@ def dashboard():
         active_store=active_store,
         data_str=data_str,
         kpi=kpi,
+        kpi_com=kpi_com,
         theme=theme,
     )
 

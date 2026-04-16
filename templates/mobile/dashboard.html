@@ -143,10 +143,70 @@
 
     </div><!-- /operacional-dia -->
 
+    <!-- COMERCIAL – DIA -->
+    <div class="m-panel" data-panel="comercial-dia">
+
+      {% if not active_store %}
+      <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
+      {% else %}
+
+      <!-- Barra de data -->
+      <div class="m-date-row">
+        <span class="m-date-label">Data</span>
+        <input type="date" class="m-date-input" value="{{ data_str }}"
+               onchange="mudarData(this.value)">
+      </div>
+
+      <!-- KPIs -->
+      <div class="m-kpi-grid">
+
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Faturamento</span>
+          <span class="m-kpi-value">
+            {% if kpi_com.faturamento is not none %}
+              R$ {{ '{:,.2f}'.format(kpi_com.faturamento)
+                     .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Ticket Médio</span>
+          <span class="m-kpi-value">
+            {% if kpi_com.ticket_medio is not none %}
+              R$ {{ '{:,.2f}'.format(kpi_com.ticket_medio)
+                     .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Vendas</span>
+          <span class="m-kpi-value">
+            {% if kpi_com.vendas is not none %}
+              {{ '{:,.0f}'.format(kpi_com.vendas).replace(',', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Itens/Venda</span>
+          <span class="m-kpi-value">
+            {% if kpi_com.itens_venda is not none %}
+              {{ kpi_com.itens_venda|string|replace('.', ',') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+
+      </div>
+      {% endif %}
+
+    </div><!-- /comercial-dia -->
+
     <!-- demais painéis (em construção) -->
     {% for l1, l2 in [
         ('operacional','semana'), ('operacional','mes'),
-        ('comercial','dia'), ('comercial','semana'), ('comercial','mes'),
+        ('comercial','semana'), ('comercial','mes'),
         ('estrategico','dia'), ('estrategico','semana'), ('estrategico','mes')
     ] %}
     <div class="m-panel" data-panel="{{ l1 }}-{{ l2 }}">
@@ -213,7 +273,7 @@ function selecionarLoja(id) {
 }
 
 setInterval(() => {
-  if (l1Ativo === 'operacional' && l2Ativo === 'dia') {
+  if (l2Ativo === 'dia' && (l1Ativo === 'operacional' || l1Ativo === 'comercial')) {
     window.location.reload();
   }
 }, 10 * 60 * 1000);
