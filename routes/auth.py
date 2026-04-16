@@ -317,12 +317,14 @@ def dashboard():
             r = db.query_one("""
                 SELECT COUNT(DISTINCT documento) AS total
                 FROM   microvix.microvix_movimento
-                WHERE  portal           = %s
-                  AND  cnpj_emp         = %s
-                  AND  DATE(data_documento) = %s
-                  AND  cancelado        <> 'S'
-                  AND  excluido         <> 'S'
-                  AND  soma_relatorio   =  'S'
+                WHERE  portal                  = %s
+                  AND  cnpj_emp                = %s
+                  AND  DATE(data_documento)    = %s
+                  AND  cancelado              <> 'S'
+                  AND  excluido              <> 'S'
+                  AND  soma_relatorio          = 'S'
+                  AND  tipo_transacao          = 'V'
+                  AND  cod_natureza_operacao   = '10030'
             """, (active_microvix_portal, active_store_cnpj, data_str))
             kpi['vendas'] = r['total'] if r else 0
         else:
@@ -364,6 +366,24 @@ def dashboard():
                 kpi_com['ticket_medio'] = 0.0
                 kpi_com['itens_venda']  = 0.0
 
+    # ── Tema da empresa ──────────────────────────────────────────────────────
+    theme = dict(primary_color='#F47B20')
+    theme_company_id = selected_company_id
+    if not theme_company_id and active_store:
+        row = db.query_one(
+            "SELECT company_id FROM faciais.stores WHERE store_id = %s",
+            (active_store['store_id'],)
+        )
+        if row:
+            theme_company_id = row['company_id']
+    if theme_company_id:
+        row = db.query_one(
+            "SELECT primary_color FROM faciais.company_themes WHERE company_id = %s",
+            (theme_company_id,)
+        )
+        if row:
+            theme['primary_color'] = row['primary_color']
+
     return render_template(
         'dashboard.html',
         company_logo=company_logo,
@@ -376,4 +396,5 @@ def dashboard():
         data_str=data_str,
         kpi=kpi,
         kpi_com=kpi_com,
+        theme=theme,
     )

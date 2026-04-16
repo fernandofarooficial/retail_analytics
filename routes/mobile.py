@@ -334,12 +334,14 @@ def dashboard():
             r = db.query_one("""
                 SELECT COUNT(DISTINCT documento) AS total
                 FROM   microvix.microvix_movimento
-                WHERE  portal               = %s
-                  AND  cnpj_emp             = %s
-                  AND  DATE(data_documento) = %s
-                  AND  cancelado           <> 'S'
-                  AND  excluido            <> 'S'
-                  AND  soma_relatorio       = 'S'
+                WHERE  portal                  = %s
+                  AND  cnpj_emp                = %s
+                  AND  DATE(data_documento)    = %s
+                  AND  cancelado              <> 'S'
+                  AND  excluido              <> 'S'
+                  AND  soma_relatorio          = 'S'
+                  AND  tipo_transacao          = 'V'
+                  AND  cod_natureza_operacao   = '10030'
             """, (active_microvix_portal, active_store_cnpj, data_str))
             kpi['vendas'] = r['total'] if r else 0
         else:
@@ -382,7 +384,7 @@ def dashboard():
                 kpi_com['itens_venda']  = 0.0
 
     # ── Tema da empresa ──────────────────────────────────────────────────────
-    theme = dict(secondary_color='#0057A8', accent_color='#FFFFFF')
+    theme = dict(primary_color='#F47B20', secondary_color='#0057A8', accent_color='#FFFFFF')
     theme_company_id = selected_company_id
     if not theme_company_id and active_store:
         row = db.query_one(
@@ -393,10 +395,12 @@ def dashboard():
             theme_company_id = row['company_id']
     if theme_company_id:
         row = db.query_one(
-            "SELECT secondary_color, accent_color FROM faciais.company_themes WHERE company_id = %s",
+            "SELECT primary_color, secondary_color, accent_color "
+            "FROM faciais.company_themes WHERE company_id = %s",
             (theme_company_id,)
         )
         if row:
+            theme['primary_color']   = row['primary_color']
             theme['secondary_color'] = row['secondary_color']
             theme['accent_color']    = row['accent_color']
 
