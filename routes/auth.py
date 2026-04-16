@@ -198,6 +198,9 @@ def dashboard():
     # ── KPIs Operacional – Dia ────────────────────────────────────────────────
     kpi = dict(visitantes=None, recorrentes=None, vendas=None, conversao=None)
 
+    # ── KPIs Comercial – Dia ──────────────────────────────────────────────────
+    kpi_com = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
+
     if active_store:
         sid = active_store['store_id']
 
@@ -253,6 +256,35 @@ def dashboard():
         else:
             kpi['conversao'] = 0.0
 
+        # ── Comercial – Dia ───────────────────────────────────────────────────
+        if active_microvix_portal and active_store_cnpj:
+            r = db.query_one("""
+                SELECT COUNT(DISTINCT documento)          AS vendas,
+                       SUM(valor_liquido)                 AS faturamento,
+                       SUM(quantidade)                    AS total_itens
+                FROM   microvix.microvix_movimento
+                WHERE  portal           = %s
+                  AND  cnpj_emp         = %s
+                  AND  DATE(data_documento) = %s
+                  AND  cancelado        <> 'S'
+                  AND  excluido         <> 'S'
+                  AND  soma_relatorio   =  'S'
+            """, (active_microvix_portal, active_store_cnpj, data_str))
+
+            if r and r['vendas']:
+                v = int(r['vendas'])
+                f = float(r['faturamento'] or 0)
+                t = float(r['total_itens'] or 0)
+                kpi_com['vendas']      = v
+                kpi_com['faturamento'] = round(f, 2)
+                kpi_com['ticket_medio'] = round(f / v, 2) if v else 0.0
+                kpi_com['itens_venda']  = round(t / v, 1) if v else 0.0
+            else:
+                kpi_com['vendas']       = 0
+                kpi_com['faturamento']  = 0.0
+                kpi_com['ticket_medio'] = 0.0
+                kpi_com['itens_venda']  = 0.0
+
     return render_template(
         'dashboard.html',
         company_logo=company_logo,
@@ -264,4 +296,5 @@ def dashboard():
         active_store=active_store,
         data_str=data_str,
         kpi=kpi,
+        kpi_com=kpi_com,
     )

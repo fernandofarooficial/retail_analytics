@@ -123,10 +123,78 @@
         {% endif %}
     </div>
 
+    <!-- COMERCIAL – DIA -->
+    <div class="tab-panel" data-panel="comercial-dia">
+
+        {% if not active_store %}
+        <p class="kpi-hint">Selecione uma loja para visualizar os indicadores.</p>
+        {% else %}
+
+        <div class="kpi-toolbar">
+            <label for="kpi-date-com">Data</label>
+            <input type="date" id="kpi-date-com" value="{{ data_str }}"
+                   onchange="mudarData(this.value)">
+            <span class="kpi-store-label">{{ active_store.store_name }}</span>
+        </div>
+
+        <div class="kpi-grid">
+
+            <div class="kpi-card">
+                <span class="kpi-label">Faturamento</span>
+                <span class="kpi-value">
+                    {% if kpi_com.faturamento is not none %}
+                        R$ {{ '{:,.2f}'.format(kpi_com.faturamento)
+                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">
+                    {% if kpi_com.faturamento is none %}portal Microvix não configurado
+                    {% else %}receita líquida no dia{% endif %}
+                </span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-label">Ticket Médio</span>
+                <span class="kpi-value">
+                    {% if kpi_com.ticket_medio is not none %}
+                        R$ {{ '{:,.2f}'.format(kpi_com.ticket_medio)
+                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">faturamento ÷ vendas</span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-label">Vendas</span>
+                <span class="kpi-value">
+                    {% if kpi_com.vendas is not none %}
+                        {{ '{:,.0f}'.format(kpi_com.vendas).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">
+                    {% if kpi_com.vendas is none %}portal Microvix não configurado
+                    {% else %}notas fiscais emitidas{% endif %}
+                </span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-label">Itens/Venda</span>
+                <span class="kpi-value">
+                    {% if kpi_com.itens_venda is not none %}
+                        {{ kpi_com.itens_venda|string|replace('.', ',') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">média de itens por venda</span>
+            </div>
+
+        </div>
+        {% endif %}
+    </div>
+
     <!-- demais painéis -->
     {% for l1, l2 in [
         ('operacional','semana'), ('operacional','mes'),
-        ('comercial','dia'), ('comercial','semana'), ('comercial','mes'),
+        ('comercial','semana'), ('comercial','mes'),
         ('estrategico','dia'), ('estrategico','semana'), ('estrategico','mes')
     ] %}
     <div class="tab-panel" data-panel="{{ l1 }}-{{ l2 }}">
@@ -185,7 +253,7 @@ function selecionarLoja(id) {
 }
 
 setInterval(() => {
-    if (l1Ativo === 'operacional' && l2Ativo === 'dia') {
+    if (l2Ativo === 'dia' && (l1Ativo === 'operacional' || l1Ativo === 'comercial')) {
         window.location.reload();
     }
 }, 10 * 60 * 1000);
