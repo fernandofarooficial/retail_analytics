@@ -357,12 +357,14 @@ def dashboard():
                        SUM(valor_liquido)                 AS faturamento,
                        SUM(quantidade)                    AS total_itens
                 FROM   microvix.microvix_movimento
-                WHERE  portal           = %s
-                  AND  cnpj_emp         = %s
-                  AND  DATE(data_documento) = %s
-                  AND  cancelado        <> 'S'
-                  AND  excluido         <> 'S'
-                  AND  soma_relatorio   =  'S'
+                WHERE  portal                  = %s
+                  AND  cnpj_emp                = %s
+                  AND  DATE(data_documento)    = %s
+                  AND  cancelado              <> 'S'
+                  AND  excluido              <> 'S'
+                  AND  soma_relatorio          = 'S'
+                  AND  tipo_transacao          = 'V'
+                  AND  cod_natureza_operacao   = '10030'
             """, (active_microvix_portal, active_store_cnpj, data_str))
 
             if r and r['vendas']:
