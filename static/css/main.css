@@ -840,7 +840,7 @@ dialog::backdrop {
 }
 
 .kpi-value {
-    font-size: 2.75rem;
+    font-size: 2.25rem;
     font-weight: 700;
     color: var(--theme-primary, #F47B20);
     line-height: 1.1;
