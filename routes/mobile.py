@@ -1,4 +1,5 @@
-from datetime import date as date_type
+import calendar
+from datetime import date as date_type, timedelta
 from functools import wraps
 from flask import (Blueprint, render_template, request, redirect,
                    url_for, session, send_from_directory, make_response)
@@ -289,11 +290,41 @@ def dashboard():
     except ValueError:
         data_str = date_type.today().strftime('%Y-%m-%d')
 
+    # ── Períodos: semana e mês ────────────────────────────────────────────────
+    selected_date     = date_type.fromisoformat(data_str)
+    semana_inicio     = selected_date - timedelta(days=selected_date.weekday())
+    semana_fim        = semana_inicio + timedelta(days=6)
+    _, ultimo_dia     = calendar.monthrange(selected_date.year, selected_date.month)
+    mes_inicio        = selected_date.replace(day=1)
+    mes_fim           = selected_date.replace(day=ultimo_dia)
+    semana_inicio_str = semana_inicio.strftime('%Y-%m-%d')
+    semana_fim_str    = semana_fim.strftime('%Y-%m-%d')
+    mes_inicio_str    = mes_inicio.strftime('%Y-%m-%d')
+    mes_fim_str       = mes_fim.strftime('%Y-%m-%d')
+
+    semana_anterior_str = (semana_inicio - timedelta(days=1)).strftime('%Y-%m-%d')
+    semana_proxima_str  = (semana_fim    + timedelta(days=1)).strftime('%Y-%m-%d')
+    mes_anterior_str    = (mes_inicio    - timedelta(days=1)).strftime('%Y-%m-%d')
+    mes_proximo_str     = (mes_fim       + timedelta(days=1)).strftime('%Y-%m-%d')
+
+    _MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+              'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    semana_label = f"{semana_inicio.strftime('%d/%m')} – {semana_fim.strftime('%d/%m/%Y')}"
+    mes_label    = f"{_MESES[selected_date.month - 1]} {selected_date.year}"
+
     # ── KPIs Operacional – Dia ───────────────────────────────────────────────
     kpi = dict(visitantes=None, recorrentes=None, vendas=None, conversao=None)
 
     # ── KPIs Comercial – Dia ─────────────────────────────────────────────────
     kpi_com = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
+
+    # ── KPIs Operacional – Semana / Mês ──────────────────────────────────────
+    kpi_sem     = dict(visitantes=None, recorrentes=None, vendas=None, conversao=None)
+    kpi_mes     = dict(visitantes=None, recorrentes=None, vendas=None, conversao=None)
+
+    # ── KPIs Comercial – Semana / Mês ────────────────────────────────────────
+    kpi_com_sem = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
+    kpi_com_mes = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
 
     if active_store:
         sid = active_store['store_id']
@@ -383,6 +414,168 @@ def dashboard():
                 kpi_com['ticket_medio'] = 0.0
                 kpi_com['itens_venda']  = 0.0
 
+        # ── Operacional – Semana ─────────────────────────────────────────────
+        r = db.query_one("""
+            SELECT COUNT(DISTINCT dr.person_id) AS total
+            FROM   faciais.detection_records dr
+            JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
+            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+            WHERE  cam.store_id     = %s
+              AND  p.person_type_id = 'C'
+              AND  dr.person_id     IS NOT NULL
+              AND  DATE(dr.created_at) BETWEEN %s AND %s
+        """, (sid, semana_inicio_str, semana_fim_str))
+        kpi_sem['visitantes'] = r['total'] if r else 0
+
+        r = db.query_one("""
+            SELECT COUNT(DISTINCT dr.person_id) AS total
+            FROM   faciais.detection_records dr
+            JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
+            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+            WHERE  cam.store_id     = %s
+              AND  p.person_type_id = 'C'
+              AND  dr.person_id     IS NOT NULL
+              AND  DATE(dr.created_at) BETWEEN %s AND %s
+              AND  EXISTS (
+                  SELECT 1
+                  FROM   faciais.detection_records dr2
+                  JOIN   faciais.cameras cam2 ON cam2.camera_id = dr2.camera_id
+                  WHERE  dr2.person_id = dr.person_id
+                    AND  cam2.store_id = %s
+                    AND  DATE(dr2.created_at) < %s
+              )
+        """, (sid, semana_inicio_str, semana_fim_str, sid, semana_inicio_str))
+        kpi_sem['recorrentes'] = r['total'] if r else 0
+
+        if active_microvix_portal and active_store_cnpj:
+            r = db.query_one("""
+                SELECT COUNT(DISTINCT documento) AS total
+                FROM   microvix.microvix_movimento
+                WHERE  portal                  = %s
+                  AND  cnpj_emp                = %s
+                  AND  DATE(data_documento)    BETWEEN %s AND %s
+                  AND  cancelado              <> 'S'
+                  AND  excluido              <> 'S'
+                  AND  soma_relatorio          = 'S'
+                  AND  tipo_transacao          = 'V'
+                  AND  cod_natureza_operacao   = '10030'
+            """, (active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str))
+            kpi_sem['vendas'] = r['total'] if r else 0
+        else:
+            kpi_sem['vendas'] = None
+
+        if kpi_sem['visitantes']:
+            kpi_sem['conversao'] = round((kpi_sem['vendas'] or 0) / kpi_sem['visitantes'] * 100, 1)
+        else:
+            kpi_sem['conversao'] = 0.0
+
+        # ── Comercial – Semana ────────────────────────────────────────────────
+        if active_microvix_portal and active_store_cnpj:
+            r = db.query_one("""
+                SELECT COUNT(DISTINCT documento)          AS vendas,
+                       SUM(valor_liquido)                 AS faturamento,
+                       SUM(quantidade)                    AS total_itens
+                FROM   microvix.microvix_movimento
+                WHERE  portal                  = %s
+                  AND  cnpj_emp                = %s
+                  AND  DATE(data_documento)    BETWEEN %s AND %s
+                  AND  cancelado              <> 'S'
+                  AND  excluido              <> 'S'
+                  AND  soma_relatorio          = 'S'
+                  AND  tipo_transacao          = 'V'
+                  AND  cod_natureza_operacao   = '10030'
+            """, (active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str))
+            if r and r['vendas']:
+                v = int(r['vendas']); f = float(r['faturamento'] or 0); t = float(r['total_itens'] or 0)
+                kpi_com_sem['vendas']       = v
+                kpi_com_sem['faturamento']  = round(f, 2)
+                kpi_com_sem['ticket_medio'] = round(f / v, 2) if v else 0.0
+                kpi_com_sem['itens_venda']  = round(t / v, 1) if v else 0.0
+            else:
+                kpi_com_sem['vendas'] = 0; kpi_com_sem['faturamento'] = 0.0
+                kpi_com_sem['ticket_medio'] = 0.0; kpi_com_sem['itens_venda'] = 0.0
+
+        # ── Operacional – Mês ─────────────────────────────────────────────────
+        r = db.query_one("""
+            SELECT COUNT(DISTINCT dr.person_id) AS total
+            FROM   faciais.detection_records dr
+            JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
+            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+            WHERE  cam.store_id     = %s
+              AND  p.person_type_id = 'C'
+              AND  dr.person_id     IS NOT NULL
+              AND  DATE(dr.created_at) BETWEEN %s AND %s
+        """, (sid, mes_inicio_str, mes_fim_str))
+        kpi_mes['visitantes'] = r['total'] if r else 0
+
+        r = db.query_one("""
+            SELECT COUNT(DISTINCT dr.person_id) AS total
+            FROM   faciais.detection_records dr
+            JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
+            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+            WHERE  cam.store_id     = %s
+              AND  p.person_type_id = 'C'
+              AND  dr.person_id     IS NOT NULL
+              AND  DATE(dr.created_at) BETWEEN %s AND %s
+              AND  EXISTS (
+                  SELECT 1
+                  FROM   faciais.detection_records dr2
+                  JOIN   faciais.cameras cam2 ON cam2.camera_id = dr2.camera_id
+                  WHERE  dr2.person_id = dr.person_id
+                    AND  cam2.store_id = %s
+                    AND  DATE(dr2.created_at) < %s
+              )
+        """, (sid, mes_inicio_str, mes_fim_str, sid, mes_inicio_str))
+        kpi_mes['recorrentes'] = r['total'] if r else 0
+
+        if active_microvix_portal and active_store_cnpj:
+            r = db.query_one("""
+                SELECT COUNT(DISTINCT documento) AS total
+                FROM   microvix.microvix_movimento
+                WHERE  portal                  = %s
+                  AND  cnpj_emp                = %s
+                  AND  DATE(data_documento)    BETWEEN %s AND %s
+                  AND  cancelado              <> 'S'
+                  AND  excluido              <> 'S'
+                  AND  soma_relatorio          = 'S'
+                  AND  tipo_transacao          = 'V'
+                  AND  cod_natureza_operacao   = '10030'
+            """, (active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str))
+            kpi_mes['vendas'] = r['total'] if r else 0
+        else:
+            kpi_mes['vendas'] = None
+
+        if kpi_mes['visitantes']:
+            kpi_mes['conversao'] = round((kpi_mes['vendas'] or 0) / kpi_mes['visitantes'] * 100, 1)
+        else:
+            kpi_mes['conversao'] = 0.0
+
+        # ── Comercial – Mês ───────────────────────────────────────────────────
+        if active_microvix_portal and active_store_cnpj:
+            r = db.query_one("""
+                SELECT COUNT(DISTINCT documento)          AS vendas,
+                       SUM(valor_liquido)                 AS faturamento,
+                       SUM(quantidade)                    AS total_itens
+                FROM   microvix.microvix_movimento
+                WHERE  portal                  = %s
+                  AND  cnpj_emp                = %s
+                  AND  DATE(data_documento)    BETWEEN %s AND %s
+                  AND  cancelado              <> 'S'
+                  AND  excluido              <> 'S'
+                  AND  soma_relatorio          = 'S'
+                  AND  tipo_transacao          = 'V'
+                  AND  cod_natureza_operacao   = '10030'
+            """, (active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str))
+            if r and r['vendas']:
+                v = int(r['vendas']); f = float(r['faturamento'] or 0); t = float(r['total_itens'] or 0)
+                kpi_com_mes['vendas']       = v
+                kpi_com_mes['faturamento']  = round(f, 2)
+                kpi_com_mes['ticket_medio'] = round(f / v, 2) if v else 0.0
+                kpi_com_mes['itens_venda']  = round(t / v, 1) if v else 0.0
+            else:
+                kpi_com_mes['vendas'] = 0; kpi_com_mes['faturamento'] = 0.0
+                kpi_com_mes['ticket_medio'] = 0.0; kpi_com_mes['itens_venda'] = 0.0
+
     # ── Tema da empresa ──────────────────────────────────────────────────────
     theme = dict(primary_color='#F47B20', secondary_color='#0057A8', accent_color='#FFFFFF')
     theme_company_id = selected_company_id
@@ -416,6 +609,16 @@ def dashboard():
         data_str=data_str,
         kpi=kpi,
         kpi_com=kpi_com,
+        kpi_sem=kpi_sem,
+        kpi_mes=kpi_mes,
+        kpi_com_sem=kpi_com_sem,
+        kpi_com_mes=kpi_com_mes,
+        semana_label=semana_label,
+        mes_label=mes_label,
+        semana_anterior_str=semana_anterior_str,
+        semana_proxima_str=semana_proxima_str,
+        mes_anterior_str=mes_anterior_str,
+        mes_proximo_str=mes_proximo_str,
         theme=theme,
     )
 

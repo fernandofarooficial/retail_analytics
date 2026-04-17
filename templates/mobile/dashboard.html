@@ -8,6 +8,16 @@
     --secondary:     {{ theme.secondary_color }};
     --accent:        {{ theme.accent_color }};
   }
+  .m-nav-row {
+    display: flex; align-items: center; gap: 0.5rem;
+    justify-content: center; margin-bottom: 0.5rem;
+  }
+  .m-nav-btn {
+    background: none; border: 1px solid #E5E7EB; border-radius: 6px;
+    padding: 0.2rem 0.6rem; font-size: 1.1rem; color: #6B7280;
+    line-height: 1; cursor: pointer;
+  }
+  .m-period-label { font-size: 0.8125rem; font-weight: 600; color: #374151; }
 </style>
 <div class="m-app">
 
@@ -204,14 +214,210 @@
 
     </div><!-- /comercial-dia -->
 
-    <!-- demais painéis (em construção) -->
-    {% for l1, l2 in [
-        ('operacional','semana'), ('operacional','mes'),
-        ('comercial','semana'), ('comercial','mes'),
-        ('estrategico','dia'), ('estrategico','semana'), ('estrategico','mes')
-    ] %}
-    <div class="m-panel" data-panel="{{ l1 }}-{{ l2 }}">
-      <p class="m-hint">{{ l1|capitalize }} — {{ l2|capitalize }}<br>em construção</p>
+    <!-- OPERACIONAL – SEMANA -->
+    <div class="m-panel" data-panel="operacional-semana">
+      {% if not active_store %}
+      <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
+      {% else %}
+      <div class="m-date-row">
+        <div class="m-nav-row">
+          <button class="m-nav-btn" onclick="mudarData('{{ semana_anterior_str }}')">&#8249;</button>
+          <span class="m-period-label">{{ semana_label }}</span>
+          <button class="m-nav-btn" onclick="mudarData('{{ semana_proxima_str }}')">&#8250;</button>
+        </div>
+      </div>
+      <div class="m-kpi-grid">
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Visitantes</span>
+          <span class="m-kpi-value">
+            {% if kpi_sem.visitantes is not none %}
+              {{ '{:,.0f}'.format(kpi_sem.visitantes).replace(',', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Recorrentes</span>
+          <span class="m-kpi-value">
+            {% if kpi_sem.recorrentes is not none %}
+              {{ '{:,.0f}'.format(kpi_sem.recorrentes).replace(',', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Vendas</span>
+          <span class="m-kpi-value">
+            {% if kpi_sem.vendas is not none %}
+              {{ '{:,.0f}'.format(kpi_sem.vendas).replace(',', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Conversão</span>
+          <span class="m-kpi-value">
+            {% if kpi_sem.conversao is not none %}
+              {{ '{:.0f}'.format(kpi_sem.conversao) }}%
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- OPERACIONAL – MÊS -->
+    <div class="m-panel" data-panel="operacional-mes">
+      {% if not active_store %}
+      <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
+      {% else %}
+      <div class="m-date-row">
+        <div class="m-nav-row">
+          <button class="m-nav-btn" onclick="mudarData('{{ mes_anterior_str }}')">&#8249;</button>
+          <span class="m-period-label">{{ mes_label }}</span>
+          <button class="m-nav-btn" onclick="mudarData('{{ mes_proximo_str }}')">&#8250;</button>
+        </div>
+      </div>
+      <div class="m-kpi-grid">
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Visitantes</span>
+          <span class="m-kpi-value">
+            {% if kpi_mes.visitantes is not none %}
+              {{ '{:,.0f}'.format(kpi_mes.visitantes).replace(',', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Recorrentes</span>
+          <span class="m-kpi-value">
+            {% if kpi_mes.recorrentes is not none %}
+              {{ '{:,.0f}'.format(kpi_mes.recorrentes).replace(',', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Vendas</span>
+          <span class="m-kpi-value">
+            {% if kpi_mes.vendas is not none %}
+              {{ '{:,.0f}'.format(kpi_mes.vendas).replace(',', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Conversão</span>
+          <span class="m-kpi-value">
+            {% if kpi_mes.conversao is not none %}
+              {{ '{:.0f}'.format(kpi_mes.conversao) }}%
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- COMERCIAL – SEMANA -->
+    <div class="m-panel" data-panel="comercial-semana">
+      {% if not active_store %}
+      <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
+      {% else %}
+      <div class="m-date-row">
+        <div class="m-nav-row">
+          <button class="m-nav-btn" onclick="mudarData('{{ semana_anterior_str }}')">&#8249;</button>
+          <span class="m-period-label">{{ semana_label }}</span>
+          <button class="m-nav-btn" onclick="mudarData('{{ semana_proxima_str }}')">&#8250;</button>
+        </div>
+      </div>
+      <div class="m-kpi-grid">
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Faturamento</span>
+          <span class="m-kpi-value">
+            {% if kpi_com_sem.faturamento is not none %}
+              R$ {{ '{:,.2f}'.format(kpi_com_sem.faturamento)
+                     .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Ticket Médio</span>
+          <span class="m-kpi-value">
+            {% if kpi_com_sem.ticket_medio is not none %}
+              R$ {{ '{:,.2f}'.format(kpi_com_sem.ticket_medio)
+                     .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Vendas</span>
+          <span class="m-kpi-value">
+            {% if kpi_com_sem.vendas is not none %}
+              {{ '{:,.0f}'.format(kpi_com_sem.vendas).replace(',', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Itens/Venda</span>
+          <span class="m-kpi-value">
+            {% if kpi_com_sem.itens_venda is not none %}
+              {{ kpi_com_sem.itens_venda|string|replace('.', ',') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- COMERCIAL – MÊS -->
+    <div class="m-panel" data-panel="comercial-mes">
+      {% if not active_store %}
+      <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
+      {% else %}
+      <div class="m-date-row">
+        <div class="m-nav-row">
+          <button class="m-nav-btn" onclick="mudarData('{{ mes_anterior_str }}')">&#8249;</button>
+          <span class="m-period-label">{{ mes_label }}</span>
+          <button class="m-nav-btn" onclick="mudarData('{{ mes_proximo_str }}')">&#8250;</button>
+        </div>
+      </div>
+      <div class="m-kpi-grid">
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Faturamento</span>
+          <span class="m-kpi-value">
+            {% if kpi_com_mes.faturamento is not none %}
+              R$ {{ '{:,.2f}'.format(kpi_com_mes.faturamento)
+                     .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Ticket Médio</span>
+          <span class="m-kpi-value">
+            {% if kpi_com_mes.ticket_medio is not none %}
+              R$ {{ '{:,.2f}'.format(kpi_com_mes.ticket_medio)
+                     .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Vendas</span>
+          <span class="m-kpi-value">
+            {% if kpi_com_mes.vendas is not none %}
+              {{ '{:,.0f}'.format(kpi_com_mes.vendas).replace(',', '.') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+        <div class="m-kpi-card">
+          <span class="m-kpi-label">Itens/Venda</span>
+          <span class="m-kpi-value">
+            {% if kpi_com_mes.itens_venda is not none %}
+              {{ kpi_com_mes.itens_venda|string|replace('.', ',') }}
+            {% else %}<span class="m-kpi-na">—</span>{% endif %}
+          </span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- painéis estratégico (em construção) -->
+    {% for l2 in ['dia', 'semana', 'mes'] %}
+    <div class="m-panel" data-panel="estrategico-{{ l2 }}">
+      <p class="m-hint">Estratégico — {{ l2|capitalize }}<br>em construção</p>
     </div>
     {% endfor %}
 

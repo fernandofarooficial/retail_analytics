@@ -4,6 +4,13 @@
 {% block content %}
 <style>
   :root { --theme-primary: {{ theme.primary_color }}; }
+  .kpi-nav-btn {
+    background: none; border: 1px solid #E5E7EB; border-radius: 6px;
+    padding: 0.25rem 0.75rem; cursor: pointer; font-size: 1.1rem;
+    color: #6B7280; line-height: 1;
+  }
+  .kpi-nav-btn:hover { background: #F9FAFB; color: #374151; }
+  .kpi-period-label { font-size: 0.9375rem; font-weight: 600; color: #374151; }
 </style>
 <div class="page-header">
     <h1>Dashboard</h1>
@@ -194,15 +201,241 @@
         {% endif %}
     </div>
 
-    <!-- demais painéis -->
-    {% for l1, l2 in [
-        ('operacional','semana'), ('operacional','mes'),
-        ('comercial','semana'), ('comercial','mes'),
-        ('estrategico','dia'), ('estrategico','semana'), ('estrategico','mes')
-    ] %}
-    <div class="tab-panel" data-panel="{{ l1 }}-{{ l2 }}">
+    <!-- OPERACIONAL – SEMANA -->
+    <div class="tab-panel" data-panel="operacional-semana">
+        {% if not active_store %}
+        <p class="kpi-hint">Selecione uma loja para visualizar os indicadores.</p>
+        {% else %}
+        <div class="kpi-toolbar">
+            <button class="kpi-nav-btn" onclick="mudarData('{{ semana_anterior_str }}')">&#8249;</button>
+            <span class="kpi-period-label">{{ semana_label }}</span>
+            <button class="kpi-nav-btn" onclick="mudarData('{{ semana_proxima_str }}')">&#8250;</button>
+            <span class="kpi-store-label">{{ active_store.store_name }}</span>
+        </div>
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-label">Visitantes</span>
+                <span class="kpi-value">
+                    {% if kpi_sem.visitantes is not none %}
+                        {{ '{:,.0f}'.format(kpi_sem.visitantes).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">clientes únicos na semana</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Recorrentes</span>
+                <span class="kpi-value">
+                    {% if kpi_sem.recorrentes is not none %}
+                        {{ '{:,.0f}'.format(kpi_sem.recorrentes).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">já visitaram antes</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Vendas</span>
+                <span class="kpi-value">
+                    {% if kpi_sem.vendas is not none %}
+                        {{ '{:,.0f}'.format(kpi_sem.vendas).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">
+                    {% if kpi_sem.vendas is none %}portal Microvix não configurado
+                    {% else %}notas fiscais na semana{% endif %}
+                </span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Conversão</span>
+                <span class="kpi-value">
+                    {% if kpi_sem.conversao is not none %}
+                        {{ kpi_sem.conversao|string|replace('.', ',') }}%
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">vendas ÷ visitantes</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- OPERACIONAL – MÊS -->
+    <div class="tab-panel" data-panel="operacional-mes">
+        {% if not active_store %}
+        <p class="kpi-hint">Selecione uma loja para visualizar os indicadores.</p>
+        {% else %}
+        <div class="kpi-toolbar">
+            <button class="kpi-nav-btn" onclick="mudarData('{{ mes_anterior_str }}')">&#8249;</button>
+            <span class="kpi-period-label">{{ mes_label }}</span>
+            <button class="kpi-nav-btn" onclick="mudarData('{{ mes_proximo_str }}')">&#8250;</button>
+            <span class="kpi-store-label">{{ active_store.store_name }}</span>
+        </div>
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-label">Visitantes</span>
+                <span class="kpi-value">
+                    {% if kpi_mes.visitantes is not none %}
+                        {{ '{:,.0f}'.format(kpi_mes.visitantes).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">clientes únicos no mês</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Recorrentes</span>
+                <span class="kpi-value">
+                    {% if kpi_mes.recorrentes is not none %}
+                        {{ '{:,.0f}'.format(kpi_mes.recorrentes).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">já visitaram antes</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Vendas</span>
+                <span class="kpi-value">
+                    {% if kpi_mes.vendas is not none %}
+                        {{ '{:,.0f}'.format(kpi_mes.vendas).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">
+                    {% if kpi_mes.vendas is none %}portal Microvix não configurado
+                    {% else %}notas fiscais no mês{% endif %}
+                </span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Conversão</span>
+                <span class="kpi-value">
+                    {% if kpi_mes.conversao is not none %}
+                        {{ kpi_mes.conversao|string|replace('.', ',') }}%
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">vendas ÷ visitantes</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- COMERCIAL – SEMANA -->
+    <div class="tab-panel" data-panel="comercial-semana">
+        {% if not active_store %}
+        <p class="kpi-hint">Selecione uma loja para visualizar os indicadores.</p>
+        {% else %}
+        <div class="kpi-toolbar">
+            <button class="kpi-nav-btn" onclick="mudarData('{{ semana_anterior_str }}')">&#8249;</button>
+            <span class="kpi-period-label">{{ semana_label }}</span>
+            <button class="kpi-nav-btn" onclick="mudarData('{{ semana_proxima_str }}')">&#8250;</button>
+            <span class="kpi-store-label">{{ active_store.store_name }}</span>
+        </div>
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-label">Faturamento</span>
+                <span class="kpi-value">
+                    {% if kpi_com_sem.faturamento is not none %}
+                        R$ {{ '{:,.2f}'.format(kpi_com_sem.faturamento)
+                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">
+                    {% if kpi_com_sem.faturamento is none %}portal Microvix não configurado
+                    {% else %}receita líquida na semana{% endif %}
+                </span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Ticket Médio</span>
+                <span class="kpi-value">
+                    {% if kpi_com_sem.ticket_medio is not none %}
+                        R$ {{ '{:,.2f}'.format(kpi_com_sem.ticket_medio)
+                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">faturamento ÷ vendas</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Vendas</span>
+                <span class="kpi-value">
+                    {% if kpi_com_sem.vendas is not none %}
+                        {{ '{:,.0f}'.format(kpi_com_sem.vendas).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">
+                    {% if kpi_com_sem.vendas is none %}portal Microvix não configurado
+                    {% else %}notas fiscais na semana{% endif %}
+                </span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Itens/Venda</span>
+                <span class="kpi-value">
+                    {% if kpi_com_sem.itens_venda is not none %}
+                        {{ kpi_com_sem.itens_venda|string|replace('.', ',') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">média de itens por venda</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- COMERCIAL – MÊS -->
+    <div class="tab-panel" data-panel="comercial-mes">
+        {% if not active_store %}
+        <p class="kpi-hint">Selecione uma loja para visualizar os indicadores.</p>
+        {% else %}
+        <div class="kpi-toolbar">
+            <button class="kpi-nav-btn" onclick="mudarData('{{ mes_anterior_str }}')">&#8249;</button>
+            <span class="kpi-period-label">{{ mes_label }}</span>
+            <button class="kpi-nav-btn" onclick="mudarData('{{ mes_proximo_str }}')">&#8250;</button>
+            <span class="kpi-store-label">{{ active_store.store_name }}</span>
+        </div>
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-label">Faturamento</span>
+                <span class="kpi-value">
+                    {% if kpi_com_mes.faturamento is not none %}
+                        R$ {{ '{:,.2f}'.format(kpi_com_mes.faturamento)
+                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">
+                    {% if kpi_com_mes.faturamento is none %}portal Microvix não configurado
+                    {% else %}receita líquida no mês{% endif %}
+                </span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Ticket Médio</span>
+                <span class="kpi-value">
+                    {% if kpi_com_mes.ticket_medio is not none %}
+                        R$ {{ '{:,.2f}'.format(kpi_com_mes.ticket_medio)
+                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">faturamento ÷ vendas</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Vendas</span>
+                <span class="kpi-value">
+                    {% if kpi_com_mes.vendas is not none %}
+                        {{ '{:,.0f}'.format(kpi_com_mes.vendas).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">
+                    {% if kpi_com_mes.vendas is none %}portal Microvix não configurado
+                    {% else %}notas fiscais no mês{% endif %}
+                </span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Itens/Venda</span>
+                <span class="kpi-value">
+                    {% if kpi_com_mes.itens_venda is not none %}
+                        {{ kpi_com_mes.itens_venda|string|replace('.', ',') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">média de itens por venda</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- painéis estratégico (em construção) -->
+    {% for l2 in ['dia', 'semana', 'mes'] %}
+    <div class="tab-panel" data-panel="estrategico-{{ l2 }}">
         <p style="color:#9CA3AF; font-style:italic; padding:2rem 0;">
-            {{ l1|capitalize }} — {{ l2|capitalize }} (em construção)
+            Estratégico — {{ l2|capitalize }} (em construção)
         </p>
     </div>
     {% endfor %}
