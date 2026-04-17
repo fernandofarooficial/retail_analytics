@@ -584,12 +584,13 @@ def dashboard():
 
         if active_microvix_portal and active_store_cnpj:
             rows = db.query_all("""
-                SELECT EXTRACT(HOUR FROM data_documento)::int AS hora,
+                SELECT SPLIT_PART(hora_lancamento, ':', 1)::int AS hora,
                        COUNT(DISTINCT documento) AS vendas
                 FROM   microvix.microvix_movimento
                 WHERE  portal = %s AND cnpj_emp = %s AND DATE(data_documento) = %s
                   AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
                   AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
+                  AND  hora_lancamento IS NOT NULL AND hora_lancamento <> ''
                 GROUP  BY hora ORDER BY hora
             """, (active_microvix_portal, active_store_cnpj, data_str))
             for row in rows:
@@ -613,13 +614,14 @@ def dashboard():
 
         if active_microvix_portal and active_store_cnpj:
             rows = db.query_all("""
-                SELECT EXTRACT(HOUR FROM data_documento)::int AS hora,
+                SELECT SPLIT_PART(hora_lancamento, ':', 1)::int AS hora,
                        COUNT(DISTINCT documento) AS vendas
                 FROM   microvix.microvix_movimento
                 WHERE  portal = %s AND cnpj_emp = %s
                   AND  DATE(data_documento) BETWEEN %s AND %s
                   AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
                   AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
+                  AND  hora_lancamento IS NOT NULL AND hora_lancamento <> ''
                 GROUP  BY hora ORDER BY hora
             """, (active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str))
             for row in rows:
@@ -643,13 +645,14 @@ def dashboard():
 
         if active_microvix_portal and active_store_cnpj:
             rows = db.query_all("""
-                SELECT EXTRACT(HOUR FROM data_documento)::int AS hora,
+                SELECT SPLIT_PART(hora_lancamento, ':', 1)::int AS hora,
                        COUNT(DISTINCT documento) AS vendas
                 FROM   microvix.microvix_movimento
                 WHERE  portal = %s AND cnpj_emp = %s
                   AND  DATE(data_documento) BETWEEN %s AND %s
                   AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
                   AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
+                  AND  hora_lancamento IS NOT NULL AND hora_lancamento <> ''
                 GROUP  BY hora ORDER BY hora
             """, (active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str))
             for row in rows:
