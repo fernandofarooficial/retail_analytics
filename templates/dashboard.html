@@ -449,14 +449,167 @@
         {% endif %}
     </div>
 
-    <!-- painéis estratégico (em construção) -->
-    {% for l2 in ['dia', 'semana', 'mes'] %}
-    <div class="tab-panel" data-panel="estrategico-{{ l2 }}">
-        <p style="color:#9CA3AF; font-style:italic; padding:2rem 0;">
-            Estratégico — {{ l2|capitalize }} (em construção)
-        </p>
+    <!-- ESTRATÉGICO – DIA -->
+    <div class="tab-panel" data-panel="estrategico-dia">
+        {% if not active_store %}
+        <p class="kpi-hint">Selecione uma loja para visualizar os indicadores.</p>
+        {% else %}
+        <div class="kpi-toolbar">
+            <label for="kpi-date-est">Data</label>
+            <input type="date" id="kpi-date-est" value="{{ data_str }}"
+                   onchange="mudarData(this.value)">
+            <span class="kpi-store-label">{{ active_store.store_name }}</span>
+        </div>
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-label">Novos</span>
+                <span class="kpi-value">
+                    {% if kpi_est.novos is not none %}
+                        {{ '{:,.0f}'.format(kpi_est.novos).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">1ª visita no dia</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Recorrentes</span>
+                <span class="kpi-value">
+                    {% if kpi_est.recorrentes is not none %}
+                        {{ '{:,.0f}'.format(kpi_est.recorrentes).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">já visitaram antes</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Ticket Novo</span>
+                <span class="kpi-value">
+                    {% if kpi_est.ticket_novo is not none %}
+                        R$ {{ '{:,.2f}'.format(kpi_est.ticket_novo)
+                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">receita média / cliente novo</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Ticket Recorrente</span>
+                <span class="kpi-value">
+                    {% if kpi_est.ticket_rec is not none %}
+                        R$ {{ '{:,.2f}'.format(kpi_est.ticket_rec)
+                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">receita média / recorrente</span>
+            </div>
+        </div>
+        {% endif %}
     </div>
-    {% endfor %}
+
+    <!-- ESTRATÉGICO – SEMANA -->
+    <div class="tab-panel" data-panel="estrategico-semana">
+        {% if not active_store %}
+        <p class="kpi-hint">Selecione uma loja para visualizar os indicadores.</p>
+        {% else %}
+        <div class="kpi-toolbar">
+            <button class="kpi-nav-btn" onclick="mudarData('{{ semana_anterior_str }}')">&#8249;</button>
+            <span class="kpi-period-label">{{ semana_label }}</span>
+            <button class="kpi-nav-btn" onclick="mudarData('{{ semana_proxima_str }}')">&#8250;</button>
+            <span class="kpi-store-label">{{ active_store.store_name }}</span>
+        </div>
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-label">Novos</span>
+                <span class="kpi-value">
+                    {% if kpi_est_sem.novos is not none %}
+                        {{ '{:,.0f}'.format(kpi_est_sem.novos).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">1ª visita na semana</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Recorrentes</span>
+                <span class="kpi-value">
+                    {% if kpi_est_sem.recorrentes is not none %}
+                        {{ '{:,.0f}'.format(kpi_est_sem.recorrentes).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">já visitaram antes</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Ticket Novo</span>
+                <span class="kpi-value">
+                    {% if kpi_est_sem.ticket_novo is not none %}
+                        R$ {{ '{:,.2f}'.format(kpi_est_sem.ticket_novo)
+                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">receita média / cliente novo</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Ticket Recorrente</span>
+                <span class="kpi-value">
+                    {% if kpi_est_sem.ticket_rec is not none %}
+                        R$ {{ '{:,.2f}'.format(kpi_est_sem.ticket_rec)
+                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">receita média / recorrente</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ESTRATÉGICO – MÊS -->
+    <div class="tab-panel" data-panel="estrategico-mes">
+        {% if not active_store %}
+        <p class="kpi-hint">Selecione uma loja para visualizar os indicadores.</p>
+        {% else %}
+        <div class="kpi-toolbar">
+            <button class="kpi-nav-btn" onclick="mudarData('{{ mes_anterior_str }}')">&#8249;</button>
+            <span class="kpi-period-label">{{ mes_label }}</span>
+            <button class="kpi-nav-btn" onclick="mudarData('{{ mes_proximo_str }}')">&#8250;</button>
+            <span class="kpi-store-label">{{ active_store.store_name }}</span>
+        </div>
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-label">Novos</span>
+                <span class="kpi-value">
+                    {% if kpi_est_mes.novos is not none %}
+                        {{ '{:,.0f}'.format(kpi_est_mes.novos).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">1ª visita no mês</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Recorrentes</span>
+                <span class="kpi-value">
+                    {% if kpi_est_mes.recorrentes is not none %}
+                        {{ '{:,.0f}'.format(kpi_est_mes.recorrentes).replace(',', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">já visitaram antes</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Ticket Novo</span>
+                <span class="kpi-value">
+                    {% if kpi_est_mes.ticket_novo is not none %}
+                        R$ {{ '{:,.2f}'.format(kpi_est_mes.ticket_novo)
+                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">receita média / cliente novo</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Ticket Recorrente</span>
+                <span class="kpi-value">
+                    {% if kpi_est_mes.ticket_rec is not none %}
+                        R$ {{ '{:,.2f}'.format(kpi_est_mes.ticket_rec)
+                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                    {% else %}<span class="kpi-na">—</span>{% endif %}
+                </span>
+                <span class="kpi-sub">receita média / recorrente</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
 
 </div>
 

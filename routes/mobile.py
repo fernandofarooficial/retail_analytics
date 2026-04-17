@@ -576,6 +576,35 @@ def dashboard():
                 kpi_com_mes['vendas'] = 0; kpi_com_mes['faturamento'] = 0.0
                 kpi_com_mes['ticket_medio'] = 0.0; kpi_com_mes['itens_venda'] = 0.0
 
+    # ── KPIs Estratégico – derivados dos KPIs já calculados ──────────────────
+    kpi_est     = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None)
+    kpi_est_sem = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None)
+    kpi_est_mes = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None)
+
+    if kpi['visitantes'] is not None and kpi['recorrentes'] is not None:
+        kpi_est['novos']       = kpi['visitantes'] - kpi['recorrentes']
+        kpi_est['recorrentes'] = kpi['recorrentes']
+        if kpi_com['faturamento'] is not None:
+            fat = kpi_com['faturamento'] or 0
+            kpi_est['ticket_novo'] = round(fat / kpi_est['novos'], 2) if kpi_est['novos'] else 0.0
+            kpi_est['ticket_rec']  = round(fat / kpi_est['recorrentes'], 2) if kpi_est['recorrentes'] else 0.0
+
+    if kpi_sem['visitantes'] is not None and kpi_sem['recorrentes'] is not None:
+        kpi_est_sem['novos']       = kpi_sem['visitantes'] - kpi_sem['recorrentes']
+        kpi_est_sem['recorrentes'] = kpi_sem['recorrentes']
+        if kpi_com_sem['faturamento'] is not None:
+            fat = kpi_com_sem['faturamento'] or 0
+            kpi_est_sem['ticket_novo'] = round(fat / kpi_est_sem['novos'], 2) if kpi_est_sem['novos'] else 0.0
+            kpi_est_sem['ticket_rec']  = round(fat / kpi_est_sem['recorrentes'], 2) if kpi_est_sem['recorrentes'] else 0.0
+
+    if kpi_mes['visitantes'] is not None and kpi_mes['recorrentes'] is not None:
+        kpi_est_mes['novos']       = kpi_mes['visitantes'] - kpi_mes['recorrentes']
+        kpi_est_mes['recorrentes'] = kpi_mes['recorrentes']
+        if kpi_com_mes['faturamento'] is not None:
+            fat = kpi_com_mes['faturamento'] or 0
+            kpi_est_mes['ticket_novo'] = round(fat / kpi_est_mes['novos'], 2) if kpi_est_mes['novos'] else 0.0
+            kpi_est_mes['ticket_rec']  = round(fat / kpi_est_mes['recorrentes'], 2) if kpi_est_mes['recorrentes'] else 0.0
+
     # ── Gráfico faixa horária – Operacional ──────────────────────────────────
     chart_faixa_dia = {'clientes': [0]*24, 'vendas': [0]*24}
     chart_faixa_sem = {'clientes': [0]*24, 'vendas': [0]*24}
@@ -722,6 +751,9 @@ def dashboard():
         chart_faixa_dia=chart_faixa_dia,
         chart_faixa_sem=chart_faixa_sem,
         chart_faixa_mes=chart_faixa_mes,
+        kpi_est=kpi_est,
+        kpi_est_sem=kpi_est_sem,
+        kpi_est_mes=kpi_est_mes,
     )
 
 
