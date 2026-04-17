@@ -428,23 +428,27 @@ def dashboard():
         kpi_sem['visitantes'] = r['total'] if r else 0
 
         r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
-            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-            WHERE  cam.store_id     = %s
-              AND  p.person_type_id = 'C'
-              AND  dr.person_id     IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  EXISTS (
-                  SELECT 1
-                  FROM   faciais.detection_records dr2
-                  JOIN   faciais.cameras cam2 ON cam2.camera_id = dr2.camera_id
-                  WHERE  dr2.person_id = dr.person_id
-                    AND  cam2.store_id = %s
-                    AND  DATE(dr2.created_at) < %s
-              )
-        """, (sid, semana_inicio_str, semana_fim_str, sid, semana_inicio_str))
+            SELECT COUNT(DISTINCT sub.person_id) AS total
+            FROM (
+                SELECT dr.person_id, MIN(DATE(dr.created_at)) AS primeira_visita
+                FROM   faciais.detection_records dr
+                JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
+                JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+                WHERE  cam.store_id     = %s
+                  AND  p.person_type_id = 'C'
+                  AND  dr.person_id     IS NOT NULL
+                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                GROUP  BY dr.person_id
+            ) sub
+            WHERE EXISTS (
+                SELECT 1
+                FROM   faciais.detection_records dr2
+                JOIN   faciais.cameras cam2 ON cam2.camera_id = dr2.camera_id
+                WHERE  dr2.person_id        = sub.person_id
+                  AND  cam2.store_id        = %s
+                  AND  DATE(dr2.created_at) < sub.primeira_visita
+            )
+        """, (sid, semana_inicio_str, semana_fim_str, sid))
         kpi_sem['recorrentes'] = r['total'] if r else 0
 
         if active_microvix_portal and active_store_cnpj:
@@ -509,23 +513,27 @@ def dashboard():
         kpi_mes['visitantes'] = r['total'] if r else 0
 
         r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
-            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-            WHERE  cam.store_id     = %s
-              AND  p.person_type_id = 'C'
-              AND  dr.person_id     IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  EXISTS (
-                  SELECT 1
-                  FROM   faciais.detection_records dr2
-                  JOIN   faciais.cameras cam2 ON cam2.camera_id = dr2.camera_id
-                  WHERE  dr2.person_id = dr.person_id
-                    AND  cam2.store_id = %s
-                    AND  DATE(dr2.created_at) < %s
-              )
-        """, (sid, mes_inicio_str, mes_fim_str, sid, mes_inicio_str))
+            SELECT COUNT(DISTINCT sub.person_id) AS total
+            FROM (
+                SELECT dr.person_id, MIN(DATE(dr.created_at)) AS primeira_visita
+                FROM   faciais.detection_records dr
+                JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
+                JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+                WHERE  cam.store_id     = %s
+                  AND  p.person_type_id = 'C'
+                  AND  dr.person_id     IS NOT NULL
+                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                GROUP  BY dr.person_id
+            ) sub
+            WHERE EXISTS (
+                SELECT 1
+                FROM   faciais.detection_records dr2
+                JOIN   faciais.cameras cam2 ON cam2.camera_id = dr2.camera_id
+                WHERE  dr2.person_id        = sub.person_id
+                  AND  cam2.store_id        = %s
+                  AND  DATE(dr2.created_at) < sub.primeira_visita
+            )
+        """, (sid, mes_inicio_str, mes_fim_str, sid))
         kpi_mes['recorrentes'] = r['total'] if r else 0
 
         if active_microvix_portal and active_store_cnpj:
