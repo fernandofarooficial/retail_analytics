@@ -576,6 +576,102 @@ def dashboard():
                 kpi_com_mes['vendas'] = 0; kpi_com_mes['faturamento'] = 0.0
                 kpi_com_mes['ticket_medio'] = 0.0; kpi_com_mes['itens_venda'] = 0.0
 
+    # ── Gráfico faixa horária – Operacional ──────────────────────────────────
+    chart_faixa_dia = {'clientes': [0]*24, 'vendas': [0]*24}
+    chart_faixa_sem = {'clientes': [0]*24, 'vendas': [0]*24}
+    chart_faixa_mes = {'clientes': [0]*24, 'vendas': [0]*24}
+
+    if active_store:
+        sid = active_store['store_id']
+
+        rows = db.query_all("""
+            SELECT EXTRACT(HOUR FROM min_time)::int AS hora, COUNT(*) AS clientes
+            FROM (
+                SELECT dr.person_id, MIN(dr.created_at) AS min_time
+                FROM   faciais.detection_records dr
+                JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
+                JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+                WHERE  cam.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
+                GROUP  BY dr.person_id
+            ) sub GROUP BY hora ORDER BY hora
+        """, (sid, data_str))
+        for row in rows:
+            chart_faixa_dia['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
+
+        if active_microvix_portal and active_store_cnpj:
+            rows = db.query_all("""
+                SELECT EXTRACT(HOUR FROM data_documento)::int AS hora,
+                       COUNT(DISTINCT documento) AS vendas
+                FROM   microvix.microvix_movimento
+                WHERE  portal = %s AND cnpj_emp = %s AND DATE(data_documento) = %s
+                  AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
+                  AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
+                GROUP  BY hora ORDER BY hora
+            """, (active_microvix_portal, active_store_cnpj, data_str))
+            for row in rows:
+                chart_faixa_dia['vendas'][int(row['hora'])] = int(row['vendas'] or 0)
+
+        rows = db.query_all("""
+            SELECT EXTRACT(HOUR FROM min_time)::int AS hora, COUNT(*) AS clientes
+            FROM (
+                SELECT dr.person_id, DATE(dr.created_at) AS dia, MIN(dr.created_at) AS min_time
+                FROM   faciais.detection_records dr
+                JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
+                JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+                WHERE  cam.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL
+                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                GROUP  BY dr.person_id, DATE(dr.created_at)
+            ) sub GROUP BY hora ORDER BY hora
+        """, (sid, semana_inicio_str, semana_fim_str))
+        for row in rows:
+            chart_faixa_sem['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
+
+        if active_microvix_portal and active_store_cnpj:
+            rows = db.query_all("""
+                SELECT EXTRACT(HOUR FROM data_documento)::int AS hora,
+                       COUNT(DISTINCT documento) AS vendas
+                FROM   microvix.microvix_movimento
+                WHERE  portal = %s AND cnpj_emp = %s
+                  AND  DATE(data_documento) BETWEEN %s AND %s
+                  AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
+                  AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
+                GROUP  BY hora ORDER BY hora
+            """, (active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str))
+            for row in rows:
+                chart_faixa_sem['vendas'][int(row['hora'])] = int(row['vendas'] or 0)
+
+        rows = db.query_all("""
+            SELECT EXTRACT(HOUR FROM min_time)::int AS hora, COUNT(*) AS clientes
+            FROM (
+                SELECT dr.person_id, DATE(dr.created_at) AS dia, MIN(dr.created_at) AS min_time
+                FROM   faciais.detection_records dr
+                JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
+                JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+                WHERE  cam.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL
+                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                GROUP  BY dr.person_id, DATE(dr.created_at)
+            ) sub GROUP BY hora ORDER BY hora
+        """, (sid, mes_inicio_str, mes_fim_str))
+        for row in rows:
+            chart_faixa_mes['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
+
+        if active_microvix_portal and active_store_cnpj:
+            rows = db.query_all("""
+                SELECT EXTRACT(HOUR FROM data_documento)::int AS hora,
+                       COUNT(DISTINCT documento) AS vendas
+                FROM   microvix.microvix_movimento
+                WHERE  portal = %s AND cnpj_emp = %s
+                  AND  DATE(data_documento) BETWEEN %s AND %s
+                  AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
+                  AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
+                GROUP  BY hora ORDER BY hora
+            """, (active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str))
+            for row in rows:
+                chart_faixa_mes['vendas'][int(row['hora'])] = int(row['vendas'] or 0)
+
     # ── Tema da empresa ──────────────────────────────────────────────────────
     theme = dict(primary_color='#F47B20', secondary_color='#0057A8', accent_color='#FFFFFF')
     theme_company_id = selected_company_id
@@ -620,6 +716,9 @@ def dashboard():
         mes_anterior_str=mes_anterior_str,
         mes_proximo_str=mes_proximo_str,
         theme=theme,
+        chart_faixa_dia=chart_faixa_dia,
+        chart_faixa_sem=chart_faixa_sem,
+        chart_faixa_mes=chart_faixa_mes,
     )
 
 
