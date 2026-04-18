@@ -332,9 +332,8 @@ def dashboard():
         r = db.query_one("""
             SELECT COUNT(DISTINCT dr.person_id) AS total
             FROM   faciais.detection_records dr
-            JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
             JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-            WHERE  cam.store_id     = %s
+            WHERE  dr.store_id      = %s
               AND  p.person_type_id = 'C'
               AND  dr.person_id     IS NOT NULL
               AND  DATE(dr.created_at) = %s
@@ -344,18 +343,16 @@ def dashboard():
         r = db.query_one("""
             SELECT COUNT(DISTINCT dr.person_id) AS total
             FROM   faciais.detection_records dr
-            JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
             JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-            WHERE  cam.store_id     = %s
+            WHERE  dr.store_id      = %s
               AND  p.person_type_id = 'C'
               AND  dr.person_id     IS NOT NULL
               AND  DATE(dr.created_at) = %s
               AND  EXISTS (
                   SELECT 1
                   FROM   faciais.detection_records dr2
-                  JOIN   faciais.cameras cam2 ON cam2.camera_id = dr2.camera_id
-                  WHERE  dr2.person_id = dr.person_id
-                    AND  cam2.store_id = %s
+                  WHERE  dr2.person_id  = dr.person_id
+                    AND  dr2.store_id   = %s
                     AND  DATE(dr2.created_at) < %s
               )
         """, (sid, data_str, sid, data_str))
@@ -418,9 +415,8 @@ def dashboard():
         r = db.query_one("""
             SELECT COUNT(DISTINCT dr.person_id) AS total
             FROM   faciais.detection_records dr
-            JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
             JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-            WHERE  cam.store_id     = %s
+            WHERE  dr.store_id      = %s
               AND  p.person_type_id = 'C'
               AND  dr.person_id     IS NOT NULL
               AND  DATE(dr.created_at) BETWEEN %s AND %s
@@ -432,9 +428,8 @@ def dashboard():
             FROM (
                 SELECT dr.person_id, MIN(DATE(dr.created_at)) AS primeira_visita
                 FROM   faciais.detection_records dr
-                JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
                 JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-                WHERE  cam.store_id     = %s
+                WHERE  dr.store_id      = %s
                   AND  p.person_type_id = 'C'
                   AND  dr.person_id     IS NOT NULL
                   AND  DATE(dr.created_at) BETWEEN %s AND %s
@@ -443,9 +438,8 @@ def dashboard():
             WHERE EXISTS (
                 SELECT 1
                 FROM   faciais.detection_records dr2
-                JOIN   faciais.cameras cam2 ON cam2.camera_id = dr2.camera_id
                 WHERE  dr2.person_id        = sub.person_id
-                  AND  cam2.store_id        = %s
+                  AND  dr2.store_id         = %s
                   AND  DATE(dr2.created_at) < sub.primeira_visita
             )
         """, (sid, semana_inicio_str, semana_fim_str, sid))
@@ -503,9 +497,8 @@ def dashboard():
         r = db.query_one("""
             SELECT COUNT(DISTINCT dr.person_id) AS total
             FROM   faciais.detection_records dr
-            JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
             JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-            WHERE  cam.store_id     = %s
+            WHERE  dr.store_id      = %s
               AND  p.person_type_id = 'C'
               AND  dr.person_id     IS NOT NULL
               AND  DATE(dr.created_at) BETWEEN %s AND %s
@@ -517,9 +510,8 @@ def dashboard():
             FROM (
                 SELECT dr.person_id, MIN(DATE(dr.created_at)) AS primeira_visita
                 FROM   faciais.detection_records dr
-                JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
                 JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-                WHERE  cam.store_id     = %s
+                WHERE  dr.store_id      = %s
                   AND  p.person_type_id = 'C'
                   AND  dr.person_id     IS NOT NULL
                   AND  DATE(dr.created_at) BETWEEN %s AND %s
@@ -528,9 +520,8 @@ def dashboard():
             WHERE EXISTS (
                 SELECT 1
                 FROM   faciais.detection_records dr2
-                JOIN   faciais.cameras cam2 ON cam2.camera_id = dr2.camera_id
                 WHERE  dr2.person_id        = sub.person_id
-                  AND  cam2.store_id        = %s
+                  AND  dr2.store_id         = %s
                   AND  DATE(dr2.created_at) < sub.primeira_visita
             )
         """, (sid, mes_inicio_str, mes_fim_str, sid))
@@ -626,9 +617,8 @@ def dashboard():
             FROM (
                 SELECT dr.person_id, MIN(dr.created_at) AS min_time
                 FROM   faciais.detection_records dr
-                JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
                 JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-                WHERE  cam.store_id = %s AND p.person_type_id = 'C'
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
                 GROUP  BY dr.person_id
             ) sub GROUP BY hora ORDER BY hora
@@ -655,9 +645,8 @@ def dashboard():
             FROM (
                 SELECT dr.person_id, DATE(dr.created_at) AS dia, MIN(dr.created_at) AS min_time
                 FROM   faciais.detection_records dr
-                JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
                 JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-                WHERE  cam.store_id = %s AND p.person_type_id = 'C'
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
                   AND  DATE(dr.created_at) BETWEEN %s AND %s
                 GROUP  BY dr.person_id, DATE(dr.created_at)
@@ -686,9 +675,8 @@ def dashboard():
             FROM (
                 SELECT dr.person_id, DATE(dr.created_at) AS dia, MIN(dr.created_at) AS min_time
                 FROM   faciais.detection_records dr
-                JOIN   faciais.cameras cam ON cam.camera_id = dr.camera_id
                 JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-                WHERE  cam.store_id = %s AND p.person_type_id = 'C'
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
                   AND  DATE(dr.created_at) BETWEEN %s AND %s
                 GROUP  BY dr.person_id, DATE(dr.created_at)
