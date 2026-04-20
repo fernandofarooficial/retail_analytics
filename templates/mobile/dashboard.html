@@ -624,6 +624,8 @@
           </span>
         </div>
       </div>
+      <div class="m-chart-faixa-wrap"><canvas id="m-chart-dist-dia"></canvas></div>
+      <div class="m-chart-faixa-wrap"><canvas id="m-chart-freq-dia"></canvas></div>
       {% endif %}
     </div>
 
@@ -675,6 +677,8 @@
           </span>
         </div>
       </div>
+      <div class="m-chart-faixa-wrap"><canvas id="m-chart-dist-sem"></canvas></div>
+      <div class="m-chart-faixa-wrap"><canvas id="m-chart-freq-sem"></canvas></div>
       {% endif %}
     </div>
 
@@ -726,6 +730,8 @@
           </span>
         </div>
       </div>
+      <div class="m-chart-faixa-wrap"><canvas id="m-chart-dist-mes"></canvas></div>
+      <div class="m-chart-faixa-wrap"><canvas id="m-chart-freq-mes"></canvas></div>
       {% endif %}
     </div>
 
@@ -892,6 +898,100 @@ function _mCriarGeneroChart(canvasId, data) {
   });
 }
 
+// ── Gráficos estratégico ────────────────────────────────────────────────
+const _mEstNovos    = {{ kpi_est.novos    | tojson }};
+const _mEstRec      = {{ kpi_est.recorrentes | tojson }};
+const _mEstSemNovos = {{ kpi_est_sem.novos    | tojson }};
+const _mEstSemRec   = {{ kpi_est_sem.recorrentes | tojson }};
+const _mEstMesNovos = {{ kpi_est_mes.novos    | tojson }};
+const _mEstMesRec   = {{ kpi_est_mes.recorrentes | tojson }};
+const _mFreqDia     = {{ chart_freq_retorno_dia | tojson }};
+const _mFreqSem     = {{ chart_freq_retorno_sem | tojson }};
+const _mFreqMes     = {{ chart_freq_retorno_mes | tojson }};
+
+const _mCenterTextPlugin = {
+  id: 'centerText',
+  afterDraw(chart) {
+    if (chart.config.type !== 'doughnut') return;
+    const ds = chart.data.datasets[0].data;
+    const total = ds.reduce((a, b) => a + (b || 0), 0);
+    const recIdx = chart.data.labels.indexOf('Recorrentes');
+    const recVal = recIdx >= 0 ? (ds[recIdx] || 0) : 0;
+    const pct = total > 0 ? Math.round(recVal / total * 100) : 0;
+    const { ctx, chartArea: { left, top, width, height } } = chart;
+    const cx = left + width / 2, cy = top + height / 2;
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold 18px sans-serif'; ctx.fillStyle = '#374151';
+    ctx.fillText(pct + '%', cx, cy - 9);
+    ctx.font = '10px sans-serif'; ctx.fillStyle = '#6B7280';
+    ctx.fillText('Recorrentes', cx, cy + 10);
+    ctx.restore();
+  }
+};
+
+function _mCriarDistribuicaoChart(canvasId, novos, recorrentes) {
+  const el = document.getElementById(canvasId);
+  if (!el || novos === null || recorrentes === null) return;
+  new Chart(el, {
+    type: 'doughnut',
+    data: {
+      labels: ['Novos', 'Recorrentes'],
+      datasets: [{
+        data: [novos, recorrentes],
+        backgroundColor: ['#9C27B0bb', _mThemeColor + 'bb'],
+        borderColor: ['#9C27B0', _mThemeColor],
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+        title: { display: true, text: 'Distribuição dos Clientes', font: { size: 11 } }
+      }
+    },
+    plugins: [_mCenterTextPlugin]
+  });
+}
+
+function _mCriarFreqRetornoChart(canvasId, labels, data, titulo) {
+  const el = document.getElementById(canvasId);
+  if (!el || labels.length === 0) return;
+  new Chart(el, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Dias',
+        data,
+        borderColor: '#0057A8',
+        backgroundColor: 'rgba(0,87,168,0.08)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#fff',
+        pointBorderColor: '#0057A8',
+        pointBorderWidth: 2,
+        tension: 0.3,
+        spanGaps: true,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: titulo, font: { size: 11 } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 0 } },
+        y: { beginAtZero: false, ticks: { precision: 0, font: { size: 9 } } }
+      }
+    }
+  });
+}
+
 window.addEventListener('load', () => {
   _mCriarFaixaChart('m-chart-faixa-dia', _mFaixaDia);
   _mCriarFaixaChart('m-chart-faixa-sem', _mFaixaSem);
@@ -899,6 +999,13 @@ window.addEventListener('load', () => {
   _mCriarGeneroChart('m-chart-genero-dia', _mGeneroDia);
   _mCriarGeneroChart('m-chart-genero-sem', _mGeneroSem);
   _mCriarGeneroChart('m-chart-genero-mes', _mGeneroMes);
+  // Estratégico
+  _mCriarDistribuicaoChart('m-chart-dist-dia', _mEstNovos,    _mEstRec);
+  _mCriarDistribuicaoChart('m-chart-dist-sem', _mEstSemNovos, _mEstSemRec);
+  _mCriarDistribuicaoChart('m-chart-dist-mes', _mEstMesNovos, _mEstMesRec);
+  _mCriarFreqRetornoChart('m-chart-freq-dia', _mHorasLabels,                _mFreqDia.slice(8,20), 'Frequência de Retorno (dias)');
+  _mCriarFreqRetornoChart('m-chart-freq-sem', _mFreqSem.map(d=>d.label), _mFreqSem.map(d=>d.avg), 'Frequência de Retorno (dias)');
+  _mCriarFreqRetornoChart('m-chart-freq-mes', _mFreqMes.map(d=>d.label), _mFreqMes.map(d=>d.avg), 'Frequência de Retorno (dias)');
 });
 </script>
 {% endblock %}

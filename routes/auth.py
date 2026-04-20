@@ -765,6 +765,68 @@ def dashboard():
             top_produtos_qtde_mes = _top_query(_date_sem,  "SUM(m.quantidade)",   _p + (mes_inicio_str, mes_fim_str))
             top_produtos_fat_mes  = _top_query(_date_sem,  "SUM(m.valor_liquido)", _p + (mes_inicio_str, mes_fim_str))
 
+        # ── Frequência de retorno por horário/dia ────────────────────────────
+        chart_freq_retorno_dia = [None]*24
+        chart_freq_retorno_sem = []
+        chart_freq_retorno_mes = []
+
+        _FREQ_DIA_SQL = """
+            WITH fv AS (
+                SELECT dr.person_id,
+                       EXTRACT(HOUR FROM MIN(dr.created_at))::int AS hora,
+                       DATE(MIN(dr.created_at)) AS today
+                FROM   faciais.detection_records dr
+                JOIN   faciais.people p ON p.person_id = dr.person_id
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
+                GROUP  BY dr.person_id
+            ),
+            pv AS (
+                SELECT fv.hora,
+                       (fv.today - MAX(DATE(dr2.created_at)))::int AS gap_days
+                FROM   fv
+                JOIN   faciais.detection_records dr2 ON dr2.person_id = fv.person_id
+                WHERE  dr2.store_id = %s AND DATE(dr2.created_at) < fv.today
+                GROUP  BY fv.person_id, fv.hora, fv.today
+            )
+            SELECT hora, ROUND(AVG(gap_days)::numeric, 1) AS avg_days
+            FROM   pv GROUP BY hora ORDER BY hora
+        """
+        for row in db.query_all(_FREQ_DIA_SQL, (sid, data_str, sid)):
+            chart_freq_retorno_dia[int(row['hora'])] = float(row['avg_days'])
+
+        _FREQ_RANGE_SQL = """
+            WITH fv AS (
+                SELECT dr.person_id,
+                       DATE(MIN(dr.created_at)) AS visit_day
+                FROM   faciais.detection_records dr
+                JOIN   faciais.people p ON p.person_id = dr.person_id
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL
+                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                GROUP  BY dr.person_id, DATE(dr.created_at)
+            ),
+            pv AS (
+                SELECT fv.visit_day,
+                       (fv.visit_day - MAX(DATE(dr2.created_at)))::int AS gap_days
+                FROM   fv
+                JOIN   faciais.detection_records dr2 ON dr2.person_id = fv.person_id
+                WHERE  dr2.store_id = %s AND DATE(dr2.created_at) < fv.visit_day
+                GROUP  BY fv.person_id, fv.visit_day
+            )
+            SELECT visit_day, ROUND(AVG(gap_days)::numeric, 1) AS avg_days
+            FROM   pv GROUP BY visit_day ORDER BY visit_day
+        """
+        _DIAS_PT = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+        chart_freq_retorno_sem = [
+            {'label': _DIAS_PT[row['visit_day'].weekday()], 'avg': float(row['avg_days'])}
+            for row in db.query_all(_FREQ_RANGE_SQL, (sid, semana_inicio_str, semana_fim_str, sid))
+        ]
+        chart_freq_retorno_mes = [
+            {'label': row['visit_day'].strftime('%d/%m'), 'avg': float(row['avg_days'])}
+            for row in db.query_all(_FREQ_RANGE_SQL, (sid, mes_inicio_str, mes_fim_str, sid))
+        ]
+
     else:
         chart_genero_dia = {'F': [0]*24, 'M': [0]*24}
         chart_genero_sem = {'F': [0]*24, 'M': [0]*24}
@@ -775,6 +837,9 @@ def dashboard():
         top_produtos_fat_sem  = []
         top_produtos_qtde_mes = []
         top_produtos_fat_mes  = []
+        chart_freq_retorno_dia = [None]*24
+        chart_freq_retorno_sem = []
+        chart_freq_retorno_mes = []
 
     # ── Tema da empresa ──────────────────────────────────────────────────────
     theme = dict(primary_color='#F47B20')
@@ -832,4 +897,7 @@ def dashboard():
         top_produtos_fat_sem=top_produtos_fat_sem,
         top_produtos_qtde_mes=top_produtos_qtde_mes,
         top_produtos_fat_mes=top_produtos_fat_mes,
+        chart_freq_retorno_dia=chart_freq_retorno_dia,
+        chart_freq_retorno_sem=chart_freq_retorno_sem,
+        chart_freq_retorno_mes=chart_freq_retorno_mes,
     )
