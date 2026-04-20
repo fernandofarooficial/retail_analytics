@@ -1,0 +1,270 @@
+{% extends 'mobile/base_mobile.html' %}
+{% block title %}Visitação — Retail Analytics{% endblock %}
+
+{% block body %}
+<style>
+  :root {
+    --theme-primary: {{ theme.primary_color }};
+    --secondary:     {{ theme.secondary_color }};
+    --accent:        {{ theme.accent_color }};
+  }
+
+  .m-vis-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: 0.875rem;
+    margin: 0 0 0.75rem 0;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+  .m-vis-photo {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #E5E7EB;
+  }
+  .m-vis-placeholder {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    background: #E5E7EB;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9CA3AF;
+    font-size: 1.5rem;
+  }
+  .m-vis-info { flex: 1; min-width: 0; }
+  .m-vis-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #111827;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .m-vis-nickname {
+    font-size: 0.78rem;
+    color: #6B7280;
+    margin-top: 0.1rem;
+  }
+  .m-vis-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.35rem;
+  }
+  .m-vis-tag {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    background: #F3F4F6;
+    color: #374151;
+  }
+  .m-vis-tag-rec  { background: #D1FAE5; color: #065F46; }
+  .m-vis-tag-novo { background: #DBEAFE; color: #1E40AF; }
+  .m-vis-row {
+    font-size: 0.78rem;
+    color: #374151;
+    margin-top: 0.25rem;
+    display: flex;
+    gap: 0.3rem;
+  }
+  .m-vis-row-label { color: #9CA3AF; }
+  .m-vis-notes {
+    font-size: 0.73rem;
+    color: #6B7280;
+    font-style: italic;
+    margin-top: 0.25rem;
+    word-break: break-word;
+  }
+  .m-vis-empty {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: #9CA3AF;
+    font-size: 0.875rem;
+  }
+  .m-vis-count {
+    font-size: 0.78rem;
+    color: #6B7280;
+    margin-bottom: 0.5rem;
+  }
+</style>
+
+<div class="m-app">
+
+  <!-- ── Header ───────────────────────────────────────────────────────── -->
+  <header class="m-header">
+    <img src="/retail_analytics/static/img/logo_retail_analytics_br_1.png"
+         alt="Retail Analytics" class="m-header-logo">
+
+    {% if company_logo %}
+    <span class="m-header-sep"></span>
+    <img src="/retail_analytics/static/{{ company_logo }}"
+         alt="{{ company_name }}" class="m-header-company-logo">
+    {% else %}
+    <span class="m-header-title">Retail Analytics</span>
+    {% endif %}
+
+    <div class="m-header-user">
+      <span class="m-header-name">{{ session.username }}</span>
+      <a href="{{ url_for('mobile.logout') }}" class="m-logout">Sair</a>
+    </div>
+  </header>
+
+  <!-- ── Navegação de páginas ──────────────────────────────────────────── -->
+  <nav class="m-page-nav">
+    <a href="{{ url_for('mobile.dashboard') }}"
+       class="m-page-nav-link {% if request.endpoint == 'mobile.dashboard' %}active{% endif %}">Dashboard</a>
+    <a href="{{ url_for('mobile.visitacao') }}"
+       class="m-page-nav-link {% if request.endpoint == 'mobile.visitacao' %}active{% endif %}">Visitação</a>
+  </nav>
+
+  <!-- ── Conteúdo ──────────────────────────────────────────────────────── -->
+  <main class="m-content">
+
+    {% if session.get('user_type_id') in ('adm', 'man') and companies %}
+    <div class="m-select-group">
+      <div class="m-select-row">
+        <span class="m-select-label">Empresa</span>
+        <select class="m-select" onchange="selecionarEmpresa(this.value)">
+          <option value="">— Selecione —</option>
+          {% for c in companies %}
+          <option value="{{ c.company_id }}"
+              {% if c.company_id == selected_company_id %}selected{% endif %}>
+            {{ c.company_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if stores %}
+    <div class="m-select-group">
+      <div class="m-select-row">
+        <span class="m-select-label">Loja</span>
+        <select class="m-select" onchange="selecionarLoja(this.value)">
+          {% if stores|length > 1 %}
+          <option value="">— Selecione —</option>
+          {% endif %}
+          {% for s in stores %}
+          <option value="{{ s.store_id }}"
+              {% if s.store_id == selected_store_id %}selected{% endif %}>
+            {{ s.store_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if not active_store %}
+    <p class="m-hint">Selecione uma loja para visualizar a visitação.</p>
+    {% else %}
+
+    <div class="m-date-row">
+      <span class="m-date-label">Data</span>
+      <input type="date" class="m-date-input" value="{{ data_str }}"
+             onchange="mudarData(this.value)">
+    </div>
+
+    {% if clientes %}
+    <p class="m-vis-count">{{ clientes|length }} cliente{{ 's' if clientes|length != 1 else '' }}</p>
+    {% endif %}
+
+    {% if clientes %}
+      {% for c in clientes %}
+      <div class="m-vis-card">
+
+        {% if c.img_url %}
+        <img class="m-vis-photo" src="{{ c.img_url }}" alt="Foto"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="m-vis-placeholder" style="display:none;">&#128100;</div>
+        {% else %}
+        <div class="m-vis-placeholder">&#128100;</div>
+        {% endif %}
+
+        <div class="m-vis-info">
+          <div class="m-vis-name">{{ c.full_name or '(sem nome)' }}</div>
+          {% if c.nickname %}
+          <div class="m-vis-nickname">"{{ c.nickname }}"</div>
+          {% endif %}
+
+          <div class="m-vis-tags">
+            {% if c.is_recorrente %}
+            <span class="m-vis-tag m-vis-tag-rec">Recorrente</span>
+            {% else %}
+            <span class="m-vis-tag m-vis-tag-novo">1ª Visita</span>
+            {% endif %}
+            {% if c.gender_name %}
+            <span class="m-vis-tag">{{ c.gender_name }}</span>
+            {% endif %}
+            {% if c.age %}
+            <span class="m-vis-tag">{{ c.age }} anos</span>
+            {% endif %}
+          </div>
+
+          {% if c.primeiro_registro %}
+          <div class="m-vis-row">
+            <span class="m-vis-row-label">Chegada:</span>
+            {{ c.primeiro_registro }}
+          </div>
+          {% endif %}
+
+          {% if c.permanencia %}
+          <div class="m-vis-row">
+            <span class="m-vis-row-label">Permanência:</span>
+            {{ c.permanencia }}
+          </div>
+          {% endif %}
+
+          {% if c.notes %}
+          <div class="m-vis-notes">{{ c.notes }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="m-vis-empty">Nenhum cliente registrado nesta data.</div>
+    {% endif %}
+
+    {% endif %}
+
+    <a href="{{ url_for('mobile.trocar_senha') }}"
+       style="text-align:center;font-size:0.8rem;color:var(--muted);text-decoration:none;
+              margin-top:auto;padding-top:0.5rem;display:block;">
+      Trocar senha
+    </a>
+
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function mudarData(valor) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('date', valor);
+  window.location.href = url.toString();
+}
+function selecionarEmpresa(id) {
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set('company_id', id);
+  else    url.searchParams.delete('company_id');
+  url.searchParams.delete('store_id');
+  window.location.href = url.toString();
+}
+function selecionarLoja(id) {
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set('store_id', id);
+  else    url.searchParams.delete('store_id');
+  window.location.href = url.toString();
+}
+</script>
+{% endblock %}
