@@ -4,10 +4,12 @@
 {% block content %}
 <style>
   :root { --theme-primary: {{ theme.primary_color }}; }
+  .charts-row {
+    display: flex; gap: 1rem; margin-top: 1.5rem;
+  }
   .chart-faixa-wrap {
-    position: relative; height: 280px;
-    margin-top: 1.5rem; background: #fff;
-    border-radius: 8px; padding: 0.75rem;
+    position: relative; height: 280px; flex: 1;
+    background: #fff; border-radius: 8px; padding: 0.75rem;
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
   }
   .kpi-nav-btn {
@@ -137,8 +139,9 @@
 
         </div>
 
-        <div class="chart-faixa-wrap">
-            <canvas id="chart-faixa-dia"></canvas>
+        <div class="charts-row">
+            <div class="chart-faixa-wrap"><canvas id="chart-faixa-dia"></canvas></div>
+            <div class="chart-faixa-wrap"><canvas id="chart-genero-dia"></canvas></div>
         </div>
         {% endif %}
     </div>
@@ -264,8 +267,9 @@
             </div>
         </div>
 
-        <div class="chart-faixa-wrap">
-            <canvas id="chart-faixa-sem"></canvas>
+        <div class="charts-row">
+            <div class="chart-faixa-wrap"><canvas id="chart-faixa-sem"></canvas></div>
+            <div class="chart-faixa-wrap"><canvas id="chart-genero-sem"></canvas></div>
         </div>
         {% endif %}
     </div>
@@ -323,8 +327,9 @@
             </div>
         </div>
 
-        <div class="chart-faixa-wrap">
-            <canvas id="chart-faixa-mes"></canvas>
+        <div class="charts-row">
+            <div class="chart-faixa-wrap"><canvas id="chart-faixa-mes"></canvas></div>
+            <div class="chart-faixa-wrap"><canvas id="chart-genero-mes"></canvas></div>
         </div>
         {% endif %}
     </div>
@@ -720,10 +725,57 @@ function _criarFaixaChart(canvasId, data) {
     });
 }
 
+const _generoDia = {{ chart_genero_dia | tojson }};
+const _generoSem = {{ chart_genero_sem | tojson }};
+const _generoMes = {{ chart_genero_mes | tojson }};
+
+function _criarGeneroChart(canvasId, data) {
+    const el = document.getElementById(canvasId);
+    if (!el) return;
+    new Chart(el, {
+        type: 'bar',
+        data: {
+            labels: _horasLabels,
+            datasets: [
+                {
+                    label: 'Feminino',
+                    data: data.F.slice(8, 20),
+                    backgroundColor: 'rgba(233,30,99,0.7)',
+                    borderColor: '#E91E63',
+                    borderWidth: 1,
+                },
+                {
+                    label: 'Masculino',
+                    data: data.M.slice(8, 20),
+                    backgroundColor: 'rgba(25,118,210,0.7)',
+                    borderColor: '#1976D2',
+                    borderWidth: 1,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+                title: { display: true, text: 'Clientes por gênero e horário', font: { size: 12 } }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                y: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } }
+            }
+        }
+    });
+}
+
 window.addEventListener('load', () => {
     _criarFaixaChart('chart-faixa-dia', _faixaDia);
     _criarFaixaChart('chart-faixa-sem', _faixaSem);
     _criarFaixaChart('chart-faixa-mes', _faixaMes);
+    _criarGeneroChart('chart-genero-dia', _generoDia);
+    _criarGeneroChart('chart-genero-sem', _generoSem);
+    _criarGeneroChart('chart-genero-mes', _generoMes);
 });
 </script>
 {% endblock %}

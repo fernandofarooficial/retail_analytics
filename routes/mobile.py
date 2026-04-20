@@ -692,6 +692,59 @@ def dashboard():
             for row in rows:
                 chart_faixa_mes['vendas'][int(row['hora'])] = int(row['vendas'] or 0)
 
+        # ── Gráfico gênero por faixa horária ─────────────────────────────────
+        chart_genero_dia = {'F': [0]*24, 'M': [0]*24}
+        chart_genero_sem = {'F': [0]*24, 'M': [0]*24}
+        chart_genero_mes = {'F': [0]*24, 'M': [0]*24}
+
+        _GENERO_DIA_QUERY = """
+            SELECT EXTRACT(HOUR FROM min_time)::int AS hora,
+                   gender_id, COUNT(*) AS total
+            FROM (
+                SELECT dr.person_id, p.gender_id, MIN(dr.created_at) AS min_time
+                FROM   faciais.detection_records dr
+                JOIN   faciais.people p ON p.person_id = dr.person_id
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
+                GROUP  BY dr.person_id, p.gender_id
+            ) sub
+            GROUP BY hora, gender_id ORDER BY hora
+        """
+        for row in db.query_all(_GENERO_DIA_QUERY, (sid, data_str)):
+            g = row['gender_id']
+            if g in chart_genero_dia:
+                chart_genero_dia[g][int(row['hora'])] = int(row['total'] or 0)
+
+        _GENERO_RANGE_QUERY = """
+            SELECT EXTRACT(HOUR FROM min_time)::int AS hora,
+                   gender_id, COUNT(*) AS total
+            FROM (
+                SELECT dr.person_id, p.gender_id,
+                       DATE(dr.created_at) AS dia, MIN(dr.created_at) AS min_time
+                FROM   faciais.detection_records dr
+                JOIN   faciais.people p ON p.person_id = dr.person_id
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL
+                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                GROUP  BY dr.person_id, p.gender_id, DATE(dr.created_at)
+            ) sub
+            GROUP BY hora, gender_id ORDER BY hora
+        """
+        for row in db.query_all(_GENERO_RANGE_QUERY, (sid, semana_inicio_str, semana_fim_str)):
+            g = row['gender_id']
+            if g in chart_genero_sem:
+                chart_genero_sem[g][int(row['hora'])] = int(row['total'] or 0)
+
+        for row in db.query_all(_GENERO_RANGE_QUERY, (sid, mes_inicio_str, mes_fim_str)):
+            g = row['gender_id']
+            if g in chart_genero_mes:
+                chart_genero_mes[g][int(row['hora'])] = int(row['total'] or 0)
+
+    else:
+        chart_genero_dia = {'F': [0]*24, 'M': [0]*24}
+        chart_genero_sem = {'F': [0]*24, 'M': [0]*24}
+        chart_genero_mes = {'F': [0]*24, 'M': [0]*24}
+
     # ── Tema da empresa ──────────────────────────────────────────────────────
     theme = dict(primary_color='#F47B20', secondary_color='#0057A8', accent_color='#FFFFFF')
     theme_company_id = selected_company_id
@@ -739,6 +792,9 @@ def dashboard():
         chart_faixa_dia=chart_faixa_dia,
         chart_faixa_sem=chart_faixa_sem,
         chart_faixa_mes=chart_faixa_mes,
+        chart_genero_dia=chart_genero_dia,
+        chart_genero_sem=chart_genero_sem,
+        chart_genero_mes=chart_genero_mes,
         kpi_est=kpi_est,
         kpi_est_sem=kpi_est_sem,
         kpi_est_mes=kpi_est_mes,
