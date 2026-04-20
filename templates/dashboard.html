@@ -12,6 +12,11 @@
     background: #fff; border-radius: 8px; padding: 0.75rem;
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
   }
+  .chart-top-wrap {
+    position: relative; height: 320px; flex: 1;
+    background: #fff; border-radius: 8px; padding: 0.75rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
   .kpi-nav-btn {
     background: none; border: 1px solid #E5E7EB; border-radius: 6px;
     padding: 0.25rem 0.75rem; cursor: pointer; font-size: 1.1rem;
@@ -211,6 +216,11 @@
             </div>
 
         </div>
+
+        <div class="charts-row">
+            <div class="chart-top-wrap"><canvas id="chart-top-qtde-dia"></canvas></div>
+            <div class="chart-top-wrap"><canvas id="chart-top-fat-dia"></canvas></div>
+        </div>
         {% endif %}
     </div>
 
@@ -391,6 +401,11 @@
                 <span class="kpi-sub">média de itens por venda</span>
             </div>
         </div>
+
+        <div class="charts-row">
+            <div class="chart-top-wrap"><canvas id="chart-top-qtde-sem"></canvas></div>
+            <div class="chart-top-wrap"><canvas id="chart-top-fat-sem"></canvas></div>
+        </div>
         {% endif %}
     </div>
 
@@ -450,6 +465,11 @@
                 </span>
                 <span class="kpi-sub">média de itens por venda</span>
             </div>
+        </div>
+
+        <div class="charts-row">
+            <div class="chart-top-wrap"><canvas id="chart-top-qtde-mes"></canvas></div>
+            <div class="chart-top-wrap"><canvas id="chart-top-fat-mes"></canvas></div>
         </div>
         {% endif %}
     </div>
@@ -769,6 +789,45 @@ function _criarGeneroChart(canvasId, data) {
     });
 }
 
+const _topQtdeDia = {{ top_produtos_qtde_dia | tojson }};
+const _topFatDia  = {{ top_produtos_fat_dia  | tojson }};
+const _topQtdeSem = {{ top_produtos_qtde_sem | tojson }};
+const _topFatSem  = {{ top_produtos_fat_sem  | tojson }};
+const _topQtdeMes = {{ top_produtos_qtde_mes | tojson }};
+const _topFatMes  = {{ top_produtos_fat_mes  | tojson }};
+
+function _criarTopProdChart(canvasId, dados, titulo, cor) {
+    const el = document.getElementById(canvasId);
+    if (!el) return;
+    const slice = dados.slice(0, 5);
+    new Chart(el, {
+        type: 'bar',
+        data: {
+            labels: slice.map(d => d.nome),
+            datasets: [{
+                label: titulo,
+                data: slice.map(d => d.total),
+                backgroundColor: cor + 'bb',
+                borderColor: cor,
+                borderWidth: 1,
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: titulo, font: { size: 12 } }
+            },
+            scales: {
+                x: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } },
+                y: { ticks: { font: { size: 10 } } }
+            }
+        }
+    });
+}
+
 window.addEventListener('load', () => {
     _criarFaixaChart('chart-faixa-dia', _faixaDia);
     _criarFaixaChart('chart-faixa-sem', _faixaSem);
@@ -776,6 +835,12 @@ window.addEventListener('load', () => {
     _criarGeneroChart('chart-genero-dia', _generoDia);
     _criarGeneroChart('chart-genero-sem', _generoSem);
     _criarGeneroChart('chart-genero-mes', _generoMes);
+    _criarTopProdChart('chart-top-qtde-dia', _topQtdeDia, 'Top 5 Produtos — Quantidade', _themeColor);
+    _criarTopProdChart('chart-top-fat-dia',  _topFatDia,  'Top 5 Produtos — Faturamento', '#0057A8');
+    _criarTopProdChart('chart-top-qtde-sem', _topQtdeSem, 'Top 5 Produtos — Quantidade', _themeColor);
+    _criarTopProdChart('chart-top-fat-sem',  _topFatSem,  'Top 5 Produtos — Faturamento', '#0057A8');
+    _criarTopProdChart('chart-top-qtde-mes', _topQtdeMes, 'Top 5 Produtos — Quantidade', _themeColor);
+    _criarTopProdChart('chart-top-fat-mes',  _topFatMes,  'Top 5 Produtos — Faturamento', '#0057A8');
 });
 </script>
 {% endblock %}
