@@ -13,7 +13,7 @@
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
   }
   .chart-top-wrap {
-    position: relative; height: 320px; flex: 1;
+    position: relative; height: 400px; flex: 1;
     background: #fff; border-radius: 8px; padding: 0.75rem;
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
   }
@@ -799,7 +799,7 @@ const _topFatMes  = {{ top_produtos_fat_mes  | tojson }};
 function _criarTopProdChart(canvasId, dados, titulo, cor) {
     const el = document.getElementById(canvasId);
     if (!el) return;
-    const slice = dados.slice(0, 5);
+    const slice = dados.slice(0, 10);
     new Chart(el, {
         type: 'bar',
         data: {
@@ -835,12 +835,12 @@ window.addEventListener('load', () => {
     _criarGeneroChart('chart-genero-dia', _generoDia);
     _criarGeneroChart('chart-genero-sem', _generoSem);
     _criarGeneroChart('chart-genero-mes', _generoMes);
-    _criarTopProdChart('chart-top-qtde-dia', _topQtdeDia, 'Top 5 Produtos — Quantidade', _themeColor);
-    _criarTopProdChart('chart-top-fat-dia',  _topFatDia,  'Top 5 Produtos — Faturamento', '#0057A8');
-    _criarTopProdChart('chart-top-qtde-sem', _topQtdeSem, 'Top 5 Produtos — Quantidade', _themeColor);
-    _criarTopProdChart('chart-top-fat-sem',  _topFatSem,  'Top 5 Produtos — Faturamento', '#0057A8');
-    _criarTopProdChart('chart-top-qtde-mes', _topQtdeMes, 'Top 5 Produtos — Quantidade', _themeColor);
-    _criarTopProdChart('chart-top-fat-mes',  _topFatMes,  'Top 5 Produtos — Faturamento', '#0057A8');
+    _criarTopProdChart('chart-top-qtde-dia', _topQtdeDia, 'Top 10 Produtos — Quantidade', _themeColor);
+    _criarTopProdChart('chart-top-fat-dia',  _topFatDia,  'Top 10 Produtos — Faturamento', '#0057A8');
+    _criarTopProdChart('chart-top-qtde-sem', _topQtdeSem, 'Top 10 Produtos — Quantidade', _themeColor);
+    _criarTopProdChart('chart-top-fat-sem',  _topFatSem,  'Top 10 Produtos — Faturamento', '#0057A8');
+    _criarTopProdChart('chart-top-qtde-mes', _topQtdeMes, 'Top 10 Produtos — Quantidade', _themeColor);
+    _criarTopProdChart('chart-top-fat-mes',  _topFatMes,  'Top 10 Produtos — Faturamento', '#0057A8');
 });
 </script>
 {% endblock %}

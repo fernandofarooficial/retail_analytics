@@ -14,12 +14,29 @@
     border-radius: 8px; padding: 0.5rem;
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
   }
-  .m-chart-top-wrap {
-    position: relative; height: 320px;
-    margin: 1rem 0; background: #fff;
-    border-radius: 8px; padding: 0.5rem;
+  .m-top-prod-section {
+    background: #fff; border-radius: 8px;
+    padding: 0.75rem; margin: 1rem 0;
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
   }
+  .m-top-prod-title {
+    font-size: 0.8rem; font-weight: 700; color: #374151;
+    text-align: center; margin-bottom: 0.75rem;
+  }
+  .m-top-prod-item { margin-bottom: 0.6rem; }
+  .m-top-prod-header {
+    display: flex; justify-content: space-between;
+    align-items: baseline; margin-bottom: 0.2rem;
+  }
+  .m-top-prod-nome { font-size: 0.78rem; color: #374151; font-weight: 500; flex: 1; }
+  .m-top-prod-valor {
+    font-size: 0.78rem; color: #374151; font-weight: 700;
+    white-space: nowrap; margin-left: 0.5rem;
+  }
+  .m-top-prod-bar-bg {
+    height: 8px; background: #E5E7EB; border-radius: 4px;
+  }
+  .m-top-prod-bar { height: 100%; border-radius: 4px; }
   .m-nav-row {
     display: flex; align-items: center; gap: 0.5rem;
     justify-content: center; margin-bottom: 0.5rem;
@@ -230,12 +247,43 @@
 
       </div>
 
-      <div class="m-chart-top-wrap">
-        <canvas id="m-chart-top-qtde-dia"></canvas>
+      {% if top_produtos_qtde_dia %}
+      <div class="m-top-prod-section">
+        <div class="m-top-prod-title">Top 5 Produtos — Quantidade</div>
+        {% set max_q = top_produtos_qtde_dia[0].total %}
+        {% for p in top_produtos_qtde_dia[:5] %}
+        <div class="m-top-prod-item">
+          <div class="m-top-prod-header">
+            <span class="m-top-prod-nome">{{ p.nome }}</span>
+            <span class="m-top-prod-valor">{{ '{:,.0f}'.format(p.total).replace(',', '.') }}</span>
+          </div>
+          <div class="m-top-prod-bar-bg">
+            <div class="m-top-prod-bar"
+                 style="width:{{ (p.total / max_q * 100)|round(1) }}%; background:var(--theme-primary)"></div>
+          </div>
+        </div>
+        {% endfor %}
       </div>
-      <div class="m-chart-top-wrap">
-        <canvas id="m-chart-top-fat-dia"></canvas>
+      {% endif %}
+
+      {% if top_produtos_fat_dia %}
+      <div class="m-top-prod-section">
+        <div class="m-top-prod-title">Top 5 Produtos — Faturamento</div>
+        {% set max_f = top_produtos_fat_dia[0].total %}
+        {% for p in top_produtos_fat_dia[:5] %}
+        <div class="m-top-prod-item">
+          <div class="m-top-prod-header">
+            <span class="m-top-prod-nome">{{ p.nome }}</span>
+            <span class="m-top-prod-valor">R$ {{ '{:,.2f}'.format(p.total).replace(',','X').replace('.',',').replace('X','.') }}</span>
+          </div>
+          <div class="m-top-prod-bar-bg">
+            <div class="m-top-prod-bar"
+                 style="width:{{ (p.total / max_f * 100)|round(1) }}%; background:#0057A8"></div>
+          </div>
+        </div>
+        {% endfor %}
       </div>
+      {% endif %}
       {% endif %}
 
     </div><!-- /comercial-dia -->
@@ -401,12 +449,43 @@
         </div>
       </div>
 
-      <div class="m-chart-top-wrap">
-        <canvas id="m-chart-top-qtde-sem"></canvas>
+      {% if top_produtos_qtde_sem %}
+      <div class="m-top-prod-section">
+        <div class="m-top-prod-title">Top 5 Produtos — Quantidade</div>
+        {% set max_q = top_produtos_qtde_sem[0].total %}
+        {% for p in top_produtos_qtde_sem[:5] %}
+        <div class="m-top-prod-item">
+          <div class="m-top-prod-header">
+            <span class="m-top-prod-nome">{{ p.nome }}</span>
+            <span class="m-top-prod-valor">{{ '{:,.0f}'.format(p.total).replace(',', '.') }}</span>
+          </div>
+          <div class="m-top-prod-bar-bg">
+            <div class="m-top-prod-bar"
+                 style="width:{{ (p.total / max_q * 100)|round(1) }}%; background:var(--theme-primary)"></div>
+          </div>
+        </div>
+        {% endfor %}
       </div>
-      <div class="m-chart-top-wrap">
-        <canvas id="m-chart-top-fat-sem"></canvas>
+      {% endif %}
+
+      {% if top_produtos_fat_sem %}
+      <div class="m-top-prod-section">
+        <div class="m-top-prod-title">Top 5 Produtos — Faturamento</div>
+        {% set max_f = top_produtos_fat_sem[0].total %}
+        {% for p in top_produtos_fat_sem[:5] %}
+        <div class="m-top-prod-item">
+          <div class="m-top-prod-header">
+            <span class="m-top-prod-nome">{{ p.nome }}</span>
+            <span class="m-top-prod-valor">R$ {{ '{:,.2f}'.format(p.total).replace(',','X').replace('.',',').replace('X','.') }}</span>
+          </div>
+          <div class="m-top-prod-bar-bg">
+            <div class="m-top-prod-bar"
+                 style="width:{{ (p.total / max_f * 100)|round(1) }}%; background:#0057A8"></div>
+          </div>
+        </div>
+        {% endfor %}
       </div>
+      {% endif %}
       {% endif %}
     </div>
 
@@ -459,12 +538,43 @@
         </div>
       </div>
 
-      <div class="m-chart-top-wrap">
-        <canvas id="m-chart-top-qtde-mes"></canvas>
+      {% if top_produtos_qtde_mes %}
+      <div class="m-top-prod-section">
+        <div class="m-top-prod-title">Top 5 Produtos — Quantidade</div>
+        {% set max_q = top_produtos_qtde_mes[0].total %}
+        {% for p in top_produtos_qtde_mes[:5] %}
+        <div class="m-top-prod-item">
+          <div class="m-top-prod-header">
+            <span class="m-top-prod-nome">{{ p.nome }}</span>
+            <span class="m-top-prod-valor">{{ '{:,.0f}'.format(p.total).replace(',', '.') }}</span>
+          </div>
+          <div class="m-top-prod-bar-bg">
+            <div class="m-top-prod-bar"
+                 style="width:{{ (p.total / max_q * 100)|round(1) }}%; background:var(--theme-primary)"></div>
+          </div>
+        </div>
+        {% endfor %}
       </div>
-      <div class="m-chart-top-wrap">
-        <canvas id="m-chart-top-fat-mes"></canvas>
+      {% endif %}
+
+      {% if top_produtos_fat_mes %}
+      <div class="m-top-prod-section">
+        <div class="m-top-prod-title">Top 5 Produtos — Faturamento</div>
+        {% set max_f = top_produtos_fat_mes[0].total %}
+        {% for p in top_produtos_fat_mes[:5] %}
+        <div class="m-top-prod-item">
+          <div class="m-top-prod-header">
+            <span class="m-top-prod-nome">{{ p.nome }}</span>
+            <span class="m-top-prod-valor">R$ {{ '{:,.2f}'.format(p.total).replace(',','X').replace('.',',').replace('X','.') }}</span>
+          </div>
+          <div class="m-top-prod-bar-bg">
+            <div class="m-top-prod-bar"
+                 style="width:{{ (p.total / max_f * 100)|round(1) }}%; background:#0057A8"></div>
+          </div>
+        </div>
+        {% endfor %}
       </div>
+      {% endif %}
       {% endif %}
     </div>
 
@@ -782,44 +892,6 @@ function _mCriarGeneroChart(canvasId, data) {
   });
 }
 
-const _mTopQtdeDia = {{ top_produtos_qtde_dia | tojson }};
-const _mTopFatDia  = {{ top_produtos_fat_dia  | tojson }};
-const _mTopQtdeSem = {{ top_produtos_qtde_sem | tojson }};
-const _mTopFatSem  = {{ top_produtos_fat_sem  | tojson }};
-const _mTopQtdeMes = {{ top_produtos_qtde_mes | tojson }};
-const _mTopFatMes  = {{ top_produtos_fat_mes  | tojson }};
-
-function _mCriarTopProdChart(canvasId, dados, titulo, cor) {
-  const el = document.getElementById(canvasId);
-  if (!el) return;
-  new Chart(el, {
-    type: 'bar',
-    data: {
-      labels: dados.map(d => d.nome),
-      datasets: [{
-        label: titulo,
-        data: dados.map(d => d.total),
-        backgroundColor: cor + 'bb',
-        borderColor: cor,
-        borderWidth: 1,
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        title: { display: true, text: titulo, font: { size: 11 } }
-      },
-      scales: {
-        x: { beginAtZero: true, ticks: { precision: 0, font: { size: 9 } } },
-        y: { ticks: { font: { size: 9 } } }
-      }
-    }
-  });
-}
-
 window.addEventListener('load', () => {
   _mCriarFaixaChart('m-chart-faixa-dia', _mFaixaDia);
   _mCriarFaixaChart('m-chart-faixa-sem', _mFaixaSem);
@@ -827,12 +899,6 @@ window.addEventListener('load', () => {
   _mCriarGeneroChart('m-chart-genero-dia', _mGeneroDia);
   _mCriarGeneroChart('m-chart-genero-sem', _mGeneroSem);
   _mCriarGeneroChart('m-chart-genero-mes', _mGeneroMes);
-  _mCriarTopProdChart('m-chart-top-qtde-dia', _mTopQtdeDia, 'Top 10 Produtos — Quantidade', _mThemeColor);
-  _mCriarTopProdChart('m-chart-top-fat-dia',  _mTopFatDia,  'Top 10 Produtos — Faturamento', '#0057A8');
-  _mCriarTopProdChart('m-chart-top-qtde-sem', _mTopQtdeSem, 'Top 10 Produtos — Quantidade', _mThemeColor);
-  _mCriarTopProdChart('m-chart-top-fat-sem',  _mTopFatSem,  'Top 10 Produtos — Faturamento', '#0057A8');
-  _mCriarTopProdChart('m-chart-top-qtde-mes', _mTopQtdeMes, 'Top 10 Produtos — Quantidade', _mThemeColor);
-  _mCriarTopProdChart('m-chart-top-fat-mes',  _mTopFatMes,  'Top 10 Produtos — Faturamento', '#0057A8');
 });
 </script>
 {% endblock %}
