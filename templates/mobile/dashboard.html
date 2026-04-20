@@ -69,6 +69,14 @@
     </div>
   </header>
 
+  <!-- ── Navegação de páginas ──────────────────────────────────────── -->
+  <nav class="m-page-nav">
+    <a href="{{ url_for('mobile.dashboard') }}"
+       class="m-page-nav-link {% if request.endpoint == 'mobile.dashboard' %}active{% endif %}">Dashboard</a>
+    <a href="{{ url_for('mobile.visitacao') }}"
+       class="m-page-nav-link {% if request.endpoint == 'mobile.visitacao' %}active{% endif %}">Visitação</a>
+  </nav>
+
   <!-- ── Barra de abas (laranja) ────────────────────────────────────── -->
   <div class="m-tabs-bar">
     <div class="m-tabs-l1">

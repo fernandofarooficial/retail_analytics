@@ -19,6 +19,8 @@
         {% endif %}
         <a class="nav-link {% if request.endpoint == 'auth.dashboard' %}active{% endif %}"
            href="{{ url_for('auth.dashboard') }}">Dashboard</a>
+        <a class="nav-link {% if request.endpoint == 'auth.visitacao' %}active{% endif %}"
+           href="{{ url_for('auth.visitacao') }}">Visitação</a>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('conta.') %}active{% endif %}"
            href="{{ url_for('conta.trocar_senha') }}">Trocar Senha</a>
     </div>

@@ -356,7 +356,7 @@ html, body {
   flex-direction: column;
   gap: 0;
   position: sticky;
-  top: 57px;          /* altura do m-header */
+  top: 93px;          /* altura do m-header (57px) + m-page-nav (36px) */
   z-index: 90;
 }
 
@@ -502,4 +502,34 @@ html, body {
   text-decoration: none;
   font-weight: 500;
   margin-bottom: 0.5rem;
+}
+
+/* ── PAGE NAVIGATION (Dashboard / Visitação) ─────────────────────── */
+
+.m-page-nav {
+  display: flex;
+  background: #1E3A5F;
+  padding: 0 1rem;
+  gap: 0.25rem;
+  position: sticky;
+  top: 57px;
+  z-index: 89;
+}
+
+.m-page-nav-link {
+  flex: 1;
+  text-align: center;
+  padding: 0.5rem 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.7);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.m-page-nav-link.active,
+.m-page-nav-link:hover {
+  color: #fff;
+  border-bottom-color: #F47B20;
 }
