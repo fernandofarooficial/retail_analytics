@@ -723,10 +723,58 @@ def dashboard():
             if g in chart_genero_mes:
                 chart_genero_mes[g][int(row['hora'])] = int(row['total'] or 0)
 
+        # ── Top produtos ─────────────────────────────────────────────────────
+        top_produtos_qtde_dia = []
+        top_produtos_fat_dia  = []
+        top_produtos_qtde_sem = []
+        top_produtos_fat_sem  = []
+        top_produtos_qtde_mes = []
+        top_produtos_fat_mes  = []
+
+        _FILTRO_MV = (
+            "m.portal = %s AND m.cnpj_emp = %s "
+            "AND m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S' "
+            "AND m.tipo_transacao = 'V' AND m.cod_natureza_operacao = '10030'"
+        )
+        _JOIN_PROD = (
+            "JOIN microvix.microvix_produtos p "
+            "ON p.portal = m.portal AND p.cod_produto = m.cod_produto"
+        )
+        _NOME_PROD = "COALESCE(NULLIF(TRIM(p.descricao_basica),''), p.nome)"
+
+        if active_microvix_portal and active_store_cnpj:
+            def _top_query(date_filter, order_expr, params):
+                sql = f"""
+                    SELECT {_NOME_PROD} AS produto, {order_expr} AS total
+                    FROM   microvix.microvix_movimento m
+                    {_JOIN_PROD}
+                    WHERE  {_FILTRO_MV} AND {date_filter}
+                    GROUP  BY produto ORDER BY total DESC LIMIT 10
+                """
+                return [{'nome': r['produto'], 'total': round(float(r['total'] or 0), 2)}
+                        for r in db.query_all(sql, params)]
+
+            _p = (active_microvix_portal, active_store_cnpj)
+            _date_dia  = "DATE(m.data_documento) = %s"
+            _date_sem  = "DATE(m.data_documento) BETWEEN %s AND %s"
+
+            top_produtos_qtde_dia = _top_query(_date_dia,  "SUM(m.quantidade)",   _p + (data_str,))
+            top_produtos_fat_dia  = _top_query(_date_dia,  "SUM(m.valor_liquido)", _p + (data_str,))
+            top_produtos_qtde_sem = _top_query(_date_sem,  "SUM(m.quantidade)",   _p + (semana_inicio_str, semana_fim_str))
+            top_produtos_fat_sem  = _top_query(_date_sem,  "SUM(m.valor_liquido)", _p + (semana_inicio_str, semana_fim_str))
+            top_produtos_qtde_mes = _top_query(_date_sem,  "SUM(m.quantidade)",   _p + (mes_inicio_str, mes_fim_str))
+            top_produtos_fat_mes  = _top_query(_date_sem,  "SUM(m.valor_liquido)", _p + (mes_inicio_str, mes_fim_str))
+
     else:
         chart_genero_dia = {'F': [0]*24, 'M': [0]*24}
         chart_genero_sem = {'F': [0]*24, 'M': [0]*24}
         chart_genero_mes = {'F': [0]*24, 'M': [0]*24}
+        top_produtos_qtde_dia = []
+        top_produtos_fat_dia  = []
+        top_produtos_qtde_sem = []
+        top_produtos_fat_sem  = []
+        top_produtos_qtde_mes = []
+        top_produtos_fat_mes  = []
 
     # ── Tema da empresa ──────────────────────────────────────────────────────
     theme = dict(primary_color='#F47B20')
@@ -778,4 +826,10 @@ def dashboard():
         kpi_est=kpi_est,
         kpi_est_sem=kpi_est_sem,
         kpi_est_mes=kpi_est_mes,
+        top_produtos_qtde_dia=top_produtos_qtde_dia,
+        top_produtos_fat_dia=top_produtos_fat_dia,
+        top_produtos_qtde_sem=top_produtos_qtde_sem,
+        top_produtos_fat_sem=top_produtos_fat_sem,
+        top_produtos_qtde_mes=top_produtos_qtde_mes,
+        top_produtos_fat_mes=top_produtos_fat_mes,
     )
