@@ -89,11 +89,30 @@
     color: #9CA3AF;
     font-size: 0.875rem;
   }
+  .m-vis-count-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.6rem;
+  }
   .m-vis-count {
     font-size: 0.78rem;
     color: #6B7280;
-    margin-bottom: 0.5rem;
   }
+  .m-vis-refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--theme-primary);
+    border: none;
+    border-radius: 6px;
+    padding: 0.3rem 0.65rem;
+    cursor: pointer;
+  }
+  .m-vis-refresh-btn:active { opacity: 0.8; }
 </style>
 
 <div class="m-app">
@@ -174,9 +193,16 @@
              onchange="mudarData(this.value)">
     </div>
 
-    {% if clientes %}
-    <p class="m-vis-count">{{ clientes|length }} cliente{{ 's' if clientes|length != 1 else '' }}</p>
-    {% endif %}
+    <div class="m-vis-count-bar">
+      <span class="m-vis-count">
+        {% if clientes %}
+          {{ clientes|length }} cliente{{ 's' if clientes|length != 1 else '' }}
+        {% else %}
+          0 clientes
+        {% endif %}
+      </span>
+      <button class="m-vis-refresh-btn" onclick="window.location.reload()">&#8635; Atualizar</button>
+    </div>
 
     {% if clientes %}
       {% for c in clientes %}
