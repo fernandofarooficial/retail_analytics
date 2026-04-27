@@ -939,7 +939,7 @@ function _criarFaixaChart(canvasId, data) {
                 y2: {
                     beginAtZero: true,
                     position: 'right',
-                    display: hasFat,
+                    display: !!hasFat,
                     grid: { drawOnChartArea: false },
                     ticks: {
                         font: { size: 10 },
@@ -949,7 +949,7 @@ function _criarFaixaChart(canvasId, data) {
                         }
                     }
                 }
-            },
+            }
         }
     });
 }
