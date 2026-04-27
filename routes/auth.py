@@ -794,6 +794,32 @@ def dashboard():
             if g in chart_genero_dia:
                 chart_genero_dia[g][int(row['hora'])] = int(row['total'] or 0)
 
+        # ── Gráfico ocorrências por hora (Novos vs Recorrentes) – Dia ─────────
+        chart_ocorrencias_dia = {'novos': [0]*24, 'recorrentes': [0]*24}
+        for row in db.query_all("""
+            SELECT hora,
+                   SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
+                   SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
+            FROM (
+                SELECT EXTRACT(HOUR FROM MIN(dr.created_at))::int AS hora,
+                       EXISTS (
+                           SELECT 1 FROM faciais.detection_records dr2
+                           WHERE  dr2.person_id = dr.person_id
+                             AND  dr2.store_id  = %s
+                             AND  DATE(dr2.created_at) < %s
+                       ) AS is_rec
+                FROM   faciais.detection_records dr
+                JOIN   faciais.people p ON p.person_id = dr.person_id
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
+                GROUP  BY dr.person_id
+            ) sub
+            GROUP BY hora ORDER BY hora
+        """, (sid, data_str, sid, data_str)):
+            h = int(row['hora'])
+            chart_ocorrencias_dia['recorrentes'][h] = int(row['recorrentes'] or 0)
+            chart_ocorrencias_dia['novos'][h]        = int(row['novos'] or 0)
+
         _GENERO_RANGE_QUERY = """
             SELECT EXTRACT(HOUR FROM min_time)::int AS hora,
                    gender_id, COUNT(*) AS total
@@ -927,6 +953,7 @@ def dashboard():
         chart_genero_dia = {'F': [0]*24, 'M': [0]*24}
         chart_genero_sem = {'F': [0]*24, 'M': [0]*24}
         chart_genero_mes = {'F': [0]*24, 'M': [0]*24}
+        chart_ocorrencias_dia = {'novos': [0]*24, 'recorrentes': [0]*24}
         top_produtos_qtde_dia = []
         top_produtos_fat_dia  = []
         top_produtos_qtde_sem = []
@@ -984,6 +1011,7 @@ def dashboard():
         chart_faixa_sem=chart_faixa_sem,
         chart_faixa_mes=chart_faixa_mes,
         chart_genero_dia=chart_genero_dia,
+        chart_ocorrencias_dia=chart_ocorrencias_dia,
         chart_genero_sem=chart_genero_sem,
         chart_genero_mes=chart_genero_mes,
         kpi_est=kpi_est,

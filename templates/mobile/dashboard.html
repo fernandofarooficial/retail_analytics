@@ -1042,6 +1042,7 @@ function _mCriarFaixaChart(canvasId, data) {
 const _mGeneroDia = {{ chart_genero_dia | tojson }};
 const _mGeneroSem = {{ chart_genero_sem | tojson }};
 const _mGeneroMes = {{ chart_genero_mes | tojson }};
+const _mOcorrenciasDia = {{ chart_ocorrencias_dia | tojson }};
 
 function _mCriarGeneroChart(canvasId, data) {
   const el = document.getElementById(canvasId);
@@ -1078,6 +1079,46 @@ function _mCriarGeneroChart(canvasId, data) {
       scales: {
         x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 0 } },
         y: { beginAtZero: true, ticks: { precision: 0, font: { size: 9 } } }
+      }
+    }
+  });
+}
+
+function _mCriarOcorrenciasChart(canvasId, data) {
+  const el = document.getElementById(canvasId);
+  if (!el) return;
+  new Chart(el, {
+    type: 'bar',
+    data: {
+      labels: _mHorasLabels,
+      datasets: [
+        {
+          label: 'Recorrentes',
+          data: data.recorrentes.slice(8, 20),
+          backgroundColor: 'rgba(25,118,210,0.75)',
+          borderColor: '#1976D2',
+          borderWidth: 1,
+        },
+        {
+          label: 'Novos',
+          data: data.novos.slice(8, 20),
+          backgroundColor: 'rgba(56,142,60,0.75)',
+          borderColor: '#388E3C',
+          borderWidth: 1,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } },
+        title: { display: true, text: 'Ocorrências por hora (Clientes)', font: { size: 11 } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 0 }, stacked: true },
+        y: { beginAtZero: true, stacked: true, ticks: { precision: 0, font: { size: 9 } } }
       }
     }
   });
@@ -1181,7 +1222,7 @@ window.addEventListener('load', () => {
   _mCriarFaixaChart('m-chart-faixa-dia', _mFaixaDia);
   _mCriarFaixaChart('m-chart-faixa-sem', _mFaixaSem);
   _mCriarFaixaChart('m-chart-faixa-mes', _mFaixaMes);
-  _mCriarGeneroChart('m-chart-genero-dia', _mGeneroDia);
+  _mCriarOcorrenciasChart('m-chart-genero-dia', _mOcorrenciasDia);
   _mCriarGeneroChart('m-chart-genero-sem', _mGeneroSem);
   _mCriarGeneroChart('m-chart-genero-mes', _mGeneroMes);
   // Estratégico
