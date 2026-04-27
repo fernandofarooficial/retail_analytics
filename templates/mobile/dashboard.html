@@ -277,7 +277,7 @@
           <div class="kpi5-body">
             <div class="kpi5-title">Conversão</div>
             <div class="kpi5-value">
-              {% if kpi.conversao is not none %}{{ kpi.conversao|string|replace('.', ',') }}%
+              {% if kpi.conversao is not none %}{{ kpi.conversao }}%
               {% else %}<span class="kpi5-na">—</span>{% endif %}
             </div>
           </div>
