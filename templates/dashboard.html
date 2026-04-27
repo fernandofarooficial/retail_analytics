@@ -3,7 +3,10 @@
 
 {% block content %}
 <style>
-  :root { --theme-primary: {{ theme.primary_color }}; }
+  :root {
+    --theme-primary: {{ theme.primary_color }};
+    --theme-text:    {{ theme.text_color }};
+  }
   .charts-row {
     display: flex; gap: 1rem; margin-top: 1.5rem;
   }
@@ -49,7 +52,7 @@
   .kpi5-title {
     font-size: 0.67rem;
     font-weight: 700;
-    color: #1E3A5F;
+    color: var(--theme-text);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     line-height: 1.25;
@@ -58,7 +61,7 @@
   .kpi5-value {
     font-size: 1.5rem;
     font-weight: 800;
-    color: #111827;
+    color: var(--theme-text);
     line-height: 1.05;
   }
   .kpi5-value-sm { font-size: 1.05rem; }
@@ -84,9 +87,9 @@
     font-weight: 700;
     z-index: 1;
   }
-  .kpi5-delta-up   { color: #d1fae5; }
-  .kpi5-delta-down { color: #fee2e2; }
-  .kpi5-delta-flat { color: rgba(255,255,255,.75); }
+  .kpi5-delta-up   { color: #ffffff; }
+  .kpi5-delta-down { color: #ffffff; }
+  .kpi5-delta-flat { color: rgba(255,255,255,.9); }
   .kpi5-gauge-svg {
     position: absolute;
     bottom: 2px; left: 50%;
