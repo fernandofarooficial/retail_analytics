@@ -952,6 +952,7 @@ const _mFaixaMes    = {{ chart_faixa_mes | tojson }};
 function _mCriarFaixaChart(canvasId, data) {
   const el = document.getElementById(canvasId);
   if (!el) return;
+  const hasFat = data.faturamento && data.faturamento.some(v => v > 0);
   new Chart(el, {
     data: {
       labels: _mHorasLabels,
@@ -963,18 +964,34 @@ function _mCriarFaixaChart(canvasId, data) {
           backgroundColor: _mThemeColor + 'bb',
           borderColor: _mThemeColor,
           borderWidth: 1,
-          order: 2,
+          yAxisID: 'y',
+          order: 3,
         },
         {
           type: 'line',
-          label: 'Vendas',
+          label: 'Notas Emitidas',
           data: data.vendas.slice(8, 20),
           borderColor: '#0057A8',
           backgroundColor: 'transparent',
           borderWidth: 2,
           pointRadius: 2,
           tension: 0.3,
+          yAxisID: 'y',
+          order: 2,
+        },
+        {
+          type: 'line',
+          label: 'Valor Faturado',
+          data: (data.faturamento || []).slice(8, 20),
+          borderColor: '#E65100',
+          backgroundColor: 'rgba(230,81,0,0.07)',
+          borderWidth: 2,
+          pointRadius: 2,
+          tension: 0.3,
+          yAxisID: 'y2',
           order: 1,
+          fill: true,
+          hidden: !hasFat,
         }
       ]
     },
@@ -984,13 +1001,38 @@ function _mCriarFaixaChart(canvasId, data) {
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } },
-        title: { display: true, text: 'Faixa de horário', font: { size: 11 } }
+        title: { display: true, text: 'Faturamento do Dia - Valor e Notas Emitidas', font: { size: 11 } },
+        tooltip: {
+          callbacks: {
+            label(ctx) {
+              if (ctx.dataset.label === 'Valor Faturado') {
+                const v = ctx.parsed.y || 0;
+                return ' R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+              }
+              return ' ' + ctx.dataset.label + ': ' + (ctx.parsed.y || 0);
+            }
+          }
+        }
       },
       scales: {
         x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 0 } },
         y: {
           beginAtZero: true,
+          position: 'left',
           ticks: { precision: 0, font: { size: 9 } }
+        },
+        y2: {
+          beginAtZero: true,
+          position: 'right',
+          display: hasFat,
+          grid: { drawOnChartArea: false },
+          ticks: {
+            font: { size: 9 },
+            callback(v) {
+              if (v >= 1000) return 'R$' + (v/1000).toFixed(1) + 'k';
+              return 'R$' + v.toFixed(0);
+            }
+          }
         }
       }
     }

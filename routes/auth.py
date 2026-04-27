@@ -674,7 +674,7 @@ def dashboard():
         }
 
     # ── Gráfico faixa horária – Operacional ──────────────────────────────────
-    chart_faixa_dia = {'clientes': [0]*24, 'vendas': [0]*24}
+    chart_faixa_dia = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
     chart_faixa_sem = {'clientes': [0]*24, 'vendas': [0]*24}
     chart_faixa_mes = {'clientes': [0]*24, 'vendas': [0]*24}
 
@@ -698,7 +698,8 @@ def dashboard():
         if active_microvix_portal and active_store_cnpj:
             rows = db.query_all("""
                 SELECT SPLIT_PART(hora_lancamento, ':', 1)::int AS hora,
-                       COUNT(DISTINCT documento) AS vendas
+                       COUNT(DISTINCT documento)  AS vendas,
+                       SUM(valor_liquido)         AS faturamento
                 FROM   microvix.microvix_movimento
                 WHERE  portal = %s AND cnpj_emp = %s AND DATE(data_documento) = %s
                   AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
@@ -707,7 +708,8 @@ def dashboard():
                 GROUP  BY hora ORDER BY hora
             """, (active_microvix_portal, active_store_cnpj, data_str))
             for row in rows:
-                chart_faixa_dia['vendas'][int(row['hora'])] = int(row['vendas'] or 0)
+                chart_faixa_dia['vendas'][int(row['hora'])]       = int(row['vendas'] or 0)
+                chart_faixa_dia['faturamento'][int(row['hora'])]  = float(row['faturamento'] or 0)
 
         rows = db.query_all("""
             SELECT EXTRACT(HOUR FROM min_time)::int AS hora, COUNT(*) AS clientes
