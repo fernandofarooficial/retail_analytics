@@ -385,9 +385,9 @@ def dashboard():
             kpi['vendas'] = None
 
         if kpi['visitantes']:
-            kpi['conversao'] = round((kpi['vendas'] or 0) / kpi['visitantes'] * 100, 1)
+            kpi['conversao'] = round((kpi['vendas'] or 0) / kpi['visitantes'] * 100, 0)
         else:
-            kpi['conversao'] = 0.0
+            kpi['conversao'] = 0
 
         r = db.query_one("""
             SELECT ROUND(AVG(perm)::numeric) AS avg_seg
@@ -482,9 +482,9 @@ def dashboard():
             kpi_sem['vendas'] = None
 
         if kpi_sem['visitantes']:
-            kpi_sem['conversao'] = round((kpi_sem['vendas'] or 0) / kpi_sem['visitantes'] * 100, 1)
+            kpi_sem['conversao'] = round((kpi_sem['vendas'] or 0) / kpi_sem['visitantes'] * 100, 0)
         else:
-            kpi_sem['conversao'] = 0.0
+            kpi_sem['conversao'] = 0
 
         # ── Comercial – Semana ────────────────────────────────────────────────
         if active_microvix_portal and active_store_cnpj:
@@ -560,9 +560,9 @@ def dashboard():
             kpi_mes['vendas'] = None
 
         if kpi_mes['visitantes']:
-            kpi_mes['conversao'] = round((kpi_mes['vendas'] or 0) / kpi_mes['visitantes'] * 100, 1)
+            kpi_mes['conversao'] = round((kpi_mes['vendas'] or 0) / kpi_mes['visitantes'] * 100, 0)
         else:
-            kpi_mes['conversao'] = 0.0
+            kpi_mes['conversao'] = 0
 
         # ── Comercial – Mês ───────────────────────────────────────────────────
         if active_microvix_portal and active_store_cnpj:
