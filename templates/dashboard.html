@@ -24,6 +24,74 @@
   }
   .kpi-nav-btn:hover { background: #F9FAFB; color: #374151; }
   .kpi-period-label { font-size: 0.9375rem; font-weight: 600; color: #374151; }
+
+  /* ── 5 cards Operacional/Dia ──────────────────────────────────────────── */
+  .kpi5-row {
+    display: flex;
+    gap: 0.625rem;
+    margin-top: 1rem;
+  }
+  .kpi5-card {
+    flex: 1;
+    min-width: 0;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.09);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .kpi5-body {
+    padding: 0.6rem 0.7rem 0.35rem;
+    flex: 1;
+  }
+  .kpi5-title {
+    font-size: 0.67rem;
+    font-weight: 700;
+    color: #1E3A5F;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.25;
+    margin-bottom: 0.3rem;
+  }
+  .kpi5-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #111827;
+    line-height: 1.05;
+  }
+  .kpi5-value-sm { font-size: 1.05rem; }
+  .kpi5-na { color: #9CA3AF; font-weight: 400; }
+  .kpi5-footer {
+    position: relative;
+    height: 44px;
+    flex-shrink: 0;
+  }
+  .kpi5-wave-svg {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+  .kpi5-wave-svg path { fill: #2BB5A0; }
+  .kpi5-delta-wrap {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    z-index: 1;
+  }
+  .kpi5-delta-up   { color: #d1fae5; }
+  .kpi5-delta-down { color: #fee2e2; }
+  .kpi5-delta-flat { color: rgba(255,255,255,.75); }
+  .kpi5-gauge-svg {
+    position: absolute;
+    bottom: 2px; left: 50%;
+    transform: translateX(-50%);
+    width: 86px; height: 54px;
+  }
 </style>
 <div class="page-header">
     <h1>Dashboard</h1>
@@ -97,50 +165,121 @@
             <span class="kpi-store-label">{{ active_store.store_name }}</span>
         </div>
 
-        <div class="kpi-grid">
+        {# macro: seta de comparação com dia útil anterior #}
+        {% macro delta(atual, anterior) %}
+          {% if atual is not none and anterior is not none and anterior|float > 0 %}
+            {% set pct = (((atual|float - anterior|float) / anterior|float) * 100)|round(1) %}
+            {% if pct > 0 %}<span class="kpi5-delta-up">▲ +{{ '{:.1f}'.format(pct).replace('.', ',') }}%</span>
+            {% elif pct < 0 %}<span class="kpi5-delta-down">▼ {{ '{:.1f}'.format(pct).replace('.', ',') }}%</span>
+            {% else %}<span class="kpi5-delta-flat">= 0%</span>{% endif %}
+          {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
+        {% endmacro %}
 
-            <div class="kpi-card">
-                <span class="kpi-label">Visitantes</span>
-                <span class="kpi-value">
-                    {% if kpi.visitantes is not none %}
-                        {{ '{:,.0f}'.format(kpi.visitantes).replace(',', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">clientes únicos no dia</span>
-            </div>
+        <div class="kpi5-row">
 
-            <div class="kpi-card">
-                <span class="kpi-label">Recorrentes</span>
-                <span class="kpi-value">
-                    {% if kpi.recorrentes is not none %}
-                        {{ '{:,.0f}'.format(kpi.recorrentes).replace(',', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">já visitaram antes</span>
+          <!-- Clientes Novos -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Clientes<br>Novos</div>
+              <div class="kpi5-value">
+                {% if kpi_est.novos is not none %}
+                  {{ '{:,.0f}'.format(kpi_est.novos).replace(',', '.') }}
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
             </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta(kpi_est.novos, kpi_ant.novos) }}</div>
+            </div>
+          </div>
 
-            <div class="kpi-card">
-                <span class="kpi-label">Vendas</span>
-                <span class="kpi-value">
-                    {% if kpi.vendas is not none %}
-                        {{ '{:,.0f}'.format(kpi.vendas).replace(',', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">
-                    {% if kpi.vendas is none %}portal Microvix não configurado
-                    {% else %}notas fiscais emitidas{% endif %}
-                </span>
+          <!-- Clientes Recorrentes -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Clientes<br>Recorrentes</div>
+              <div class="kpi5-value">
+                {% if kpi.recorrentes is not none %}
+                  {{ '{:,.0f}'.format(kpi.recorrentes).replace(',', '.') }}
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
             </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta(kpi.recorrentes, kpi_ant.recorrentes) }}</div>
+            </div>
+          </div>
 
-            <div class="kpi-card">
-                <span class="kpi-label">Conversão</span>
-                <span class="kpi-value">
-                    {% if kpi.conversao is not none %}
-                        {{ kpi.conversao|string|replace('.', ',') }}%
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">vendas ÷ visitantes</span>
+          <!-- Vendas -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Vendas</div>
+              <div class="kpi5-value">
+                {% if kpi.vendas is not none %}
+                  {{ '{:,.0f}'.format(kpi.vendas).replace(',', '.') }}
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
             </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta(kpi.vendas, kpi_ant.vendas) }}</div>
+            </div>
+          </div>
+
+          <!-- Conversão -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Conversão</div>
+              <div class="kpi5-value">
+                {% if kpi.conversao is not none %}
+                  {{ kpi.conversao|string|replace('.', ',') }}%
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
+            </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta(kpi.conversao, kpi_ant.conversao) }}</div>
+            </div>
+          </div>
+
+          <!-- Tempo na Loja -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Tempo na Loja</div>
+              <div class="kpi5-value kpi5-value-sm">
+                {% if kpi.tempo_loja is not none %}
+                  {% set m = (kpi.tempo_loja // 60)|int %}
+                  {% if m < 1 %}< 1 min
+                  {% elif m < 60 %}{{ m }} min
+                  {% else %}{{ m // 60 }}h {{ '{:02d}'.format(m % 60) }}min{% endif %}
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
+            </div>
+            <div class="kpi5-footer">
+              {% if kpi_tempo_gauge %}
+              <svg viewBox="0 0 100 62" class="kpi5-gauge-svg">
+                <path d="M 12,58 A 38,38 0 0,1 88,58" fill="none" stroke="#E5E7EB" stroke-width="9" stroke-linecap="round"/>
+                <path d="M 12,58 A 38,38 0 0,1 50,20" fill="none" stroke="#34d399" stroke-width="9" stroke-linecap="round"/>
+                <path d="M 50,20 A 38,38 0 0,1 88,58" fill="none" stroke="#fbbf24" stroke-width="9" stroke-linecap="round"/>
+                <line x1="50" y1="58" x2="{{ kpi_tempo_gauge.x }}" y2="{{ kpi_tempo_gauge.y }}"
+                      stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
+                <circle cx="50" cy="58" r="4" fill="#1f2937"/>
+              </svg>
+              {% else %}
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta(kpi.tempo_loja, kpi_ant.tempo_loja) }}</div>
+              {% endif %}
+            </div>
+          </div>
 
         </div>
 

@@ -1,4 +1,5 @@
 import calendar
+import math
 from datetime import date as date_type, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, session
 from werkzeug.security import check_password_hash
@@ -6,6 +7,13 @@ from routes.utils import login_required, screen_required
 import db
 
 auth_bp = Blueprint('auth', __name__)
+
+
+def _prev_business_day(d):
+    prev = d - timedelta(days=1)
+    while prev.weekday() >= 5:
+        prev -= timedelta(days=1)
+    return prev
 
 
 def _is_mobile():
@@ -296,7 +304,7 @@ def dashboard():
     mes_label    = f"{_MESES[selected_date.month - 1]} {selected_date.year}"
 
     # ── KPIs Operacional – Dia ────────────────────────────────────────────────
-    kpi = dict(visitantes=None, recorrentes=None, vendas=None, conversao=None)
+    kpi = dict(visitantes=None, recorrentes=None, vendas=None, conversao=None, tempo_loja=None)
 
     # ── KPIs Comercial – Dia ──────────────────────────────────────────────────
     kpi_com = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
@@ -362,6 +370,20 @@ def dashboard():
             kpi['conversao'] = round((kpi['vendas'] or 0) / kpi['visitantes'] * 100, 1)
         else:
             kpi['conversao'] = 0.0
+
+        r = db.query_one("""
+            SELECT ROUND(AVG(perm)::numeric) AS avg_seg
+            FROM (
+                SELECT EXTRACT(EPOCH FROM MAX(dr.created_at) - MIN(dr.created_at))::int AS perm
+                FROM   faciais.detection_records dr
+                JOIN   faciais.people p ON p.person_id = dr.person_id
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
+                GROUP  BY dr.person_id
+                HAVING MAX(dr.created_at) > MIN(dr.created_at)
+            ) sub
+        """, (sid, data_str))
+        kpi['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
 
         # ── Comercial – Dia ───────────────────────────────────────────────────
         if active_microvix_portal and active_store_cnpj:
@@ -578,6 +600,78 @@ def dashboard():
             fat = kpi_com_mes['faturamento'] or 0
             kpi_est_mes['ticket_novo'] = round(fat / kpi_est_mes['novos'], 2) if kpi_est_mes['novos'] else 0.0
             kpi_est_mes['ticket_rec']  = round(fat / kpi_est_mes['recorrentes'], 2) if kpi_est_mes['recorrentes'] else 0.0
+
+    # ── KPIs dia útil anterior (comparação) ──────────────────────────────────
+    kpi_ant = dict(visitantes=None, recorrentes=None, novos=None,
+                   vendas=None, conversao=None, tempo_loja=None)
+    if active_store:
+        _prev = _prev_business_day(selected_date)
+        _ps   = _prev.strftime('%Y-%m-%d')
+        sid   = active_store['store_id']
+
+        r = db.query_one("""
+            SELECT COUNT(DISTINCT dr.person_id) AS total
+            FROM   faciais.detection_records dr
+            JOIN   faciais.people p ON p.person_id = dr.person_id
+            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+              AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
+        """, (sid, _ps))
+        kpi_ant['visitantes'] = r['total'] if r else 0
+
+        r = db.query_one("""
+            SELECT COUNT(DISTINCT dr.person_id) AS total
+            FROM   faciais.detection_records dr
+            JOIN   faciais.people p ON p.person_id = dr.person_id
+            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+              AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
+              AND  EXISTS (
+                  SELECT 1 FROM faciais.detection_records dr2
+                  WHERE  dr2.person_id = dr.person_id AND dr2.store_id = %s
+                    AND  DATE(dr2.created_at) < %s
+              )
+        """, (sid, _ps, sid, _ps))
+        kpi_ant['recorrentes'] = r['total'] if r else 0
+        kpi_ant['novos'] = kpi_ant['visitantes'] - kpi_ant['recorrentes']
+
+        if active_microvix_portal and active_store_cnpj:
+            r = db.query_one("""
+                SELECT COUNT(DISTINCT documento) AS total
+                FROM   microvix.microvix_movimento
+                WHERE  portal = %s AND cnpj_emp = %s AND DATE(data_documento) = %s
+                  AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
+                  AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
+            """, (active_microvix_portal, active_store_cnpj, _ps))
+            kpi_ant['vendas'] = r['total'] if r else 0
+
+        if kpi_ant['visitantes']:
+            kpi_ant['conversao'] = round((kpi_ant['vendas'] or 0) / kpi_ant['visitantes'] * 100, 1)
+        else:
+            kpi_ant['conversao'] = 0.0
+
+        r = db.query_one("""
+            SELECT ROUND(AVG(perm)::numeric) AS avg_seg
+            FROM (
+                SELECT EXTRACT(EPOCH FROM MAX(dr.created_at) - MIN(dr.created_at))::int AS perm
+                FROM   faciais.detection_records dr
+                JOIN   faciais.people p ON p.person_id = dr.person_id
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
+                GROUP  BY dr.person_id
+                HAVING MAX(dr.created_at) > MIN(dr.created_at)
+            ) sub
+        """, (sid, _ps))
+        kpi_ant['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
+
+    # ── Gauge do Tempo na Loja (agulha SVG) ──────────────────────────────────
+    kpi_tempo_gauge = None
+    if kpi['tempo_loja'] is not None and kpi['tempo_loja'] > 0:
+        max_seg   = 1800  # referência: 30 minutos
+        pct       = min(kpi['tempo_loja'] / max_seg, 1.0)
+        angle_rad = math.radians(180 - pct * 180)
+        kpi_tempo_gauge = {
+            'x': round(50 + 36 * math.cos(angle_rad), 1),
+            'y': round(58 - 36 * math.sin(angle_rad), 1),
+        }
 
     # ── Gráfico faixa horária – Operacional ──────────────────────────────────
     chart_faixa_dia = {'clientes': [0]*24, 'vendas': [0]*24}
@@ -900,6 +994,8 @@ def dashboard():
         chart_freq_retorno_dia=chart_freq_retorno_dia,
         chart_freq_retorno_sem=chart_freq_retorno_sem,
         chart_freq_retorno_mes=chart_freq_retorno_mes,
+        kpi_ant=kpi_ant,
+        kpi_tempo_gauge=kpi_tempo_gauge,
     )
 
 
