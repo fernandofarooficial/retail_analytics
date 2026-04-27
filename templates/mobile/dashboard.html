@@ -212,9 +212,9 @@
       {# macro: seta de comparação com dia útil anterior #}
       {% macro delta(atual, anterior) %}
         {% if atual is not none and anterior is not none and anterior|float > 0 %}
-          {% set pct = (((atual|float - anterior|float) / anterior|float) * 100)|round(1) %}
-          {% if pct > 0 %}<span class="kpi5-delta-up">▲ +{{ '{:.1f}'.format(pct).replace('.', ',') }}%</span>
-          {% elif pct < 0 %}<span class="kpi5-delta-down">▼ {{ '{:.1f}'.format(pct).replace('.', ',') }}%</span>
+          {% set pct = (((atual|float - anterior|float) / anterior|float) * 100)|round(0)|int %}
+          {% if pct > 0 %}<span class="kpi5-delta-up">▲ +{{ pct }}%</span>
+          {% elif pct < 0 %}<span class="kpi5-delta-down">▼ {{ pct }}%</span>
           {% else %}<span class="kpi5-delta-flat">= 0%</span>{% endif %}
         {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
       {% endmacro %}
