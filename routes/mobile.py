@@ -662,9 +662,9 @@ def dashboard():
             kpi_ant['vendas'] = r['total'] if r else 0
 
         if kpi_ant['visitantes']:
-            kpi_ant['conversao'] = round((kpi_ant['vendas'] or 0) / kpi_ant['visitantes'] * 100, 1)
+            kpi_ant['conversao'] = round((kpi_ant['vendas'] or 0) / kpi_ant['visitantes'] * 100, 0)
         else:
-            kpi_ant['conversao'] = 0.0
+            kpi_ant['conversao'] = 0
 
         r = db.query_one("""
             SELECT ROUND(AVG(perm)::numeric) AS avg_seg
