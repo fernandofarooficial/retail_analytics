@@ -956,6 +956,40 @@ function _mCriarFaixaChart(canvasId, data) {
   const el = document.getElementById(canvasId);
   if (!el) return;
   const hasFat = data.faturamento && data.faturamento.some(v => v > 0);
+  const _mFaixaLabels = {
+    id: 'mFaixaLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      chart.data.datasets.forEach((ds, di) => {
+        const meta = chart.getDatasetMeta(di);
+        if (meta.hidden) return;
+        meta.data.forEach((el, i) => {
+          const val = ds.data[i];
+          if (!val || val <= 0) return;
+          ctx.save();
+          ctx.textAlign = 'center';
+          if (ds.type === 'bar') {
+            ctx.font = 'bold 8px sans-serif';
+            ctx.fillStyle = '#374151';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(val, el.x, el.y - 2);
+          } else if (ds.label === 'Valor Faturado') {
+            ctx.font = 'bold 8px sans-serif';
+            ctx.fillStyle = '#E65100';
+            ctx.textBaseline = 'bottom';
+            const txt = val >= 1000 ? 'R$' + (val/1000).toFixed(1) + 'k' : 'R$' + Math.round(val);
+            ctx.fillText(txt, el.x, el.y - 4);
+          } else {
+            ctx.font = 'bold 8px sans-serif';
+            ctx.fillStyle = '#0057A8';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(val, el.x, el.y - 4);
+          }
+          ctx.restore();
+        });
+      });
+    }
+  };
   new Chart(el, {
     data: {
       labels: _mHorasLabels,
@@ -1037,8 +1071,10 @@ function _mCriarFaixaChart(canvasId, data) {
             }
           }
         }
-      }
-    }
+      },
+      layout: { padding: { top: 14 } }
+    },
+    plugins: [_mFaixaLabels]
   });
 }
 
@@ -1090,6 +1126,27 @@ function _mCriarGeneroChart(canvasId, data) {
 function _mCriarOcorrenciasChart(canvasId, data) {
   const el = document.getElementById(canvasId);
   if (!el) return;
+  const _mOcorrenciasLabels = {
+    id: 'mOcorrenciasLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      chart.data.datasets.forEach((ds, di) => {
+        chart.getDatasetMeta(di).data.forEach((el, i) => {
+          const val = ds.data[i];
+          if (!val || val <= 0) return;
+          const segH = Math.abs(el.base - el.y);
+          if (segH < 14) return;
+          ctx.save();
+          ctx.font = 'bold 8px sans-serif';
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(val, el.x, (el.y + el.base) / 2);
+          ctx.restore();
+        });
+      });
+    }
+  };
   new Chart(el, {
     type: 'bar',
     data: {
@@ -1123,7 +1180,8 @@ function _mCriarOcorrenciasChart(canvasId, data) {
         x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 0 }, stacked: true },
         y: { beginAtZero: true, stacked: true, ticks: { precision: 0, font: { size: 9 } } }
       }
-    }
+    },
+    plugins: [_mOcorrenciasLabels]
   });
 }
 
