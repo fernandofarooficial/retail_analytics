@@ -439,6 +439,17 @@
       {% if not active_store %}
       <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
       {% else %}
+
+      {# macro: seta de comparação com semana anterior #}
+      {% macro delta_sem(atual, anterior) %}
+        {% if atual is not none and anterior is not none and anterior|float > 0 %}
+          {% set pct = (((atual|float - anterior|float) / anterior|float) * 100)|round(0)|int %}
+          {% if pct > 0 %}<span class="kpi5-delta-up">▲ +{{ pct }}%</span>
+          {% elif pct < 0 %}<span class="kpi5-delta-down">▼ {{ pct }}%</span>
+          {% else %}<span class="kpi5-delta-flat">= 0%</span>{% endif %}
+        {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
+      {% endmacro %}
+
       <div class="m-date-row">
         <div class="m-nav-row">
           <button class="m-nav-btn" onclick="mudarData('{{ semana_anterior_str }}')">&#8249;</button>
@@ -446,46 +457,119 @@
           <button class="m-nav-btn" onclick="mudarData('{{ semana_proxima_str }}')">&#8250;</button>
         </div>
       </div>
-      <div class="m-kpi-grid">
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Visitantes</span>
-          <span class="m-kpi-value">
-            {% if kpi_sem.visitantes is not none %}
-              {{ '{:,.0f}'.format(kpi_sem.visitantes).replace(',', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
+
+      <div class="kpi5-row">
+
+        <!-- Clientes Novos -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Clientes Novos</div>
+            <div class="kpi5-value">
+              {% if kpi_est_sem.novos is not none %}{{ '{:,.0f}'.format(kpi_est_sem.novos).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_sem(kpi_est_sem.novos, kpi_ant_sem.novos) }}</div>
+          </div>
         </div>
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Recorrentes</span>
-          <span class="m-kpi-value">
-            {% if kpi_sem.recorrentes is not none %}
-              {{ '{:,.0f}'.format(kpi_sem.recorrentes).replace(',', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
+
+        <!-- Clientes Recorrentes -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Clientes Recorrentes</div>
+            <div class="kpi5-value">
+              {% if kpi_sem.recorrentes is not none %}{{ '{:,.0f}'.format(kpi_sem.recorrentes).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_sem(kpi_sem.recorrentes, kpi_ant_sem.recorrentes) }}</div>
+          </div>
         </div>
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Vendas</span>
-          <span class="m-kpi-value">
-            {% if kpi_sem.vendas is not none %}
-              {{ '{:,.0f}'.format(kpi_sem.vendas).replace(',', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
+
+        <!-- Vendas -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Vendas</div>
+            <div class="kpi5-value">
+              {% if kpi_sem.vendas is not none %}{{ '{:,.0f}'.format(kpi_sem.vendas).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_sem(kpi_sem.vendas, kpi_ant_sem.vendas) }}</div>
+          </div>
         </div>
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Conversão</span>
-          <span class="m-kpi-value">
-            {% if kpi_sem.conversao is not none %}
-              {{ '{:.0f}'.format(kpi_sem.conversao) }}%
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
+
+        <!-- Conversão -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Conversão</div>
+            <div class="kpi5-value">
+              {% if kpi_sem.conversao is not none %}{{ kpi_sem.conversao }}%
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_sem(kpi_sem.conversao, kpi_ant_sem.conversao) }}</div>
+          </div>
         </div>
+
+        <!-- Tempo na Loja -->
+        <div class="kpi5-card kpi5-card-full">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Tempo na Loja</div>
+            <div class="kpi5-value kpi5-value-sm">
+              {% if kpi_sem.tempo_loja is not none %}
+                {% set m = (kpi_sem.tempo_loja // 60)|int %}
+                {% if m < 1 %}< 1 min
+                {% elif m < 60 %}{{ m }} min
+                {% else %}{{ m // 60 }}h {{ '{:02d}'.format(m % 60) }}min{% endif %}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            {% if kpi_tempo_gauge_sem %}
+            <svg viewBox="0 0 100 62" class="kpi5-gauge-svg">
+              <path d="M 12,58 A 38,38 0 0,1 88,58" fill="none" stroke="#E5E7EB" stroke-width="9" stroke-linecap="round"/>
+              <path d="M 12,58 A 38,38 0 0,1 50,20" fill="none" stroke="#34d399" stroke-width="9" stroke-linecap="round"/>
+              <path d="M 50,20 A 38,38 0 0,1 88,58" fill="none" stroke="#fbbf24" stroke-width="9" stroke-linecap="round"/>
+              <line x1="50" y1="58" x2="{{ kpi_tempo_gauge_sem.x }}" y2="{{ kpi_tempo_gauge_sem.y }}"
+                    stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="50" cy="58" r="4" fill="#1f2937"/>
+            </svg>
+            {% else %}
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_sem(kpi_sem.tempo_loja, kpi_ant_sem.tempo_loja) }}</div>
+            {% endif %}
+          </div>
+        </div>
+
       </div>
 
       <div class="m-chart-faixa-wrap">
         <canvas id="m-chart-faixa-sem"></canvas>
       </div>
       <div class="m-chart-faixa-wrap">
-        <canvas id="m-chart-genero-sem"></canvas>
+        <canvas id="m-chart-ocorrencias-sem"></canvas>
+      </div>
+      <div class="m-chart-faixa-wrap">
+        <canvas id="m-chart-conversao-sem"></canvas>
       </div>
       {% endif %}
     </div>
@@ -495,6 +579,17 @@
       {% if not active_store %}
       <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
       {% else %}
+
+      {# macro: seta de comparação com mês anterior #}
+      {% macro delta_mes(atual, anterior) %}
+        {% if atual is not none and anterior is not none and anterior|float > 0 %}
+          {% set pct = (((atual|float - anterior|float) / anterior|float) * 100)|round(0)|int %}
+          {% if pct > 0 %}<span class="kpi5-delta-up">▲ +{{ pct }}%</span>
+          {% elif pct < 0 %}<span class="kpi5-delta-down">▼ {{ pct }}%</span>
+          {% else %}<span class="kpi5-delta-flat">= 0%</span>{% endif %}
+        {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
+      {% endmacro %}
+
       <div class="m-date-row">
         <div class="m-nav-row">
           <button class="m-nav-btn" onclick="mudarData('{{ mes_anterior_str }}')">&#8249;</button>
@@ -502,46 +597,119 @@
           <button class="m-nav-btn" onclick="mudarData('{{ mes_proximo_str }}')">&#8250;</button>
         </div>
       </div>
-      <div class="m-kpi-grid">
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Visitantes</span>
-          <span class="m-kpi-value">
-            {% if kpi_mes.visitantes is not none %}
-              {{ '{:,.0f}'.format(kpi_mes.visitantes).replace(',', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
+
+      <div class="kpi5-row">
+
+        <!-- Clientes Novos -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Clientes Novos</div>
+            <div class="kpi5-value">
+              {% if kpi_est_mes.novos is not none %}{{ '{:,.0f}'.format(kpi_est_mes.novos).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_mes(kpi_est_mes.novos, kpi_ant_mes.novos) }}</div>
+          </div>
         </div>
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Recorrentes</span>
-          <span class="m-kpi-value">
-            {% if kpi_mes.recorrentes is not none %}
-              {{ '{:,.0f}'.format(kpi_mes.recorrentes).replace(',', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
+
+        <!-- Clientes Recorrentes -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Clientes Recorrentes</div>
+            <div class="kpi5-value">
+              {% if kpi_mes.recorrentes is not none %}{{ '{:,.0f}'.format(kpi_mes.recorrentes).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_mes(kpi_mes.recorrentes, kpi_ant_mes.recorrentes) }}</div>
+          </div>
         </div>
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Vendas</span>
-          <span class="m-kpi-value">
-            {% if kpi_mes.vendas is not none %}
-              {{ '{:,.0f}'.format(kpi_mes.vendas).replace(',', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
+
+        <!-- Vendas -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Vendas</div>
+            <div class="kpi5-value">
+              {% if kpi_mes.vendas is not none %}{{ '{:,.0f}'.format(kpi_mes.vendas).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_mes(kpi_mes.vendas, kpi_ant_mes.vendas) }}</div>
+          </div>
         </div>
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Conversão</span>
-          <span class="m-kpi-value">
-            {% if kpi_mes.conversao is not none %}
-              {{ '{:.0f}'.format(kpi_mes.conversao) }}%
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
+
+        <!-- Conversão -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Conversão</div>
+            <div class="kpi5-value">
+              {% if kpi_mes.conversao is not none %}{{ kpi_mes.conversao }}%
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_mes(kpi_mes.conversao, kpi_ant_mes.conversao) }}</div>
+          </div>
         </div>
+
+        <!-- Tempo na Loja -->
+        <div class="kpi5-card kpi5-card-full">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Tempo na Loja</div>
+            <div class="kpi5-value kpi5-value-sm">
+              {% if kpi_mes.tempo_loja is not none %}
+                {% set m = (kpi_mes.tempo_loja // 60)|int %}
+                {% if m < 1 %}< 1 min
+                {% elif m < 60 %}{{ m }} min
+                {% else %}{{ m // 60 }}h {{ '{:02d}'.format(m % 60) }}min{% endif %}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            {% if kpi_tempo_gauge_mes %}
+            <svg viewBox="0 0 100 62" class="kpi5-gauge-svg">
+              <path d="M 12,58 A 38,38 0 0,1 88,58" fill="none" stroke="#E5E7EB" stroke-width="9" stroke-linecap="round"/>
+              <path d="M 12,58 A 38,38 0 0,1 50,20" fill="none" stroke="#34d399" stroke-width="9" stroke-linecap="round"/>
+              <path d="M 50,20 A 38,38 0 0,1 88,58" fill="none" stroke="#fbbf24" stroke-width="9" stroke-linecap="round"/>
+              <line x1="50" y1="58" x2="{{ kpi_tempo_gauge_mes.x }}" y2="{{ kpi_tempo_gauge_mes.y }}"
+                    stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="50" cy="58" r="4" fill="#1f2937"/>
+            </svg>
+            {% else %}
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_mes(kpi_mes.tempo_loja, kpi_ant_mes.tempo_loja) }}</div>
+            {% endif %}
+          </div>
+        </div>
+
       </div>
 
       <div class="m-chart-faixa-wrap">
         <canvas id="m-chart-faixa-mes"></canvas>
       </div>
       <div class="m-chart-faixa-wrap">
-        <canvas id="m-chart-genero-mes"></canvas>
+        <canvas id="m-chart-ocorrencias-mes"></canvas>
+      </div>
+      <div class="m-chart-faixa-wrap">
+        <canvas id="m-chart-conversao-mes"></canvas>
       </div>
       {% endif %}
     </div>
@@ -1045,6 +1213,8 @@ const _mGeneroDia = {{ chart_genero_dia | tojson }};
 const _mGeneroSem = {{ chart_genero_sem | tojson }};
 const _mGeneroMes = {{ chart_genero_mes | tojson }};
 const _mOcorrenciasDia = {{ chart_ocorrencias_dia | tojson }};
+const _mOcorrenciasSem = {{ chart_ocorrencias_sem | tojson }};
+const _mOcorrenciasMes = {{ chart_ocorrencias_mes | tojson }};
 
 function _mCriarGeneroChart(canvasId, data) {
   const el = document.getElementById(canvasId);
@@ -1287,9 +1457,11 @@ window.addEventListener('load', () => {
   _mCriarFaixaChart('m-chart-faixa-sem', _mFaixaSem);
   _mCriarFaixaChart('m-chart-faixa-mes', _mFaixaMes);
   _mCriarOcorrenciasChart('m-chart-genero-dia', _mOcorrenciasDia);
+  _mCriarOcorrenciasChart('m-chart-ocorrencias-sem', _mOcorrenciasSem);
+  _mCriarOcorrenciasChart('m-chart-ocorrencias-mes', _mOcorrenciasMes);
   _mCriarConversaoChart('m-chart-conversao-dia', _mFaixaDia);
-  _mCriarGeneroChart('m-chart-genero-sem', _mGeneroSem);
-  _mCriarGeneroChart('m-chart-genero-mes', _mGeneroMes);
+  _mCriarConversaoChart('m-chart-conversao-sem', _mFaixaSem);
+  _mCriarConversaoChart('m-chart-conversao-mes', _mFaixaMes);
   // Estratégico
   _mCriarDistribuicaoChart('m-chart-dist-dia', _mEstNovos,    _mEstRec);
   _mCriarDistribuicaoChart('m-chart-dist-sem', _mEstSemNovos, _mEstSemRec);
