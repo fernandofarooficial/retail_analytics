@@ -297,6 +297,9 @@
             <div class="chart-faixa-wrap"><canvas id="chart-faixa-dia"></canvas></div>
             <div class="chart-faixa-wrap"><canvas id="chart-genero-dia"></canvas></div>
         </div>
+        <div class="charts-row">
+            <div class="chart-faixa-wrap"><canvas id="chart-conversao-dia"></canvas></div>
+        </div>
         {% endif %}
     </div>
 
@@ -1036,6 +1039,68 @@ function _criarOcorrenciasChart(canvasId, data) {
     });
 }
 
+function _criarConversaoChart(canvasId, faixaData) {
+    const el = document.getElementById(canvasId);
+    if (!el) return;
+    const clientes = faixaData.clientes.slice(8, 20);
+    const vendas   = faixaData.vendas.slice(8, 20);
+    const convData = clientes.map((c, i) => c > 0 ? Math.round(vendas[i] / c * 100) : null);
+    new Chart(el, {
+        type: 'line',
+        plugins: [ChartDataLabels],
+        data: {
+            labels: _horasLabels,
+            datasets: [{
+                label: 'Conversão (%)',
+                data: convData,
+                borderColor: '#0057A8',
+                backgroundColor: 'rgba(0,87,168,0.08)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#0057A8',
+                pointBorderWidth: 2,
+                tension: 0.3,
+                spanGaps: true,
+                fill: true,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: 'Taxa de Conversão (Notas/Clientes)', font: { size: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label(ctx) { return ' Conversão: ' + (ctx.parsed.y ?? '—') + '%'; }
+                    }
+                },
+                datalabels: {
+                    display: ctx => ctx.dataset.data[ctx.dataIndex] !== null,
+                    align: 'top',
+                    anchor: 'top',
+                    color: '#374151',
+                    font: { size: 10, weight: '700' },
+                    formatter: v => v + '%'
+                }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0,
+                        font: { size: 10 },
+                        callback: v => v + '%'
+                    }
+                }
+            }
+        }
+    });
+}
+
 // ── Gráficos estratégico ─────────────────────────────────────────────────
 const _estNovos    = {{ kpi_est.novos    | tojson }};
 const _estRec      = {{ kpi_est.recorrentes | tojson }};
@@ -1174,6 +1239,7 @@ window.addEventListener('load', () => {
     _criarFaixaChart('chart-faixa-sem', _faixaSem);
     _criarFaixaChart('chart-faixa-mes', _faixaMes);
     _criarOcorrenciasChart('chart-genero-dia', _ocorrenciasDia);
+    _criarConversaoChart('chart-conversao-dia', _faixaDia);
     _criarGeneroChart('chart-genero-sem', _generoSem);
     _criarGeneroChart('chart-genero-mes', _generoMes);
     _criarTopProdChart('chart-top-qtde-dia', _topQtdeDia, 'Top 10 Produtos — Quantidade', _themeColor);
