@@ -721,6 +721,28 @@ def dashboard():
         """, (sid, _ps))
         kpi_ant['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
 
+    kpi_ant_com = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
+    if active_store and active_microvix_portal and active_store_cnpj:
+        _ps_com = _prev_business_day(selected_date).strftime('%Y-%m-%d')
+        r = db.query_one("""
+            SELECT COUNT(DISTINCT documento) AS vendas,
+                   SUM(valor_liquido)        AS faturamento,
+                   SUM(quantidade)           AS total_itens
+            FROM   microvix.microvix_movimento
+            WHERE  portal = %s AND cnpj_emp = %s AND DATE(data_documento) = %s
+              AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
+              AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
+        """, (active_microvix_portal, active_store_cnpj, _ps_com))
+        if r and r['vendas']:
+            v = int(r['vendas']); f = float(r['faturamento'] or 0); t = float(r['total_itens'] or 0)
+            kpi_ant_com['vendas']       = v
+            kpi_ant_com['faturamento']  = round(f, 2)
+            kpi_ant_com['ticket_medio'] = round(f / v, 2) if v else 0.0
+            kpi_ant_com['itens_venda']  = round(t / v, 1) if v else 0.0
+        else:
+            kpi_ant_com['vendas'] = 0; kpi_ant_com['faturamento'] = 0.0
+            kpi_ant_com['ticket_medio'] = 0.0; kpi_ant_com['itens_venda'] = 0.0
+
     kpi_ant_sem = dict(visitantes=None, recorrentes=None, novos=None,
                        vendas=None, conversao=None, tempo_loja=None)
     if active_store:
@@ -783,6 +805,28 @@ def dashboard():
         """, (sid, semana_ant_inicio_str, semana_ant_fim_str))
         kpi_ant_sem['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
 
+    kpi_ant_com_sem = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
+    if active_store and active_microvix_portal and active_store_cnpj:
+        r = db.query_one("""
+            SELECT COUNT(DISTINCT documento) AS vendas,
+                   SUM(valor_liquido)        AS faturamento,
+                   SUM(quantidade)           AS total_itens
+            FROM   microvix.microvix_movimento
+            WHERE  portal = %s AND cnpj_emp = %s
+              AND  DATE(data_documento) BETWEEN %s AND %s
+              AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
+              AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
+        """, (active_microvix_portal, active_store_cnpj, semana_ant_inicio_str, semana_ant_fim_str))
+        if r and r['vendas']:
+            v = int(r['vendas']); f = float(r['faturamento'] or 0); t = float(r['total_itens'] or 0)
+            kpi_ant_com_sem['vendas']       = v
+            kpi_ant_com_sem['faturamento']  = round(f, 2)
+            kpi_ant_com_sem['ticket_medio'] = round(f / v, 2) if v else 0.0
+            kpi_ant_com_sem['itens_venda']  = round(t / v, 1) if v else 0.0
+        else:
+            kpi_ant_com_sem['vendas'] = 0; kpi_ant_com_sem['faturamento'] = 0.0
+            kpi_ant_com_sem['ticket_medio'] = 0.0; kpi_ant_com_sem['itens_venda'] = 0.0
+
     kpi_ant_mes = dict(visitantes=None, recorrentes=None, novos=None,
                        vendas=None, conversao=None, tempo_loja=None)
     if active_store:
@@ -844,6 +888,28 @@ def dashboard():
             ) sub
         """, (sid, mes_ant_inicio_str, mes_ant_fim_str))
         kpi_ant_mes['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
+
+    kpi_ant_com_mes = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
+    if active_store and active_microvix_portal and active_store_cnpj:
+        r = db.query_one("""
+            SELECT COUNT(DISTINCT documento) AS vendas,
+                   SUM(valor_liquido)        AS faturamento,
+                   SUM(quantidade)           AS total_itens
+            FROM   microvix.microvix_movimento
+            WHERE  portal = %s AND cnpj_emp = %s
+              AND  DATE(data_documento) BETWEEN %s AND %s
+              AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
+              AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
+        """, (active_microvix_portal, active_store_cnpj, mes_ant_inicio_str, mes_ant_fim_str))
+        if r and r['vendas']:
+            v = int(r['vendas']); f = float(r['faturamento'] or 0); t = float(r['total_itens'] or 0)
+            kpi_ant_com_mes['vendas']       = v
+            kpi_ant_com_mes['faturamento']  = round(f, 2)
+            kpi_ant_com_mes['ticket_medio'] = round(f / v, 2) if v else 0.0
+            kpi_ant_com_mes['itens_venda']  = round(t / v, 1) if v else 0.0
+        else:
+            kpi_ant_com_mes['vendas'] = 0; kpi_ant_com_mes['faturamento'] = 0.0
+            kpi_ant_com_mes['ticket_medio'] = 0.0; kpi_ant_com_mes['itens_venda'] = 0.0
 
     # ── Gauge do Tempo na Loja (agulha SVG) ──────────────────────────────────
     kpi_tempo_gauge = None
@@ -1291,8 +1357,11 @@ def dashboard():
         chart_freq_retorno_sem=chart_freq_retorno_sem,
         chart_freq_retorno_mes=chart_freq_retorno_mes,
         kpi_ant=kpi_ant,
+        kpi_ant_com=kpi_ant_com,
         kpi_ant_sem=kpi_ant_sem,
         kpi_ant_mes=kpi_ant_mes,
+        kpi_ant_com_sem=kpi_ant_com_sem,
+        kpi_ant_com_mes=kpi_ant_com_mes,
         kpi_tempo_gauge=kpi_tempo_gauge,
         kpi_tempo_gauge_sem=kpi_tempo_gauge_sem,
         kpi_tempo_gauge_mes=kpi_tempo_gauge_mes,

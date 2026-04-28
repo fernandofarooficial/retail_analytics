@@ -56,6 +56,12 @@
     gap: 0.25rem;
     margin-top: 0.75rem;
   }
+  .kpi5-row-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.25rem;
+    margin-top: 0.75rem;
+  }
   .kpi5-card {
     background: #fff;
     border-radius: 8px;
@@ -343,93 +349,94 @@
       <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
       {% else %}
 
-      <!-- Barra de data -->
+      {% macro delta_com(atual, anterior) %}
+        {% if atual is not none and anterior is not none and anterior|float > 0 %}
+          {% set pct = (((atual|float - anterior|float) / anterior|float) * 100)|round(0)|int %}
+          {% if pct > 0 %}<span class="kpi5-delta-up">▲ +{{ pct }}%</span>
+          {% elif pct < 0 %}<span class="kpi5-delta-down">▼ {{ pct }}%</span>
+          {% else %}<span class="kpi5-delta-flat">= 0%</span>{% endif %}
+        {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
+      {% endmacro %}
+
       <div class="m-date-row">
         <span class="m-date-label">Data</span>
         <input type="date" class="m-date-input" value="{{ data_str }}"
                onchange="mudarData(this.value)">
       </div>
 
-      <!-- KPIs -->
-      <div class="m-kpi-grid">
+      <div class="kpi5-row-4">
 
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Faturamento</span>
-          <span class="m-kpi-value">
-            {% if kpi_com.faturamento is not none %}
-              R$ {{ '{:,.2f}'.format(kpi_com.faturamento)
-                     .replace(',', 'X').replace('.', ',').replace('X', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
+        <!-- Faturamento -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Faturamento</div>
+            <div class="kpi5-value kpi5-value-sm">
+              {% if kpi_com.faturamento is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_com.faturamento).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com(kpi_com.faturamento, kpi_ant_com.faturamento) }}</div>
+          </div>
         </div>
 
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Ticket Médio</span>
-          <span class="m-kpi-value">
-            {% if kpi_com.ticket_medio is not none %}
-              R$ {{ '{:,.2f}'.format(kpi_com.ticket_medio)
-                     .replace(',', 'X').replace('.', ',').replace('X', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
+        <!-- Ticket Médio -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Ticket Médio</div>
+            <div class="kpi5-value kpi5-value-sm">
+              {% if kpi_com.ticket_medio is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_com.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com(kpi_com.ticket_medio, kpi_ant_com.ticket_medio) }}</div>
+          </div>
         </div>
 
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Vendas</span>
-          <span class="m-kpi-value">
-            {% if kpi_com.vendas is not none %}
-              {{ '{:,.0f}'.format(kpi_com.vendas).replace(',', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
+        <!-- Vendas -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Vendas</div>
+            <div class="kpi5-value">
+              {% if kpi_com.vendas is not none %}{{ '{:,.0f}'.format(kpi_com.vendas).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com(kpi_com.vendas, kpi_ant_com.vendas) }}</div>
+          </div>
         </div>
 
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Itens/Venda</span>
-          <span class="m-kpi-value">
-            {% if kpi_com.itens_venda is not none %}
-              {{ kpi_com.itens_venda|string|replace('.', ',') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
+        <!-- Itens/Venda -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Itens/ Venda</div>
+            <div class="kpi5-value">
+              {% if kpi_com.itens_venda is not none %}{{ kpi_com.itens_venda|string|replace('.', ',') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com(kpi_com.itens_venda, kpi_ant_com.itens_venda) }}</div>
+          </div>
         </div>
 
       </div>
-
-      {% if top_produtos_qtde_dia %}
-      <div class="m-top-prod-section">
-        <div class="m-top-prod-title">Top 5 Produtos — Quantidade</div>
-        {% set max_q = top_produtos_qtde_dia[0].total %}
-        {% for p in top_produtos_qtde_dia[:5] %}
-        <div class="m-top-prod-item">
-          <div class="m-top-prod-header">
-            <span class="m-top-prod-nome">{{ p.nome }}</span>
-            <span class="m-top-prod-valor">{{ '{:,.0f}'.format(p.total).replace(',', '.') }}</span>
-          </div>
-          <div class="m-top-prod-bar-bg">
-            <div class="m-top-prod-bar"
-                 style="width:{{ (p.total / max_q * 100)|round(1) }}%; background:var(--theme-primary)"></div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      {% endif %}
-
-      {% if top_produtos_fat_dia %}
-      <div class="m-top-prod-section">
-        <div class="m-top-prod-title">Top 5 Produtos — Faturamento</div>
-        {% set max_f = top_produtos_fat_dia[0].total %}
-        {% for p in top_produtos_fat_dia[:5] %}
-        <div class="m-top-prod-item">
-          <div class="m-top-prod-header">
-            <span class="m-top-prod-nome">{{ p.nome }}</span>
-            <span class="m-top-prod-valor">R$ {{ '{:,.2f}'.format(p.total).replace(',','X').replace('.',',').replace('X','.') }}</span>
-          </div>
-          <div class="m-top-prod-bar-bg">
-            <div class="m-top-prod-bar"
-                 style="width:{{ (p.total / max_f * 100)|round(1) }}%; background:#0057A8"></div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      {% endif %}
       {% endif %}
 
     </div><!-- /comercial-dia -->
@@ -719,6 +726,16 @@
       {% if not active_store %}
       <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
       {% else %}
+
+      {% macro delta_com_sem(atual, anterior) %}
+        {% if atual is not none and anterior is not none and anterior|float > 0 %}
+          {% set pct = (((atual|float - anterior|float) / anterior|float) * 100)|round(0)|int %}
+          {% if pct > 0 %}<span class="kpi5-delta-up">▲ +{{ pct }}%</span>
+          {% elif pct < 0 %}<span class="kpi5-delta-down">▼ {{ pct }}%</span>
+          {% else %}<span class="kpi5-delta-flat">= 0%</span>{% endif %}
+        {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
+      {% endmacro %}
+
       <div class="m-date-row">
         <div class="m-nav-row">
           <button class="m-nav-btn" onclick="mudarData('{{ semana_anterior_str }}')">&#8249;</button>
@@ -726,80 +743,80 @@
           <button class="m-nav-btn" onclick="mudarData('{{ semana_proxima_str }}')">&#8250;</button>
         </div>
       </div>
-      <div class="m-kpi-grid">
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Faturamento</span>
-          <span class="m-kpi-value">
-            {% if kpi_com_sem.faturamento is not none %}
-              R$ {{ '{:,.2f}'.format(kpi_com_sem.faturamento)
-                     .replace(',', 'X').replace('.', ',').replace('X', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
-        </div>
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Ticket Médio</span>
-          <span class="m-kpi-value">
-            {% if kpi_com_sem.ticket_medio is not none %}
-              R$ {{ '{:,.2f}'.format(kpi_com_sem.ticket_medio)
-                     .replace(',', 'X').replace('.', ',').replace('X', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
-        </div>
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Vendas</span>
-          <span class="m-kpi-value">
-            {% if kpi_com_sem.vendas is not none %}
-              {{ '{:,.0f}'.format(kpi_com_sem.vendas).replace(',', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
-        </div>
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Itens/Venda</span>
-          <span class="m-kpi-value">
-            {% if kpi_com_sem.itens_venda is not none %}
-              {{ kpi_com_sem.itens_venda|string|replace('.', ',') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
-        </div>
-      </div>
 
-      {% if top_produtos_qtde_sem %}
-      <div class="m-top-prod-section">
-        <div class="m-top-prod-title">Top 5 Produtos — Quantidade</div>
-        {% set max_q = top_produtos_qtde_sem[0].total %}
-        {% for p in top_produtos_qtde_sem[:5] %}
-        <div class="m-top-prod-item">
-          <div class="m-top-prod-header">
-            <span class="m-top-prod-nome">{{ p.nome }}</span>
-            <span class="m-top-prod-valor">{{ '{:,.0f}'.format(p.total).replace(',', '.') }}</span>
-          </div>
-          <div class="m-top-prod-bar-bg">
-            <div class="m-top-prod-bar"
-                 style="width:{{ (p.total / max_q * 100)|round(1) }}%; background:var(--theme-primary)"></div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      {% endif %}
+      <div class="kpi5-row-4">
 
-      {% if top_produtos_fat_sem %}
-      <div class="m-top-prod-section">
-        <div class="m-top-prod-title">Top 5 Produtos — Faturamento</div>
-        {% set max_f = top_produtos_fat_sem[0].total %}
-        {% for p in top_produtos_fat_sem[:5] %}
-        <div class="m-top-prod-item">
-          <div class="m-top-prod-header">
-            <span class="m-top-prod-nome">{{ p.nome }}</span>
-            <span class="m-top-prod-valor">R$ {{ '{:,.2f}'.format(p.total).replace(',','X').replace('.',',').replace('X','.') }}</span>
+        <!-- Faturamento -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Faturamento</div>
+            <div class="kpi5-value kpi5-value-sm">
+              {% if kpi_com_sem.faturamento is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_com_sem.faturamento).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
           </div>
-          <div class="m-top-prod-bar-bg">
-            <div class="m-top-prod-bar"
-                 style="width:{{ (p.total / max_f * 100)|round(1) }}%; background:#0057A8"></div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com_sem(kpi_com_sem.faturamento, kpi_ant_com_sem.faturamento) }}</div>
           </div>
         </div>
-        {% endfor %}
+
+        <!-- Ticket Médio -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Ticket Médio</div>
+            <div class="kpi5-value kpi5-value-sm">
+              {% if kpi_com_sem.ticket_medio is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_com_sem.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com_sem(kpi_com_sem.ticket_medio, kpi_ant_com_sem.ticket_medio) }}</div>
+          </div>
+        </div>
+
+        <!-- Vendas -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Vendas</div>
+            <div class="kpi5-value">
+              {% if kpi_com_sem.vendas is not none %}{{ '{:,.0f}'.format(kpi_com_sem.vendas).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com_sem(kpi_com_sem.vendas, kpi_ant_com_sem.vendas) }}</div>
+          </div>
+        </div>
+
+        <!-- Itens/Venda -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Itens/ Venda</div>
+            <div class="kpi5-value">
+              {% if kpi_com_sem.itens_venda is not none %}{{ kpi_com_sem.itens_venda|string|replace('.', ',') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com_sem(kpi_com_sem.itens_venda, kpi_ant_com_sem.itens_venda) }}</div>
+          </div>
+        </div>
+
       </div>
-      {% endif %}
       {% endif %}
     </div>
 
@@ -808,6 +825,16 @@
       {% if not active_store %}
       <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
       {% else %}
+
+      {% macro delta_com_mes(atual, anterior) %}
+        {% if atual is not none and anterior is not none and anterior|float > 0 %}
+          {% set pct = (((atual|float - anterior|float) / anterior|float) * 100)|round(0)|int %}
+          {% if pct > 0 %}<span class="kpi5-delta-up">▲ +{{ pct }}%</span>
+          {% elif pct < 0 %}<span class="kpi5-delta-down">▼ {{ pct }}%</span>
+          {% else %}<span class="kpi5-delta-flat">= 0%</span>{% endif %}
+        {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
+      {% endmacro %}
+
       <div class="m-date-row">
         <div class="m-nav-row">
           <button class="m-nav-btn" onclick="mudarData('{{ mes_anterior_str }}')">&#8249;</button>
@@ -815,80 +842,80 @@
           <button class="m-nav-btn" onclick="mudarData('{{ mes_proximo_str }}')">&#8250;</button>
         </div>
       </div>
-      <div class="m-kpi-grid">
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Faturamento</span>
-          <span class="m-kpi-value">
-            {% if kpi_com_mes.faturamento is not none %}
-              R$ {{ '{:,.2f}'.format(kpi_com_mes.faturamento)
-                     .replace(',', 'X').replace('.', ',').replace('X', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
-        </div>
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Ticket Médio</span>
-          <span class="m-kpi-value">
-            {% if kpi_com_mes.ticket_medio is not none %}
-              R$ {{ '{:,.2f}'.format(kpi_com_mes.ticket_medio)
-                     .replace(',', 'X').replace('.', ',').replace('X', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
-        </div>
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Vendas</span>
-          <span class="m-kpi-value">
-            {% if kpi_com_mes.vendas is not none %}
-              {{ '{:,.0f}'.format(kpi_com_mes.vendas).replace(',', '.') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
-        </div>
-        <div class="m-kpi-card">
-          <span class="m-kpi-label">Itens/Venda</span>
-          <span class="m-kpi-value">
-            {% if kpi_com_mes.itens_venda is not none %}
-              {{ kpi_com_mes.itens_venda|string|replace('.', ',') }}
-            {% else %}<span class="m-kpi-na">—</span>{% endif %}
-          </span>
-        </div>
-      </div>
 
-      {% if top_produtos_qtde_mes %}
-      <div class="m-top-prod-section">
-        <div class="m-top-prod-title">Top 5 Produtos — Quantidade</div>
-        {% set max_q = top_produtos_qtde_mes[0].total %}
-        {% for p in top_produtos_qtde_mes[:5] %}
-        <div class="m-top-prod-item">
-          <div class="m-top-prod-header">
-            <span class="m-top-prod-nome">{{ p.nome }}</span>
-            <span class="m-top-prod-valor">{{ '{:,.0f}'.format(p.total).replace(',', '.') }}</span>
-          </div>
-          <div class="m-top-prod-bar-bg">
-            <div class="m-top-prod-bar"
-                 style="width:{{ (p.total / max_q * 100)|round(1) }}%; background:var(--theme-primary)"></div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      {% endif %}
+      <div class="kpi5-row-4">
 
-      {% if top_produtos_fat_mes %}
-      <div class="m-top-prod-section">
-        <div class="m-top-prod-title">Top 5 Produtos — Faturamento</div>
-        {% set max_f = top_produtos_fat_mes[0].total %}
-        {% for p in top_produtos_fat_mes[:5] %}
-        <div class="m-top-prod-item">
-          <div class="m-top-prod-header">
-            <span class="m-top-prod-nome">{{ p.nome }}</span>
-            <span class="m-top-prod-valor">R$ {{ '{:,.2f}'.format(p.total).replace(',','X').replace('.',',').replace('X','.') }}</span>
+        <!-- Faturamento -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Faturamento</div>
+            <div class="kpi5-value kpi5-value-sm">
+              {% if kpi_com_mes.faturamento is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_com_mes.faturamento).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
           </div>
-          <div class="m-top-prod-bar-bg">
-            <div class="m-top-prod-bar"
-                 style="width:{{ (p.total / max_f * 100)|round(1) }}%; background:#0057A8"></div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com_mes(kpi_com_mes.faturamento, kpi_ant_com_mes.faturamento) }}</div>
           </div>
         </div>
-        {% endfor %}
+
+        <!-- Ticket Médio -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Ticket Médio</div>
+            <div class="kpi5-value kpi5-value-sm">
+              {% if kpi_com_mes.ticket_medio is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_com_mes.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com_mes(kpi_com_mes.ticket_medio, kpi_ant_com_mes.ticket_medio) }}</div>
+          </div>
+        </div>
+
+        <!-- Vendas -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Vendas</div>
+            <div class="kpi5-value">
+              {% if kpi_com_mes.vendas is not none %}{{ '{:,.0f}'.format(kpi_com_mes.vendas).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com_mes(kpi_com_mes.vendas, kpi_ant_com_mes.vendas) }}</div>
+          </div>
+        </div>
+
+        <!-- Itens/Venda -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Itens/ Venda</div>
+            <div class="kpi5-value">
+              {% if kpi_com_mes.itens_venda is not none %}{{ kpi_com_mes.itens_venda|string|replace('.', ',') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com_mes(kpi_com_mes.itens_venda, kpi_ant_com_mes.itens_venda) }}</div>
+          </div>
+        </div>
+
       </div>
-      {% endif %}
       {% endif %}
     </div>
 
