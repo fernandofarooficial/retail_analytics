@@ -1196,7 +1196,7 @@ def dashboard():
                     FROM   microvix.microvix_movimento m
                     {_JOIN_PROD}
                     WHERE  {_FILTRO_MV} AND {date_filter}
-                    GROUP  BY produto ORDER BY total DESC LIMIT 10
+                    GROUP  BY produto ORDER BY total DESC LIMIT 5
                 """
                 return [{'nome': r['produto'], 'total': round(float(r['total'] or 0), 2)}
                         for r in db.query_all(sql, params)]

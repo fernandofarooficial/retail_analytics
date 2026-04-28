@@ -1478,7 +1478,7 @@ const _topFatMes  = {{ top_produtos_fat_mes  | tojson }};
 function _criarTopProdChart(canvasId, dados, titulo, cor) {
     const el = document.getElementById(canvasId);
     if (!el) return;
-    const slice = dados.slice(0, 10);
+    const slice = dados.slice(0, 5);
     new Chart(el, {
         type: 'bar',
         data: {
@@ -1517,12 +1517,12 @@ window.addEventListener('load', () => {
     _criarConversaoChart('chart-conversao-dia', _faixaDia);
     _criarConversaoChart('chart-conversao-sem', _faixaSem);
     _criarConversaoChart('chart-conversao-mes', _faixaMes);
-    _criarTopProdChart('chart-top-qtde-dia', _topQtdeDia, 'Top 10 Produtos — Quantidade', _themeColor);
-    _criarTopProdChart('chart-top-fat-dia',  _topFatDia,  'Top 10 Produtos — Faturamento', '#0057A8');
-    _criarTopProdChart('chart-top-qtde-sem', _topQtdeSem, 'Top 10 Produtos — Quantidade', _themeColor);
-    _criarTopProdChart('chart-top-fat-sem',  _topFatSem,  'Top 10 Produtos — Faturamento', '#0057A8');
-    _criarTopProdChart('chart-top-qtde-mes', _topQtdeMes, 'Top 10 Produtos — Quantidade', _themeColor);
-    _criarTopProdChart('chart-top-fat-mes',  _topFatMes,  'Top 10 Produtos — Faturamento', '#0057A8');
+    _criarTopProdChart('chart-top-qtde-dia', _topQtdeDia, 'Top 5 Produtos — Quantidade', _themeColor);
+    _criarTopProdChart('chart-top-fat-dia',  _topFatDia,  'Top 5 Produtos — Faturamento', '#0057A8');
+    _criarTopProdChart('chart-top-qtde-sem', _topQtdeSem, 'Top 5 Produtos — Quantidade', _themeColor);
+    _criarTopProdChart('chart-top-fat-sem',  _topFatSem,  'Top 5 Produtos — Faturamento', '#0057A8');
+    _criarTopProdChart('chart-top-qtde-mes', _topQtdeMes, 'Top 5 Produtos — Quantidade', _themeColor);
+    _criarTopProdChart('chart-top-fat-mes',  _topFatMes,  'Top 5 Produtos — Faturamento', '#0057A8');
     // Estratégico
     _criarDistribuicaoChart('chart-dist-dia', _estNovos,    _estRec);
     _criarDistribuicaoChart('chart-dist-sem', _estSemNovos, _estSemRec);
