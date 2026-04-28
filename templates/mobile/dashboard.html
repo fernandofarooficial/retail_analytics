@@ -437,6 +437,43 @@
         </div>
 
       </div>
+
+      {% if top_produtos_qtde_dia %}
+      {% set _mq = top_produtos_qtde_dia[0].total %}
+      <div class="m-top-prod-section">
+        <div class="m-top-prod-title">Top 10 Produtos — Quantidade</div>
+        {% for p in top_produtos_qtde_dia %}
+        <div class="m-top-prod-item">
+          <div class="m-top-prod-header">
+            <span class="m-top-prod-nome">{{ p.nome }}</span>
+            <span class="m-top-prod-valor">{{ '{:,.0f}'.format(p.total).replace(',','.') }}</span>
+          </div>
+          <div class="m-top-prod-bar-bg">
+            <div class="m-top-prod-bar" style="width:{{ ((p.total / _mq * 100)|round|int) if _mq > 0 else 0 }}%; background:var(--theme-primary)"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if top_produtos_fat_dia %}
+      {% set _mf = top_produtos_fat_dia[0].total %}
+      <div class="m-top-prod-section">
+        <div class="m-top-prod-title">Top 10 Produtos — Faturamento</div>
+        {% for p in top_produtos_fat_dia %}
+        <div class="m-top-prod-item">
+          <div class="m-top-prod-header">
+            <span class="m-top-prod-nome">{{ p.nome }}</span>
+            <span class="m-top-prod-valor">R$ {{ '{:,.2f}'.format(p.total).replace(',','X').replace('.',',').replace('X','.') }}</span>
+          </div>
+          <div class="m-top-prod-bar-bg">
+            <div class="m-top-prod-bar" style="width:{{ ((p.total / _mf * 100)|round|int) if _mf > 0 else 0 }}%; background:#0057A8"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
       {% endif %}
 
     </div><!-- /comercial-dia -->
@@ -817,6 +854,43 @@
         </div>
 
       </div>
+
+      {% if top_produtos_qtde_sem %}
+      {% set _mq = top_produtos_qtde_sem[0].total %}
+      <div class="m-top-prod-section">
+        <div class="m-top-prod-title">Top 10 Produtos — Quantidade</div>
+        {% for p in top_produtos_qtde_sem %}
+        <div class="m-top-prod-item">
+          <div class="m-top-prod-header">
+            <span class="m-top-prod-nome">{{ p.nome }}</span>
+            <span class="m-top-prod-valor">{{ '{:,.0f}'.format(p.total).replace(',','.') }}</span>
+          </div>
+          <div class="m-top-prod-bar-bg">
+            <div class="m-top-prod-bar" style="width:{{ ((p.total / _mq * 100)|round|int) if _mq > 0 else 0 }}%; background:var(--theme-primary)"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if top_produtos_fat_sem %}
+      {% set _mf = top_produtos_fat_sem[0].total %}
+      <div class="m-top-prod-section">
+        <div class="m-top-prod-title">Top 10 Produtos — Faturamento</div>
+        {% for p in top_produtos_fat_sem %}
+        <div class="m-top-prod-item">
+          <div class="m-top-prod-header">
+            <span class="m-top-prod-nome">{{ p.nome }}</span>
+            <span class="m-top-prod-valor">R$ {{ '{:,.2f}'.format(p.total).replace(',','X').replace('.',',').replace('X','.') }}</span>
+          </div>
+          <div class="m-top-prod-bar-bg">
+            <div class="m-top-prod-bar" style="width:{{ ((p.total / _mf * 100)|round|int) if _mf > 0 else 0 }}%; background:#0057A8"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
       {% endif %}
     </div>
 
@@ -916,6 +990,43 @@
         </div>
 
       </div>
+
+      {% if top_produtos_qtde_mes %}
+      {% set _mq = top_produtos_qtde_mes[0].total %}
+      <div class="m-top-prod-section">
+        <div class="m-top-prod-title">Top 10 Produtos — Quantidade</div>
+        {% for p in top_produtos_qtde_mes %}
+        <div class="m-top-prod-item">
+          <div class="m-top-prod-header">
+            <span class="m-top-prod-nome">{{ p.nome }}</span>
+            <span class="m-top-prod-valor">{{ '{:,.0f}'.format(p.total).replace(',','.') }}</span>
+          </div>
+          <div class="m-top-prod-bar-bg">
+            <div class="m-top-prod-bar" style="width:{{ ((p.total / _mq * 100)|round|int) if _mq > 0 else 0 }}%; background:var(--theme-primary)"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if top_produtos_fat_mes %}
+      {% set _mf = top_produtos_fat_mes[0].total %}
+      <div class="m-top-prod-section">
+        <div class="m-top-prod-title">Top 10 Produtos — Faturamento</div>
+        {% for p in top_produtos_fat_mes %}
+        <div class="m-top-prod-item">
+          <div class="m-top-prod-header">
+            <span class="m-top-prod-nome">{{ p.nome }}</span>
+            <span class="m-top-prod-valor">R$ {{ '{:,.2f}'.format(p.total).replace(',','X').replace('.',',').replace('X','.') }}</span>
+          </div>
+          <div class="m-top-prod-bar-bg">
+            <div class="m-top-prod-bar" style="width:{{ ((p.total / _mf * 100)|round|int) if _mf > 0 else 0 }}%; background:#0057A8"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
       {% endif %}
     </div>
 
