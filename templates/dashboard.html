@@ -20,6 +20,36 @@
     background: #fff; border-radius: 8px; padding: 0.75rem;
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
   }
+  .com-pair-wrap {
+    flex: 1; height: 380px; overflow-y: auto;
+    background: #fff; border-radius: 8px; padding: 0.75rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .com-pair-canvas-wrap {
+    flex: 1; height: 380px; position: relative;
+    background: #fff; border-radius: 8px; padding: 0.75rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .com-comb-title {
+    font-size: 0.875rem; font-weight: 700; text-align: center;
+    color: #374151; margin-bottom: 0.5rem;
+  }
+  .com-comb-table {
+    width: 100%; border-collapse: collapse; font-size: 0.8rem;
+  }
+  .com-comb-table th {
+    text-align: left; color: #6B7280; font-weight: 600;
+    padding: 0.3rem 0.4rem; border-bottom: 2px solid #E5E7EB;
+    white-space: nowrap;
+  }
+  .com-comb-table td {
+    padding: 0.3rem 0.4rem; border-bottom: 1px solid #F3F4F6;
+    color: #374151; vertical-align: top;
+  }
+  .com-comb-table tr:last-child td { border-bottom: none; }
+  .com-comb-rank { width: 1.8rem; text-align: center; color: #9CA3AF; }
+  .com-comb-qtd  { width: 3rem;  text-align: right;  font-weight: 700; }
+  .com-no-data   { text-align: center; color: #9CA3AF; margin-top: 2rem; }
   .kpi-nav-btn {
     background: none; border: 1px solid #E5E7EB; border-radius: 6px;
     padding: 0.25rem 0.75rem; cursor: pointer; font-size: 1.1rem;
@@ -406,8 +436,28 @@
             <div class="chart-top-wrap"><canvas id="chart-top-fat-dia"></canvas></div>
         </div>
         <div class="charts-row">
-            <div class="chart-top-wrap"><canvas id="chart-combinacoes-dia"></canvas></div>
-            <div class="chart-faixa-wrap"><canvas id="chart-ticket-tipo-dia"></canvas></div>
+            <div class="com-pair-wrap">
+                <div class="com-comb-title">Combinações de Compra</div>
+                {% if combinacoes_dia %}
+                <table class="com-comb-table">
+                    <thead><tr>
+                        <th class="com-comb-rank">#</th>
+                        <th>Combinação</th>
+                        <th class="com-comb-qtd">Qtd</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for c in combinacoes_dia %}
+                    <tr>
+                        <td class="com-comb-rank">{{ loop.index }}</td>
+                        <td>{{ c.nome_a }} + {{ c.nome_b }}</td>
+                        <td class="com-comb-qtd">{{ c.qtd }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}<p class="com-no-data">—</p>{% endif %}
+            </div>
+            <div class="com-pair-canvas-wrap"><canvas id="chart-ticket-tipo-dia"></canvas></div>
         </div>
         {% endif %}
     </div>
@@ -796,8 +846,28 @@
             <div class="chart-top-wrap"><canvas id="chart-top-fat-sem"></canvas></div>
         </div>
         <div class="charts-row">
-            <div class="chart-top-wrap"><canvas id="chart-combinacoes-sem"></canvas></div>
-            <div class="chart-faixa-wrap"><canvas id="chart-ticket-tipo-sem"></canvas></div>
+            <div class="com-pair-wrap">
+                <div class="com-comb-title">Combinações de Compra</div>
+                {% if combinacoes_sem %}
+                <table class="com-comb-table">
+                    <thead><tr>
+                        <th class="com-comb-rank">#</th>
+                        <th>Combinação</th>
+                        <th class="com-comb-qtd">Qtd</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for c in combinacoes_sem %}
+                    <tr>
+                        <td class="com-comb-rank">{{ loop.index }}</td>
+                        <td>{{ c.nome_a }} + {{ c.nome_b }}</td>
+                        <td class="com-comb-qtd">{{ c.qtd }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}<p class="com-no-data">—</p>{% endif %}
+            </div>
+            <div class="com-pair-canvas-wrap"><canvas id="chart-ticket-tipo-sem"></canvas></div>
         </div>
         {% endif %}
     </div>
@@ -904,8 +974,28 @@
             <div class="chart-top-wrap"><canvas id="chart-top-fat-mes"></canvas></div>
         </div>
         <div class="charts-row">
-            <div class="chart-top-wrap"><canvas id="chart-combinacoes-mes"></canvas></div>
-            <div class="chart-faixa-wrap"><canvas id="chart-ticket-tipo-mes"></canvas></div>
+            <div class="com-pair-wrap">
+                <div class="com-comb-title">Combinações de Compra</div>
+                {% if combinacoes_mes %}
+                <table class="com-comb-table">
+                    <thead><tr>
+                        <th class="com-comb-rank">#</th>
+                        <th>Combinação</th>
+                        <th class="com-comb-qtd">Qtd</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for c in combinacoes_mes %}
+                    <tr>
+                        <td class="com-comb-rank">{{ loop.index }}</td>
+                        <td>{{ c.nome_a }} + {{ c.nome_b }}</td>
+                        <td class="com-comb-qtd">{{ c.qtd }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}<p class="com-no-data">—</p>{% endif %}
+            </div>
+            <div class="com-pair-canvas-wrap"><canvas id="chart-ticket-tipo-mes"></canvas></div>
         </div>
         {% endif %}
     </div>
@@ -1519,52 +1609,9 @@ function _criarTopProdChart(canvasId, dados, titulo, cor) {
     });
 }
 
-const _combinacoesDia = {{ combinacoes_dia | tojson }};
-const _combinacoesSem = {{ combinacoes_sem | tojson }};
-const _combinacoesMes = {{ combinacoes_mes | tojson }};
 const _ticketDia = { novo: {{ kpi_est.ticket_novo     | tojson }}, rec: {{ kpi_est.ticket_rec     | tojson }} };
 const _ticketSem = { novo: {{ kpi_est_sem.ticket_novo | tojson }}, rec: {{ kpi_est_sem.ticket_rec | tojson }} };
 const _ticketMes = { novo: {{ kpi_est_mes.ticket_novo | tojson }}, rec: {{ kpi_est_mes.ticket_rec | tojson }} };
-
-function _criarCombinacoesChart(canvasId, dados) {
-    const el = document.getElementById(canvasId);
-    if (!el || !dados.length) return;
-    const trim = s => s && s.length > 22 ? s.substring(0, 20) + '…' : (s || '?');
-    const labels = dados.map(d => trim(d.nome_a) + ' + ' + trim(d.nome_b));
-    new Chart(el, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Compras juntos',
-                data: dados.map(d => d.qtd),
-                backgroundColor: _themeColor + 'bb',
-                borderColor: _themeColor,
-                borderWidth: 1,
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                title: { display: true, text: 'Combinações de Compra', font: { size: 12 } },
-                datalabels: {
-                    anchor: 'end', align: 'right',
-                    font: { size: 11, weight: 'bold' },
-                    formatter: v => v,
-                    color: '#374151',
-                }
-            },
-            scales: {
-                x: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } },
-                y: { ticks: { font: { size: 10 } } }
-            }
-        },
-        plugins: [ChartDataLabels]
-    });
-}
 
 function _criarTicketTipoChart(canvasId, data, titulo) {
     const el = document.getElementById(canvasId);
@@ -1629,9 +1676,6 @@ window.addEventListener('load', () => {
     _criarTopProdChart('chart-top-fat-sem',  _topFatSem,  'Top 5 Produtos — Faturamento', '#0057A8');
     _criarTopProdChart('chart-top-qtde-mes', _topQtdeMes, 'Top 5 Produtos — Quantidade', _themeColor);
     _criarTopProdChart('chart-top-fat-mes',  _topFatMes,  'Top 5 Produtos — Faturamento', '#0057A8');
-    _criarCombinacoesChart('chart-combinacoes-dia', _combinacoesDia);
-    _criarCombinacoesChart('chart-combinacoes-sem', _combinacoesSem);
-    _criarCombinacoesChart('chart-combinacoes-mes', _combinacoesMes);
     _criarTicketTipoChart('chart-ticket-tipo-dia', _ticketDia, 'Ticket Médio por Tipo de Cliente');
     _criarTicketTipoChart('chart-ticket-tipo-sem', _ticketSem, 'Ticket Médio por Tipo de Cliente');
     _criarTicketTipoChart('chart-ticket-tipo-mes', _ticketMes, 'Ticket Médio por Tipo de Cliente');

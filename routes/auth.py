@@ -1219,7 +1219,7 @@ def dashboard():
                       AND b.tipo_transacao = 'V' AND b.cod_natureza_operacao = '10030'
                       AND {date_filter}
                     GROUP BY nome_a, nome_b
-                    ORDER BY qtd DESC LIMIT 5
+                    ORDER BY qtd DESC LIMIT 10
                 """
                 return [{'nome_a': r['nome_a'], 'nome_b': r['nome_b'], 'qtd': int(r['qtd'])}
                         for r in db.query_all(sql, params)]
