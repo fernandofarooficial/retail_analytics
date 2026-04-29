@@ -163,7 +163,7 @@ def dashboard():
                 company_logo = match['logo_url']
                 company_name = match['company_name']
             stores = db.query_all("""
-                SELECT store_id, store_name, cnpj
+                SELECT store_id, store_name, store_short_name, cnpj
                 FROM   faciais.stores
                 WHERE  company_id = %s
                 ORDER  BY store_name
@@ -184,7 +184,7 @@ def dashboard():
                 company_logo = match['logo_url']
                 company_name = match['company_name']
             stores = db.query_all("""
-                SELECT store_id, store_name, cnpj
+                SELECT store_id, store_name, store_short_name, cnpj
                 FROM   faciais.stores
                 WHERE  company_id = %s
                 ORDER  BY store_name
@@ -209,7 +209,7 @@ def dashboard():
             company_logo = row['logo_url']
             company_name = row['company_name']
         stores = db.query_all("""
-            SELECT DISTINCT s.store_id, s.store_name, s.cnpj
+            SELECT DISTINCT s.store_id, s.store_name, s.store_short_name, s.cnpj
             FROM   faciais.user_retailer_groups urg
             JOIN   faciais.stores s ON s.retailer_group_id = urg.retailer_group_id
             WHERE  urg.user_id = %s
@@ -230,7 +230,7 @@ def dashboard():
             company_logo = row['logo_url']
             company_name = row['company_name']
         stores = db.query_all("""
-            SELECT s.store_id, s.store_name, s.cnpj
+            SELECT s.store_id, s.store_name, s.store_short_name, s.cnpj
             FROM   faciais.user_stores us
             JOIN   faciais.stores s ON s.store_id = us.store_id
             WHERE  us.user_id = %s
@@ -1562,7 +1562,7 @@ def visitacao():
                 company_logo = match['logo_url']
                 company_name = match['company_name']
             stores = db.query_all("""
-                SELECT store_id, store_name, cnpj
+                SELECT store_id, store_name, store_short_name, cnpj
                 FROM   faciais.stores
                 WHERE  company_id = %s
                 ORDER  BY store_name
@@ -1584,7 +1584,7 @@ def visitacao():
                 company_logo = match['logo_url']
                 company_name = match['company_name']
             stores = db.query_all("""
-                SELECT store_id, store_name, cnpj
+                SELECT store_id, store_name, store_short_name, cnpj
                 FROM   faciais.stores
                 WHERE  company_id = %s
                 ORDER  BY store_name
@@ -1609,7 +1609,7 @@ def visitacao():
             company_logo = row['logo_url']
             company_name = row['company_name']
         stores = db.query_all("""
-            SELECT DISTINCT s.store_id, s.store_name, s.cnpj
+            SELECT DISTINCT s.store_id, s.store_name, s.store_short_name, s.cnpj
             FROM   faciais.user_retailer_groups urg
             JOIN   faciais.stores s ON s.retailer_group_id = urg.retailer_group_id
             WHERE  urg.user_id = %s
@@ -1630,7 +1630,7 @@ def visitacao():
             company_logo = row['logo_url']
             company_name = row['company_name']
         stores = db.query_all("""
-            SELECT s.store_id, s.store_name, s.cnpj
+            SELECT s.store_id, s.store_name, s.store_short_name, s.cnpj
             FROM   faciais.user_stores us
             JOIN   faciais.stores s ON s.store_id = us.store_id
             WHERE  us.user_id = %s
