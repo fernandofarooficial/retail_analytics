@@ -613,37 +613,46 @@ def dashboard():
                 kpi_com_mes['ticket_medio'] = 0.0; kpi_com_mes['itens_venda'] = 0.0
 
     # ── KPIs Estratégico – derivados dos KPIs já calculados ──────────────────
-    kpi_est     = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None)
-    kpi_est_sem = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None)
-    kpi_est_mes = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None)
+    kpi_est     = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None, taxa_retorno=None, valor_medio=None)
+    kpi_est_sem = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None, taxa_retorno=None, valor_medio=None)
+    kpi_est_mes = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None, taxa_retorno=None, valor_medio=None)
 
     if kpi['visitantes'] is not None and kpi['recorrentes'] is not None:
         kpi_est['novos']       = kpi['visitantes'] - kpi['recorrentes']
         kpi_est['recorrentes'] = kpi['recorrentes']
+        _t = (kpi_est['novos'] or 0) + (kpi_est['recorrentes'] or 0)
+        kpi_est['taxa_retorno'] = round((kpi_est['recorrentes'] or 0) / _t * 100) if _t else 0
         if kpi_com['faturamento'] is not None:
             fat = kpi_com['faturamento'] or 0
             kpi_est['ticket_novo'] = round(fat / kpi_est['novos'], 2) if kpi_est['novos'] else 0.0
             kpi_est['ticket_rec']  = round(fat / kpi_est['recorrentes'], 2) if kpi_est['recorrentes'] else 0.0
+            kpi_est['valor_medio'] = round(fat / _t, 2) if _t else None
 
     if kpi_sem['visitantes'] is not None and kpi_sem['recorrentes'] is not None:
         kpi_est_sem['novos']       = kpi_sem['visitantes'] - kpi_sem['recorrentes']
         kpi_est_sem['recorrentes'] = kpi_sem['recorrentes']
+        _t = (kpi_est_sem['novos'] or 0) + (kpi_est_sem['recorrentes'] or 0)
+        kpi_est_sem['taxa_retorno'] = round((kpi_est_sem['recorrentes'] or 0) / _t * 100) if _t else 0
         if kpi_com_sem['faturamento'] is not None:
             fat = kpi_com_sem['faturamento'] or 0
             kpi_est_sem['ticket_novo'] = round(fat / kpi_est_sem['novos'], 2) if kpi_est_sem['novos'] else 0.0
             kpi_est_sem['ticket_rec']  = round(fat / kpi_est_sem['recorrentes'], 2) if kpi_est_sem['recorrentes'] else 0.0
+            kpi_est_sem['valor_medio'] = round(fat / _t, 2) if _t else None
 
     if kpi_mes['visitantes'] is not None and kpi_mes['recorrentes'] is not None:
         kpi_est_mes['novos']       = kpi_mes['visitantes'] - kpi_mes['recorrentes']
         kpi_est_mes['recorrentes'] = kpi_mes['recorrentes']
+        _t = (kpi_est_mes['novos'] or 0) + (kpi_est_mes['recorrentes'] or 0)
+        kpi_est_mes['taxa_retorno'] = round((kpi_est_mes['recorrentes'] or 0) / _t * 100) if _t else 0
         if kpi_com_mes['faturamento'] is not None:
             fat = kpi_com_mes['faturamento'] or 0
             kpi_est_mes['ticket_novo'] = round(fat / kpi_est_mes['novos'], 2) if kpi_est_mes['novos'] else 0.0
             kpi_est_mes['ticket_rec']  = round(fat / kpi_est_mes['recorrentes'], 2) if kpi_est_mes['recorrentes'] else 0.0
+            kpi_est_mes['valor_medio'] = round(fat / _t, 2) if _t else None
 
     # ── KPIs dia útil anterior (comparação) ──────────────────────────────────
     kpi_ant = dict(visitantes=None, recorrentes=None, novos=None,
-                   vendas=None, conversao=None, tempo_loja=None)
+                   vendas=None, conversao=None, tempo_loja=None, taxa_retorno=None, valor_medio=None)
     if active_store:
         _prev = _prev_business_day(selected_date)
         _ps   = _prev.strftime('%Y-%m-%d')
@@ -723,10 +732,15 @@ def dashboard():
         else:
             kpi_ant_com['vendas'] = 0; kpi_ant_com['faturamento'] = 0.0
             kpi_ant_com['ticket_medio'] = 0.0; kpi_ant_com['itens_venda'] = 0.0
+    if kpi_ant['novos'] is not None and kpi_ant['recorrentes'] is not None:
+        _t_ant = (kpi_ant['novos'] or 0) + (kpi_ant['recorrentes'] or 0)
+        kpi_ant['taxa_retorno'] = round((kpi_ant['recorrentes'] or 0) / _t_ant * 100) if _t_ant else 0
+        if kpi_ant_com['faturamento'] is not None and _t_ant:
+            kpi_ant['valor_medio'] = round(kpi_ant_com['faturamento'] / _t_ant, 2)
 
     # ── KPIs semana anterior (comparação) ────────────────────────────────────
     kpi_ant_sem = dict(visitantes=None, recorrentes=None, novos=None,
-                       vendas=None, conversao=None, tempo_loja=None)
+                       vendas=None, conversao=None, tempo_loja=None, taxa_retorno=None, valor_medio=None)
     if active_store:
         sid = active_store['store_id']
         r = db.query_one("""
@@ -807,10 +821,15 @@ def dashboard():
         else:
             kpi_ant_com_sem['vendas'] = 0; kpi_ant_com_sem['faturamento'] = 0.0
             kpi_ant_com_sem['ticket_medio'] = 0.0; kpi_ant_com_sem['itens_venda'] = 0.0
+    if kpi_ant_sem['novos'] is not None and kpi_ant_sem['recorrentes'] is not None:
+        _t_ant = (kpi_ant_sem['novos'] or 0) + (kpi_ant_sem['recorrentes'] or 0)
+        kpi_ant_sem['taxa_retorno'] = round((kpi_ant_sem['recorrentes'] or 0) / _t_ant * 100) if _t_ant else 0
+        if kpi_ant_com_sem['faturamento'] is not None and _t_ant:
+            kpi_ant_sem['valor_medio'] = round(kpi_ant_com_sem['faturamento'] / _t_ant, 2)
 
     # ── KPIs mês anterior (comparação) ───────────────────────────────────────
     kpi_ant_mes = dict(visitantes=None, recorrentes=None, novos=None,
-                       vendas=None, conversao=None, tempo_loja=None)
+                       vendas=None, conversao=None, tempo_loja=None, taxa_retorno=None, valor_medio=None)
     if active_store:
         sid = active_store['store_id']
         r = db.query_one("""
@@ -891,6 +910,11 @@ def dashboard():
         else:
             kpi_ant_com_mes['vendas'] = 0; kpi_ant_com_mes['faturamento'] = 0.0
             kpi_ant_com_mes['ticket_medio'] = 0.0; kpi_ant_com_mes['itens_venda'] = 0.0
+    if kpi_ant_mes['novos'] is not None and kpi_ant_mes['recorrentes'] is not None:
+        _t_ant = (kpi_ant_mes['novos'] or 0) + (kpi_ant_mes['recorrentes'] or 0)
+        kpi_ant_mes['taxa_retorno'] = round((kpi_ant_mes['recorrentes'] or 0) / _t_ant * 100) if _t_ant else 0
+        if kpi_ant_com_mes['faturamento'] is not None and _t_ant:
+            kpi_ant_mes['valor_medio'] = round(kpi_ant_com_mes['faturamento'] / _t_ant, 2)
 
     # ── Gauge do Tempo na Loja (agulha SVG) ──────────────────────────────────
     kpi_tempo_gauge = None

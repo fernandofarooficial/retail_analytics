@@ -1005,56 +1005,97 @@
         {% if not active_store %}
         <p class="kpi-hint">Selecione uma loja para visualizar os indicadores.</p>
         {% else %}
+
+        {% macro delta_est(atual, anterior) %}
+          {% if atual is not none and anterior is not none and anterior|float > 0 %}
+            {% set pct = (((atual|float - anterior|float) / anterior|float) * 100)|round(0)|int %}
+            {% if pct > 0 %}<span class="kpi5-delta-up">▲ +{{ pct }}%</span>
+            {% elif pct < 0 %}<span class="kpi5-delta-down">▼ {{ pct }}%</span>
+            {% else %}<span class="kpi5-delta-flat">= 0%</span>{% endif %}
+          {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
+        {% endmacro %}
+
         <div class="kpi-toolbar">
             <label for="kpi-date-est">Data</label>
             <input type="date" id="kpi-date-est" value="{{ data_str }}"
                    onchange="mudarData(this.value)">
             <span class="kpi-store-label">{{ active_store.store_name }}</span>
         </div>
-        <div class="kpi-grid">
-            <div class="kpi-card">
-                <span class="kpi-label">Novos</span>
-                <span class="kpi-value">
-                    {% if kpi_est.novos is not none %}
-                        {{ '{:,.0f}'.format(kpi_est.novos).replace(',', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">1ª visita no dia</span>
-            </div>
-            <div class="kpi-card">
-                <span class="kpi-label">Recorrentes</span>
-                <span class="kpi-value">
-                    {% if kpi_est.recorrentes is not none %}
-                        {{ '{:,.0f}'.format(kpi_est.recorrentes).replace(',', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">já visitaram antes</span>
-            </div>
-            <div class="kpi-card">
-                <span class="kpi-label">Ticket Novo</span>
-                <span class="kpi-value">
-                    {% if kpi_est.ticket_novo is not none %}
-                        R$ {{ '{:,.2f}'.format(kpi_est.ticket_novo)
-                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">receita média / cliente novo</span>
-            </div>
-            <div class="kpi-card">
-                <span class="kpi-label">Ticket Recorrente</span>
-                <span class="kpi-value">
-                    {% if kpi_est.ticket_rec is not none %}
-                        R$ {{ '{:,.2f}'.format(kpi_est.ticket_rec)
-                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">receita média / recorrente</span>
-            </div>
-        </div>
 
-        <div class="charts-row">
-            <div class="chart-faixa-wrap"><canvas id="chart-dist-dia"></canvas></div>
-            <div class="chart-faixa-wrap"><canvas id="chart-freq-dia"></canvas></div>
+        <div class="kpi5-row">
+
+          <!-- Clientes Novos -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Clientes<br>Novos</div>
+              <div class="kpi5-value">
+                {% if kpi_est.novos is not none %}
+                  {{ '{:,.0f}'.format(kpi_est.novos).replace(',', '.') }}
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
+            </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta_est(kpi_est.novos, kpi_ant.novos) }}</div>
+            </div>
+          </div>
+
+          <!-- Clientes Recorrentes -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Clientes<br>Recorrentes</div>
+              <div class="kpi5-value">
+                {% if kpi_est.recorrentes is not none %}
+                  {{ '{:,.0f}'.format(kpi_est.recorrentes).replace(',', '.') }}
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
+            </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta_est(kpi_est.recorrentes, kpi_ant.recorrentes) }}</div>
+            </div>
+          </div>
+
+          <!-- Taxa de Retorno -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Taxa de<br>Retorno</div>
+              <div class="kpi5-value">
+                {% if kpi_est.taxa_retorno is not none %}
+                  {{ kpi_est.taxa_retorno }}%
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
+            </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta_est(kpi_est.taxa_retorno, kpi_ant.taxa_retorno) }}</div>
+            </div>
+          </div>
+
+          <!-- Valor Médio por Cliente -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Valor<br>Médio/Cliente</div>
+              <div class="kpi5-value kpi5-value-sm">
+                {% if kpi_est.valor_medio is not none %}
+                  R$ {{ '{:,.2f}'.format(kpi_est.valor_medio).replace(',','X').replace('.',',').replace('X','.') }}
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
+            </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta_est(kpi_est.valor_medio, kpi_ant.valor_medio) }}</div>
+            </div>
+          </div>
+
         </div>
         {% endif %}
     </div>
@@ -1064,56 +1105,97 @@
         {% if not active_store %}
         <p class="kpi-hint">Selecione uma loja para visualizar os indicadores.</p>
         {% else %}
+
+        {% macro delta_est_sem(atual, anterior) %}
+          {% if atual is not none and anterior is not none and anterior|float > 0 %}
+            {% set pct = (((atual|float - anterior|float) / anterior|float) * 100)|round(0)|int %}
+            {% if pct > 0 %}<span class="kpi5-delta-up">▲ +{{ pct }}%</span>
+            {% elif pct < 0 %}<span class="kpi5-delta-down">▼ {{ pct }}%</span>
+            {% else %}<span class="kpi5-delta-flat">= 0%</span>{% endif %}
+          {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
+        {% endmacro %}
+
         <div class="kpi-toolbar">
             <button class="kpi-nav-btn" onclick="mudarData('{{ semana_anterior_str }}')">&#8249;</button>
             <span class="kpi-period-label">{{ semana_label }}</span>
             <button class="kpi-nav-btn" onclick="mudarData('{{ semana_proxima_str }}')">&#8250;</button>
             <span class="kpi-store-label">{{ active_store.store_name }}</span>
         </div>
-        <div class="kpi-grid">
-            <div class="kpi-card">
-                <span class="kpi-label">Novos</span>
-                <span class="kpi-value">
-                    {% if kpi_est_sem.novos is not none %}
-                        {{ '{:,.0f}'.format(kpi_est_sem.novos).replace(',', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">1ª visita na semana</span>
-            </div>
-            <div class="kpi-card">
-                <span class="kpi-label">Recorrentes</span>
-                <span class="kpi-value">
-                    {% if kpi_est_sem.recorrentes is not none %}
-                        {{ '{:,.0f}'.format(kpi_est_sem.recorrentes).replace(',', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">já visitaram antes</span>
-            </div>
-            <div class="kpi-card">
-                <span class="kpi-label">Ticket Novo</span>
-                <span class="kpi-value">
-                    {% if kpi_est_sem.ticket_novo is not none %}
-                        R$ {{ '{:,.2f}'.format(kpi_est_sem.ticket_novo)
-                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">receita média / cliente novo</span>
-            </div>
-            <div class="kpi-card">
-                <span class="kpi-label">Ticket Recorrente</span>
-                <span class="kpi-value">
-                    {% if kpi_est_sem.ticket_rec is not none %}
-                        R$ {{ '{:,.2f}'.format(kpi_est_sem.ticket_rec)
-                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">receita média / recorrente</span>
-            </div>
-        </div>
 
-        <div class="charts-row">
-            <div class="chart-faixa-wrap"><canvas id="chart-dist-sem"></canvas></div>
-            <div class="chart-faixa-wrap"><canvas id="chart-freq-sem"></canvas></div>
+        <div class="kpi5-row">
+
+          <!-- Clientes Novos -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Clientes<br>Novos</div>
+              <div class="kpi5-value">
+                {% if kpi_est_sem.novos is not none %}
+                  {{ '{:,.0f}'.format(kpi_est_sem.novos).replace(',', '.') }}
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
+            </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta_est_sem(kpi_est_sem.novos, kpi_ant_sem.novos) }}</div>
+            </div>
+          </div>
+
+          <!-- Clientes Recorrentes -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Clientes<br>Recorrentes</div>
+              <div class="kpi5-value">
+                {% if kpi_est_sem.recorrentes is not none %}
+                  {{ '{:,.0f}'.format(kpi_est_sem.recorrentes).replace(',', '.') }}
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
+            </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta_est_sem(kpi_est_sem.recorrentes, kpi_ant_sem.recorrentes) }}</div>
+            </div>
+          </div>
+
+          <!-- Taxa de Retorno -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Taxa de<br>Retorno</div>
+              <div class="kpi5-value">
+                {% if kpi_est_sem.taxa_retorno is not none %}
+                  {{ kpi_est_sem.taxa_retorno }}%
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
+            </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta_est_sem(kpi_est_sem.taxa_retorno, kpi_ant_sem.taxa_retorno) }}</div>
+            </div>
+          </div>
+
+          <!-- Valor Médio por Cliente -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Valor<br>Médio/Cliente</div>
+              <div class="kpi5-value kpi5-value-sm">
+                {% if kpi_est_sem.valor_medio is not none %}
+                  R$ {{ '{:,.2f}'.format(kpi_est_sem.valor_medio).replace(',','X').replace('.',',').replace('X','.') }}
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
+            </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta_est_sem(kpi_est_sem.valor_medio, kpi_ant_sem.valor_medio) }}</div>
+            </div>
+          </div>
+
         </div>
         {% endif %}
     </div>
@@ -1123,56 +1205,97 @@
         {% if not active_store %}
         <p class="kpi-hint">Selecione uma loja para visualizar os indicadores.</p>
         {% else %}
+
+        {% macro delta_est_mes(atual, anterior) %}
+          {% if atual is not none and anterior is not none and anterior|float > 0 %}
+            {% set pct = (((atual|float - anterior|float) / anterior|float) * 100)|round(0)|int %}
+            {% if pct > 0 %}<span class="kpi5-delta-up">▲ +{{ pct }}%</span>
+            {% elif pct < 0 %}<span class="kpi5-delta-down">▼ {{ pct }}%</span>
+            {% else %}<span class="kpi5-delta-flat">= 0%</span>{% endif %}
+          {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
+        {% endmacro %}
+
         <div class="kpi-toolbar">
             <button class="kpi-nav-btn" onclick="mudarData('{{ mes_anterior_str }}')">&#8249;</button>
             <span class="kpi-period-label">{{ mes_label }}</span>
             <button class="kpi-nav-btn" onclick="mudarData('{{ mes_proximo_str }}')">&#8250;</button>
             <span class="kpi-store-label">{{ active_store.store_name }}</span>
         </div>
-        <div class="kpi-grid">
-            <div class="kpi-card">
-                <span class="kpi-label">Novos</span>
-                <span class="kpi-value">
-                    {% if kpi_est_mes.novos is not none %}
-                        {{ '{:,.0f}'.format(kpi_est_mes.novos).replace(',', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">1ª visita no mês</span>
-            </div>
-            <div class="kpi-card">
-                <span class="kpi-label">Recorrentes</span>
-                <span class="kpi-value">
-                    {% if kpi_est_mes.recorrentes is not none %}
-                        {{ '{:,.0f}'.format(kpi_est_mes.recorrentes).replace(',', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">já visitaram antes</span>
-            </div>
-            <div class="kpi-card">
-                <span class="kpi-label">Ticket Novo</span>
-                <span class="kpi-value">
-                    {% if kpi_est_mes.ticket_novo is not none %}
-                        R$ {{ '{:,.2f}'.format(kpi_est_mes.ticket_novo)
-                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">receita média / cliente novo</span>
-            </div>
-            <div class="kpi-card">
-                <span class="kpi-label">Ticket Recorrente</span>
-                <span class="kpi-value">
-                    {% if kpi_est_mes.ticket_rec is not none %}
-                        R$ {{ '{:,.2f}'.format(kpi_est_mes.ticket_rec)
-                               .replace(',', 'X').replace('.', ',').replace('X', '.') }}
-                    {% else %}<span class="kpi-na">—</span>{% endif %}
-                </span>
-                <span class="kpi-sub">receita média / recorrente</span>
-            </div>
-        </div>
 
-        <div class="charts-row">
-            <div class="chart-faixa-wrap"><canvas id="chart-dist-mes"></canvas></div>
-            <div class="chart-faixa-wrap"><canvas id="chart-freq-mes"></canvas></div>
+        <div class="kpi5-row">
+
+          <!-- Clientes Novos -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Clientes<br>Novos</div>
+              <div class="kpi5-value">
+                {% if kpi_est_mes.novos is not none %}
+                  {{ '{:,.0f}'.format(kpi_est_mes.novos).replace(',', '.') }}
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
+            </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta_est_mes(kpi_est_mes.novos, kpi_ant_mes.novos) }}</div>
+            </div>
+          </div>
+
+          <!-- Clientes Recorrentes -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Clientes<br>Recorrentes</div>
+              <div class="kpi5-value">
+                {% if kpi_est_mes.recorrentes is not none %}
+                  {{ '{:,.0f}'.format(kpi_est_mes.recorrentes).replace(',', '.') }}
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
+            </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta_est_mes(kpi_est_mes.recorrentes, kpi_ant_mes.recorrentes) }}</div>
+            </div>
+          </div>
+
+          <!-- Taxa de Retorno -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Taxa de<br>Retorno</div>
+              <div class="kpi5-value">
+                {% if kpi_est_mes.taxa_retorno is not none %}
+                  {{ kpi_est_mes.taxa_retorno }}%
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
+            </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta_est_mes(kpi_est_mes.taxa_retorno, kpi_ant_mes.taxa_retorno) }}</div>
+            </div>
+          </div>
+
+          <!-- Valor Médio por Cliente -->
+          <div class="kpi5-card">
+            <div class="kpi5-body">
+              <div class="kpi5-title">Valor<br>Médio/Cliente</div>
+              <div class="kpi5-value kpi5-value-sm">
+                {% if kpi_est_mes.valor_medio is not none %}
+                  R$ {{ '{:,.2f}'.format(kpi_est_mes.valor_medio).replace(',','X').replace('.',',').replace('X','.') }}
+                {% else %}<span class="kpi5-na">—</span>{% endif %}
+              </div>
+            </div>
+            <div class="kpi5-footer">
+              <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+                <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+              </svg>
+              <div class="kpi5-delta-wrap">{{ delta_est_mes(kpi_est_mes.valor_medio, kpi_ant_mes.valor_medio) }}</div>
+            </div>
+          </div>
+
         </div>
         {% endif %}
     </div>
@@ -1476,99 +1599,6 @@ function _criarConversaoChart(canvasId, faixaData) {
     });
 }
 
-// ── Gráficos estratégico ─────────────────────────────────────────────────
-const _estNovos    = {{ kpi_est.novos    | tojson }};
-const _estRec      = {{ kpi_est.recorrentes | tojson }};
-const _estSemNovos = {{ kpi_est_sem.novos    | tojson }};
-const _estSemRec   = {{ kpi_est_sem.recorrentes | tojson }};
-const _estMesNovos = {{ kpi_est_mes.novos    | tojson }};
-const _estMesRec   = {{ kpi_est_mes.recorrentes | tojson }};
-const _freqDia     = {{ chart_freq_retorno_dia | tojson }};
-const _freqSem     = {{ chart_freq_retorno_sem | tojson }};
-const _freqMes     = {{ chart_freq_retorno_mes | tojson }};
-
-const _centerTextPlugin = {
-    id: 'centerText',
-    afterDraw(chart) {
-        if (chart.config.type !== 'doughnut') return;
-        const ds = chart.data.datasets[0].data;
-        const total = ds.reduce((a, b) => a + (b || 0), 0);
-        const recIdx = chart.data.labels.indexOf('Recorrentes');
-        const recVal = recIdx >= 0 ? (ds[recIdx] || 0) : 0;
-        const pct = total > 0 ? Math.round(recVal / total * 100) : 0;
-        const { ctx, chartArea: { left, top, width, height } } = chart;
-        const cx = left + width / 2, cy = top + height / 2;
-        ctx.save();
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.font = 'bold 20px sans-serif'; ctx.fillStyle = '#374151';
-        ctx.fillText(pct + '%', cx, cy - 10);
-        ctx.font = '11px sans-serif'; ctx.fillStyle = '#6B7280';
-        ctx.fillText('Recorrentes', cx, cy + 12);
-        ctx.restore();
-    }
-};
-
-function _criarDistribuicaoChart(canvasId, novos, recorrentes) {
-    const el = document.getElementById(canvasId);
-    if (!el || novos === null || recorrentes === null) return;
-    new Chart(el, {
-        type: 'doughnut',
-        data: {
-            labels: ['Novos', 'Recorrentes'],
-            datasets: [{
-                data: [novos, recorrentes],
-                backgroundColor: ['#9C27B0bb', _themeColor + 'bb'],
-                borderColor: ['#9C27B0', _themeColor],
-                borderWidth: 2,
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false, cutout: '65%',
-            plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-                title: { display: true, text: 'Distribuição dos Clientes', font: { size: 12 } }
-            }
-        },
-        plugins: [_centerTextPlugin]
-    });
-}
-
-function _criarFreqRetornoChart(canvasId, labels, data, titulo) {
-    const el = document.getElementById(canvasId);
-    if (!el || labels.length === 0) return;
-    new Chart(el, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Dias',
-                data,
-                borderColor: '#0057A8',
-                backgroundColor: 'rgba(0,87,168,0.08)',
-                borderWidth: 2,
-                pointRadius: 4,
-                pointBackgroundColor: '#fff',
-                pointBorderColor: '#0057A8',
-                pointBorderWidth: 2,
-                tension: 0.3,
-                spanGaps: true,
-                fill: true,
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { display: false },
-                title: { display: true, text: titulo, font: { size: 12 } }
-            },
-            scales: {
-                x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-                y: { beginAtZero: false, ticks: { precision: 0, font: { size: 10 } } }
-            }
-        }
-    });
-}
 
 const _topQtdeDia = {{ top_produtos_qtde_dia | tojson }};
 const _topFatDia  = {{ top_produtos_fat_dia  | tojson }};
@@ -1679,13 +1709,6 @@ window.addEventListener('load', () => {
     _criarTicketTipoChart('chart-ticket-tipo-dia', _ticketDia, 'Ticket Médio por Tipo de Cliente');
     _criarTicketTipoChart('chart-ticket-tipo-sem', _ticketSem, 'Ticket Médio por Tipo de Cliente');
     _criarTicketTipoChart('chart-ticket-tipo-mes', _ticketMes, 'Ticket Médio por Tipo de Cliente');
-    // Estratégico
-    _criarDistribuicaoChart('chart-dist-dia', _estNovos,    _estRec);
-    _criarDistribuicaoChart('chart-dist-sem', _estSemNovos, _estSemRec);
-    _criarDistribuicaoChart('chart-dist-mes', _estMesNovos, _estMesRec);
-    _criarFreqRetornoChart('chart-freq-dia', _horasLabels,              _freqDia.slice(8,20), 'Frequência de Retorno (dias)');
-    _criarFreqRetornoChart('chart-freq-sem', _freqSem.map(d=>d.label), _freqSem.map(d=>d.avg), 'Frequência de Retorno (dias)');
-    _criarFreqRetornoChart('chart-freq-mes', _freqMes.map(d=>d.label), _freqMes.map(d=>d.avg), 'Frequência de Retorno (dias)');
 });
 </script>
 {% endblock %}
