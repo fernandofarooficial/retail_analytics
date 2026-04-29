@@ -132,6 +132,22 @@
     transform: translateX(-50%);
     width: 86px; height: 54px;
   }
+  /* ── Gráficos Estratégico ─────────────────────────────────────────────── */
+  .est-chart-wrap {
+    flex: 1; background: #fff; border-radius: 8px;
+    padding: 0.75rem; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    display: flex; flex-direction: column;
+  }
+  .est-chart-title {
+    font-size: 0.78rem; font-weight: 700; color: #374151; margin-bottom: 0.15rem;
+  }
+  .est-chart-kpi { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+  .est-chart-big { font-size: 1.25rem; font-weight: 700; color: #111827; }
+  .est-badge-up   { font-size: 0.72rem; font-weight: 700; color: #166534; background: #D1FAE5; border-radius: 4px; padding: 2px 6px; }
+  .est-badge-down { font-size: 0.72rem; font-weight: 700; color: #991B1B; background: #FEE2E2; border-radius: 4px; padding: 2px 6px; }
+  .est-badge-flat { font-size: 0.72rem; color: #6B7280; }
+  .est-chart-sub  { font-size: 0.7rem; color: #6B7280; margin: 0.15rem 0 0.4rem; }
+  .est-canvas     { position: relative; height: 210px; flex: 1; }
 </style>
 <div class="page-header">
     <h1>Dashboard</h1>
@@ -1097,6 +1113,43 @@
           </div>
 
         </div>
+
+        <div class="charts-row">
+          <div class="est-chart-wrap">
+            <div class="est-chart-title">Evolução do Faturamento (Hoje)</div>
+            <div class="est-chart-kpi">
+              <span class="est-chart-big">
+                {% if kpi_com.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com.faturamento).replace(',','X').replace('.',',').replace('X','.') }}
+                {% else %}—{% endif %}
+              </span>
+              {% if kpi_com.faturamento is not none and kpi_ant_com.faturamento is not none and kpi_ant_com.faturamento|float > 0 %}
+                {% set _pf = (((kpi_com.faturamento|float - kpi_ant_com.faturamento|float) / kpi_ant_com.faturamento|float) * 100)|round(0)|int %}
+                {% if _pf > 0 %}<span class="est-badge-up">▲ +{{ _pf }}%</span>
+                {% elif _pf < 0 %}<span class="est-badge-down">▼ {{ _pf }}%</span>
+                {% else %}<span class="est-badge-flat">= 0%</span>{% endif %}
+              {% endif %}
+            </div>
+            <div class="est-chart-sub">vs dia anterior</div>
+            <div class="est-canvas"><canvas id="chart-est-fat-dia"></canvas></div>
+          </div>
+          <div class="est-chart-wrap">
+            <div class="est-chart-title">Evolução do Ticket Médio (Hoje)</div>
+            <div class="est-chart-kpi">
+              <span class="est-chart-big">
+                {% if kpi_com.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}
+                {% else %}—{% endif %}
+              </span>
+              {% if kpi_com.ticket_medio is not none and kpi_ant_com.ticket_medio is not none and kpi_ant_com.ticket_medio|float > 0 %}
+                {% set _pt = (((kpi_com.ticket_medio|float - kpi_ant_com.ticket_medio|float) / kpi_ant_com.ticket_medio|float) * 100)|round(0)|int %}
+                {% if _pt > 0 %}<span class="est-badge-up">▲ +{{ _pt }}%</span>
+                {% elif _pt < 0 %}<span class="est-badge-down">▼ {{ _pt }}%</span>
+                {% else %}<span class="est-badge-flat">= 0%</span>{% endif %}
+              {% endif %}
+            </div>
+            <div class="est-chart-sub">{% if kpi_ant_com.ticket_medio is not none and kpi_ant_com.ticket_medio|float > 0 %}vs dia anterior: R$ {{ '{:,.2f}'.format(kpi_ant_com.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}vs dia anterior{% endif %}</div>
+            <div class="est-canvas"><canvas id="chart-est-ticket-dia"></canvas></div>
+          </div>
+        </div>
         {% endif %}
     </div>
 
@@ -1197,6 +1250,43 @@
           </div>
 
         </div>
+
+        <div class="charts-row">
+          <div class="est-chart-wrap">
+            <div class="est-chart-title">Evolução do Faturamento (Semana)</div>
+            <div class="est-chart-kpi">
+              <span class="est-chart-big">
+                {% if kpi_com_sem.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com_sem.faturamento).replace(',','X').replace('.',',').replace('X','.') }}
+                {% else %}—{% endif %}
+              </span>
+              {% if kpi_com_sem.faturamento is not none and kpi_ant_com_sem.faturamento is not none and kpi_ant_com_sem.faturamento|float > 0 %}
+                {% set _pfs = (((kpi_com_sem.faturamento|float - kpi_ant_com_sem.faturamento|float) / kpi_ant_com_sem.faturamento|float) * 100)|round(0)|int %}
+                {% if _pfs > 0 %}<span class="est-badge-up">▲ +{{ _pfs }}%</span>
+                {% elif _pfs < 0 %}<span class="est-badge-down">▼ {{ _pfs }}%</span>
+                {% else %}<span class="est-badge-flat">= 0%</span>{% endif %}
+              {% endif %}
+            </div>
+            <div class="est-chart-sub">vs semana anterior</div>
+            <div class="est-canvas"><canvas id="chart-est-fat-sem"></canvas></div>
+          </div>
+          <div class="est-chart-wrap">
+            <div class="est-chart-title">Evolução do Ticket Médio (Semana)</div>
+            <div class="est-chart-kpi">
+              <span class="est-chart-big">
+                {% if kpi_com_sem.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com_sem.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}
+                {% else %}—{% endif %}
+              </span>
+              {% if kpi_com_sem.ticket_medio is not none and kpi_ant_com_sem.ticket_medio is not none and kpi_ant_com_sem.ticket_medio|float > 0 %}
+                {% set _pts = (((kpi_com_sem.ticket_medio|float - kpi_ant_com_sem.ticket_medio|float) / kpi_ant_com_sem.ticket_medio|float) * 100)|round(0)|int %}
+                {% if _pts > 0 %}<span class="est-badge-up">▲ +{{ _pts }}%</span>
+                {% elif _pts < 0 %}<span class="est-badge-down">▼ {{ _pts }}%</span>
+                {% else %}<span class="est-badge-flat">= 0%</span>{% endif %}
+              {% endif %}
+            </div>
+            <div class="est-chart-sub">{% if kpi_ant_com_sem.ticket_medio is not none and kpi_ant_com_sem.ticket_medio|float > 0 %}vs semana anterior: R$ {{ '{:,.2f}'.format(kpi_ant_com_sem.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}vs semana anterior{% endif %}</div>
+            <div class="est-canvas"><canvas id="chart-est-ticket-sem"></canvas></div>
+          </div>
+        </div>
         {% endif %}
     </div>
 
@@ -1296,6 +1386,43 @@
             </div>
           </div>
 
+        </div>
+
+        <div class="charts-row">
+          <div class="est-chart-wrap">
+            <div class="est-chart-title">Evolução do Faturamento (Mês)</div>
+            <div class="est-chart-kpi">
+              <span class="est-chart-big">
+                {% if kpi_com_mes.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com_mes.faturamento).replace(',','X').replace('.',',').replace('X','.') }}
+                {% else %}—{% endif %}
+              </span>
+              {% if kpi_com_mes.faturamento is not none and kpi_ant_com_mes.faturamento is not none and kpi_ant_com_mes.faturamento|float > 0 %}
+                {% set _pfm = (((kpi_com_mes.faturamento|float - kpi_ant_com_mes.faturamento|float) / kpi_ant_com_mes.faturamento|float) * 100)|round(0)|int %}
+                {% if _pfm > 0 %}<span class="est-badge-up">▲ +{{ _pfm }}%</span>
+                {% elif _pfm < 0 %}<span class="est-badge-down">▼ {{ _pfm }}%</span>
+                {% else %}<span class="est-badge-flat">= 0%</span>{% endif %}
+              {% endif %}
+            </div>
+            <div class="est-chart-sub">vs mês anterior</div>
+            <div class="est-canvas"><canvas id="chart-est-fat-mes"></canvas></div>
+          </div>
+          <div class="est-chart-wrap">
+            <div class="est-chart-title">Evolução do Ticket Médio (Mês)</div>
+            <div class="est-chart-kpi">
+              <span class="est-chart-big">
+                {% if kpi_com_mes.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com_mes.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}
+                {% else %}—{% endif %}
+              </span>
+              {% if kpi_com_mes.ticket_medio is not none and kpi_ant_com_mes.ticket_medio is not none and kpi_ant_com_mes.ticket_medio|float > 0 %}
+                {% set _ptm = (((kpi_com_mes.ticket_medio|float - kpi_ant_com_mes.ticket_medio|float) / kpi_ant_com_mes.ticket_medio|float) * 100)|round(0)|int %}
+                {% if _ptm > 0 %}<span class="est-badge-up">▲ +{{ _ptm }}%</span>
+                {% elif _ptm < 0 %}<span class="est-badge-down">▼ {{ _ptm }}%</span>
+                {% else %}<span class="est-badge-flat">= 0%</span>{% endif %}
+              {% endif %}
+            </div>
+            <div class="est-chart-sub">{% if kpi_ant_com_mes.ticket_medio is not none and kpi_ant_com_mes.ticket_medio|float > 0 %}vs mês anterior: R$ {{ '{:,.2f}'.format(kpi_ant_com_mes.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}vs mês anterior{% endif %}</div>
+            <div class="est-canvas"><canvas id="chart-est-ticket-mes"></canvas></div>
+          </div>
         </div>
         {% endif %}
     </div>
@@ -1690,6 +1817,116 @@ function _criarTicketTipoChart(canvasId, data, titulo) {
     });
 }
 
+function _fmtR(v) {
+    if (v == null) return '—';
+    return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function _criarEstFatChart(canvasId, faixaData) {
+    const el = document.getElementById(canvasId);
+    if (!el) return;
+    const fat = faixaData.faturamento || [];
+    const labels = Array.from({length: 24}, (_, i) => String(i).padStart(2,'0') + 'h');
+    let acum = 0;
+    const acumData = fat.map(v => { acum += (v || 0); return acum; });
+    const lastIdx = fat.reduce((best, v, i) => (v > 0 ? i : best), -1);
+    const barColors = fat.map((_, i) => i === lastIdx ? '#1D4ED8' : '#93C5FD');
+    new Chart(el, {
+        plugins: [ChartDataLabels],
+        data: {
+            labels,
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'Faturamento',
+                    data: fat,
+                    backgroundColor: barColors,
+                    yAxisID: 'yBar',
+                    order: 2,
+                    datalabels: {
+                        display: (ctx) => ctx.dataIndex === lastIdx,
+                        anchor: 'end', align: 'end',
+                        formatter: v => _fmtR(v),
+                        color: '#1D4ED8', font: {size: 9, weight: 'bold'},
+                        clamp: true
+                    }
+                },
+                {
+                    type: 'line',
+                    label: 'Acumulado',
+                    data: acumData,
+                    borderColor: '#16A34A',
+                    backgroundColor: 'transparent',
+                    pointRadius: (ctx) => ctx.dataIndex === lastIdx ? 5 : 0,
+                    pointBackgroundColor: '#16A34A',
+                    tension: 0.3,
+                    yAxisID: 'yLine',
+                    order: 1,
+                    datalabels: {
+                        display: (ctx) => ctx.dataIndex === lastIdx,
+                        anchor: 'end', align: 'top',
+                        formatter: v => _fmtR(v),
+                        color: '#16A34A', font: {size: 9, weight: 'bold'},
+                        clamp: true
+                    }
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: {mode: 'index', intersect: false},
+            plugins: {legend: {display: false}, tooltip: {callbacks: {label: ctx => _fmtR(ctx.raw)}}},
+            scales: {
+                x: {ticks: {font: {size: 9}}, grid: {display: false}},
+                yBar: {position: 'left',  ticks: {font: {size: 9}, callback: v => _fmtR(v)}, grid: {color: '#F3F4F6'}},
+                yLine: {position: 'right', ticks: {font: {size: 9}, callback: v => _fmtR(v)}, grid: {display: false}}
+            }
+        }
+    });
+}
+
+function _criarEstTicketChart(canvasId, faixaData) {
+    const el = document.getElementById(canvasId);
+    if (!el) return;
+    const fat = faixaData.faturamento || [];
+    const vnd = faixaData.vendas || [];
+    const ticket = fat.map((f, i) => (vnd[i] > 0 ? f / vnd[i] : null));
+    const labels = Array.from({length: 24}, (_, i) => String(i).padStart(2,'0') + 'h');
+    const lastIdx = ticket.reduce((best, v, i) => (v != null ? i : best), -1);
+    new Chart(el, {
+        plugins: [ChartDataLabels],
+        data: {
+            labels,
+            datasets: [{
+                type: 'line',
+                label: 'Ticket Médio',
+                data: ticket,
+                borderColor: '#F97316',
+                backgroundColor: 'rgba(249,115,22,0.08)',
+                fill: true,
+                pointRadius: (ctx) => ctx.dataIndex === lastIdx ? 6 : 2,
+                pointBackgroundColor: (ctx) => ctx.dataIndex === lastIdx ? '#EA580C' : '#F97316',
+                tension: 0.3,
+                datalabels: {
+                    display: (ctx) => ctx.dataIndex === lastIdx,
+                    anchor: 'end', align: 'top',
+                    formatter: v => _fmtR(v),
+                    color: '#EA580C', font: {size: 9, weight: 'bold'},
+                    clamp: true
+                }
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {legend: {display: false}, tooltip: {callbacks: {label: ctx => _fmtR(ctx.raw)}}},
+            scales: {
+                x: {ticks: {font: {size: 9}}, grid: {display: false}},
+                y: {ticks: {font: {size: 9}, callback: v => _fmtR(v)}, grid: {color: '#F3F4F6'}}
+            }
+        }
+    });
+}
+
 window.addEventListener('load', () => {
     _criarFaixaChart('chart-faixa-dia', _faixaDia);
     _criarFaixaChart('chart-faixa-sem', _faixaSem);
@@ -1709,6 +1946,12 @@ window.addEventListener('load', () => {
     _criarTicketTipoChart('chart-ticket-tipo-dia', _ticketDia, 'Ticket Médio por Tipo de Cliente');
     _criarTicketTipoChart('chart-ticket-tipo-sem', _ticketSem, 'Ticket Médio por Tipo de Cliente');
     _criarTicketTipoChart('chart-ticket-tipo-mes', _ticketMes, 'Ticket Médio por Tipo de Cliente');
+    _criarEstFatChart('chart-est-fat-dia', _faixaDia);
+    _criarEstFatChart('chart-est-fat-sem', _faixaSem);
+    _criarEstFatChart('chart-est-fat-mes', _faixaMes);
+    _criarEstTicketChart('chart-est-ticket-dia', _faixaDia);
+    _criarEstTicketChart('chart-est-ticket-sem', _faixaSem);
+    _criarEstTicketChart('chart-est-ticket-mes', _faixaMes);
 });
 </script>
 {% endblock %}
