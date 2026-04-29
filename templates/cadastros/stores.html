@@ -17,6 +17,7 @@
             <tr>
                 <th style="width:60px">ID</th>
                 <th>Nome</th>
+                <th>Nome Curto</th>
                 <th>Empresa</th>
                 <th>Lojista</th>
                 <th>CNPJ</th>
@@ -29,6 +30,7 @@
             <tr>
                 <td><span class="badge">{{ r.store_id }}</span></td>
                 <td>{{ r.store_name }}</td>
+                <td>{{ r.store_short_name or '—' }}</td>
                 <td>{{ r.company_name or '—' }}</td>
                 <td>{{ r.retailer_group_name or '—' }}</td>
                 <td>{{ r.cnpj or '—' }}</td>
@@ -37,6 +39,7 @@
                     <button class="btn-edit"
                         data-id="{{ r.store_id }}"
                         data-nome="{{ r.store_name | e }}"
+                        data-short="{{ r.store_short_name or '' | e }}"
                         data-company="{{ r.company_id or '' }}"
                         data-lojista="{{ r.retailer_group_id or '' }}"
                         data-cnpj="{{ r.cnpj or '' }}"
@@ -53,7 +56,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="7" class="table-empty">Nenhuma loja cadastrada.</td></tr>
+            <tr><td colspan="8" class="table-empty">Nenhuma loja cadastrada.</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -69,9 +72,15 @@
             <input type="hidden" name="_action" id="form-action">
             <input type="hidden" name="_id"     id="form-id">
 
-            <div class="form-group">
-                <label>Nome da Loja</label>
-                <input type="text" id="f-name" name="store_name" required>
+            <div class="form-row">
+                <div class="form-group" style="flex:2">
+                    <label>Nome da Loja</label>
+                    <input type="text" id="f-name" name="store_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Nome Curto</label>
+                    <input type="text" id="f-short" name="store_short_name" maxlength="30">
+                </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -128,7 +137,7 @@ function abrirNovo() {
     document.getElementById('modal-titulo').textContent = 'Nova Loja';
     document.getElementById('form-action').value = 'criar';
     document.getElementById('form-id').value = '';
-    ['f-name','f-cnpj','f-cep','f-number','f-complement'].forEach(id => {
+    ['f-name','f-short','f-cnpj','f-cep','f-number','f-complement'].forEach(id => {
         document.getElementById(id).value = '';
     });
     document.getElementById('f-company').value = '';
@@ -142,6 +151,7 @@ function abrirEditar(btn) {
     document.getElementById('form-action').value = 'editar';
     document.getElementById('form-id').value     = d.id;
     document.getElementById('f-name').value      = d.nome;
+    document.getElementById('f-short').value     = d.short;
     document.getElementById('f-company').value   = d.company;
     document.getElementById('f-lojista').value   = d.lojista;
     document.getElementById('f-cnpj').value      = d.cnpj;

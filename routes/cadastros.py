@@ -310,13 +310,14 @@ def lojas():
             if action == 'criar':
                 db.execute(
                     """INSERT INTO faciais.stores
-                       (company_id, retailer_group_id, store_name,
+                       (company_id, retailer_group_id, store_name, store_short_name,
                         cnpj, cep, address_number, address_complement)
-                       VALUES (%s,%s,%s,%s,%s,%s,%s)""",
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
                     (
                         request.form.get('company_id') or None,
                         request.form.get('retailer_group_id') or None,
                         request.form['store_name'].strip(),
+                        request.form.get('store_short_name', '').strip() or None,
                         request.form.get('cnpj') or None,
                         request.form.get('cep') or None,
                         request.form.get('address_number', '').strip() or None,
@@ -328,13 +329,14 @@ def lojas():
             elif action == 'editar':
                 db.execute(
                     """UPDATE faciais.stores SET
-                       company_id=%s, retailer_group_id=%s, store_name=%s,
+                       company_id=%s, retailer_group_id=%s, store_name=%s, store_short_name=%s,
                        cnpj=%s, cep=%s, address_number=%s, address_complement=%s
                        WHERE store_id=%s""",
                     (
                         request.form.get('company_id') or None,
                         request.form.get('retailer_group_id') or None,
                         request.form['store_name'].strip(),
+                        request.form.get('store_short_name', '').strip() or None,
                         request.form.get('cnpj') or None,
                         request.form.get('cep') or None,
                         request.form.get('address_number', '').strip() or None,
