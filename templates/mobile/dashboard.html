@@ -38,6 +38,40 @@
     height: 8px; background: #E5E7EB; border-radius: 4px;
   }
   .m-top-prod-bar { height: 100%; border-radius: 4px; }
+  .m-comb-section {
+    background: #fff; border-radius: 8px;
+    padding: 0.75rem; margin: 1rem 0;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .m-comb-title {
+    font-size: 0.8rem; font-weight: 700; color: #374151;
+    text-align: center; margin-bottom: 0.5rem;
+  }
+  .m-comb-item {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    padding: 0.3rem 0; border-bottom: 1px solid #F3F4F6; font-size: 0.78rem;
+  }
+  .m-comb-item:last-child { border-bottom: none; }
+  .m-comb-nomes { color: #374151; flex: 1; line-height: 1.3; }
+  .m-comb-qtd { font-weight: 700; white-space: nowrap; margin-left: 0.5rem; }
+  .m-ticket-tipo-section {
+    background: #fff; border-radius: 8px;
+    padding: 0.75rem; margin: 1rem 0;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .m-ticket-tipo-title {
+    font-size: 0.8rem; font-weight: 700; color: #374151;
+    text-align: center; margin-bottom: 0.5rem;
+  }
+  .m-ticket-tipo-row { display: flex; gap: 0.75rem; }
+  .m-ticket-tipo-card {
+    flex: 1; background: #F9FAFB; border-radius: 6px;
+    padding: 0.6rem; text-align: center;
+  }
+  .m-ticket-tipo-label {
+    font-size: 0.72rem; font-weight: 600; color: #6B7280; margin-bottom: 0.2rem;
+  }
+  .m-ticket-tipo-value { font-size: 1rem; font-weight: 700; color: #111827; }
   .m-nav-row {
     display: flex; align-items: center; gap: 0.5rem;
     justify-content: center; margin-bottom: 0.5rem;
@@ -474,6 +508,42 @@
       </div>
       {% endif %}
 
+      {% if combinacoes_dia %}
+      <div class="m-comb-section">
+        <div class="m-comb-title">Combinações de Compra</div>
+        {% for c in combinacoes_dia %}
+        <div class="m-comb-item">
+          <span class="m-comb-nomes">{{ c.nome_a }} + {{ c.nome_b }}</span>
+          <span class="m-comb-qtd">{{ c.qtd }}×</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if kpi_est.ticket_novo is not none or kpi_est.ticket_rec is not none %}
+      <div class="m-ticket-tipo-section">
+        <div class="m-ticket-tipo-title">Ticket Médio por Tipo de Cliente</div>
+        <div class="m-ticket-tipo-row">
+          <div class="m-ticket-tipo-card">
+            <div class="m-ticket-tipo-label">Novo</div>
+            <div class="m-ticket-tipo-value">
+              {% if kpi_est.ticket_novo is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_est.ticket_novo).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}—{% endif %}
+            </div>
+          </div>
+          <div class="m-ticket-tipo-card">
+            <div class="m-ticket-tipo-label">Recorrente</div>
+            <div class="m-ticket-tipo-value">
+              {% if kpi_est.ticket_rec is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_est.ticket_rec).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}—{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
       {% endif %}
 
     </div><!-- /comercial-dia -->
@@ -891,6 +961,42 @@
       </div>
       {% endif %}
 
+      {% if combinacoes_sem %}
+      <div class="m-comb-section">
+        <div class="m-comb-title">Combinações de Compra</div>
+        {% for c in combinacoes_sem %}
+        <div class="m-comb-item">
+          <span class="m-comb-nomes">{{ c.nome_a }} + {{ c.nome_b }}</span>
+          <span class="m-comb-qtd">{{ c.qtd }}×</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if kpi_est_sem.ticket_novo is not none or kpi_est_sem.ticket_rec is not none %}
+      <div class="m-ticket-tipo-section">
+        <div class="m-ticket-tipo-title">Ticket Médio por Tipo de Cliente</div>
+        <div class="m-ticket-tipo-row">
+          <div class="m-ticket-tipo-card">
+            <div class="m-ticket-tipo-label">Novo</div>
+            <div class="m-ticket-tipo-value">
+              {% if kpi_est_sem.ticket_novo is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_est_sem.ticket_novo).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}—{% endif %}
+            </div>
+          </div>
+          <div class="m-ticket-tipo-card">
+            <div class="m-ticket-tipo-label">Recorrente</div>
+            <div class="m-ticket-tipo-value">
+              {% if kpi_est_sem.ticket_rec is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_est_sem.ticket_rec).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}—{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
       {% endif %}
     </div>
 
@@ -1024,6 +1130,42 @@
           </div>
         </div>
         {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if combinacoes_mes %}
+      <div class="m-comb-section">
+        <div class="m-comb-title">Combinações de Compra</div>
+        {% for c in combinacoes_mes %}
+        <div class="m-comb-item">
+          <span class="m-comb-nomes">{{ c.nome_a }} + {{ c.nome_b }}</span>
+          <span class="m-comb-qtd">{{ c.qtd }}×</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if kpi_est_mes.ticket_novo is not none or kpi_est_mes.ticket_rec is not none %}
+      <div class="m-ticket-tipo-section">
+        <div class="m-ticket-tipo-title">Ticket Médio por Tipo de Cliente</div>
+        <div class="m-ticket-tipo-row">
+          <div class="m-ticket-tipo-card">
+            <div class="m-ticket-tipo-label">Novo</div>
+            <div class="m-ticket-tipo-value">
+              {% if kpi_est_mes.ticket_novo is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_est_mes.ticket_novo).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}—{% endif %}
+            </div>
+          </div>
+          <div class="m-ticket-tipo-card">
+            <div class="m-ticket-tipo-label">Recorrente</div>
+            <div class="m-ticket-tipo-value">
+              {% if kpi_est_mes.ticket_rec is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_est_mes.ticket_rec).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}—{% endif %}
+            </div>
+          </div>
+        </div>
       </div>
       {% endif %}
 

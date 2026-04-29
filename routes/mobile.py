@@ -1177,6 +1177,9 @@ def dashboard():
         top_produtos_fat_sem  = []
         top_produtos_qtde_mes = []
         top_produtos_fat_mes  = []
+        combinacoes_dia       = []
+        combinacoes_sem       = []
+        combinacoes_mes       = []
 
         _FILTRO_MV = (
             "m.portal = %s AND m.cnpj_emp = %s "
@@ -1211,6 +1214,38 @@ def dashboard():
             top_produtos_fat_sem  = _top_query(_date_sem,  "SUM(m.valor_liquido)", _p + (semana_inicio_str, semana_fim_str))
             top_produtos_qtde_mes = _top_query(_date_sem,  "SUM(m.quantidade)",    _p + (mes_inicio_str, mes_fim_str))
             top_produtos_fat_mes  = _top_query(_date_sem,  "SUM(m.valor_liquido)", _p + (mes_inicio_str, mes_fim_str))
+
+            def _comb_query(date_filter, params):
+                sql = f"""
+                    SELECT
+                        COALESCE(NULLIF(TRIM(pa.descricao_basica),''), pa.nome) AS nome_a,
+                        COALESCE(NULLIF(TRIM(pb.descricao_basica),''), pb.nome) AS nome_b,
+                        COUNT(*) AS qtd
+                    FROM microvix.microvix_movimento a
+                    JOIN microvix.microvix_movimento b
+                        ON  a.portal    = b.portal
+                        AND a.cnpj_emp  = b.cnpj_emp
+                        AND a.documento = b.documento
+                        AND a.cod_produto < b.cod_produto
+                    JOIN microvix.microvix_produtos pa
+                        ON pa.portal = a.portal AND pa.cod_produto = a.cod_produto
+                    JOIN microvix.microvix_produtos pb
+                        ON pb.portal = b.portal AND pb.cod_produto = b.cod_produto
+                    WHERE a.portal = %s AND a.cnpj_emp = %s
+                      AND a.cancelado <> 'S' AND a.excluido <> 'S' AND a.soma_relatorio = 'S'
+                      AND a.tipo_transacao = 'V' AND a.cod_natureza_operacao = '10030'
+                      AND b.cancelado <> 'S' AND b.excluido <> 'S' AND b.soma_relatorio = 'S'
+                      AND b.tipo_transacao = 'V' AND b.cod_natureza_operacao = '10030'
+                      AND {date_filter}
+                    GROUP BY nome_a, nome_b
+                    ORDER BY qtd DESC LIMIT 5
+                """
+                return [{'nome_a': r['nome_a'], 'nome_b': r['nome_b'], 'qtd': int(r['qtd'])}
+                        for r in db.query_all(sql, params)]
+
+            combinacoes_dia = _comb_query("DATE(a.data_documento) = %s",              _p + (data_str,))
+            combinacoes_sem = _comb_query("DATE(a.data_documento) BETWEEN %s AND %s", _p + (semana_inicio_str, semana_fim_str))
+            combinacoes_mes = _comb_query("DATE(a.data_documento) BETWEEN %s AND %s", _p + (mes_inicio_str, mes_fim_str))
 
         # ── Frequência de retorno por horário/dia ────────────────────────────
         chart_freq_retorno_dia = [None]*24
@@ -1353,6 +1388,9 @@ def dashboard():
         top_produtos_fat_sem=top_produtos_fat_sem,
         top_produtos_qtde_mes=top_produtos_qtde_mes,
         top_produtos_fat_mes=top_produtos_fat_mes,
+        combinacoes_dia=combinacoes_dia,
+        combinacoes_sem=combinacoes_sem,
+        combinacoes_mes=combinacoes_mes,
         chart_freq_retorno_dia=chart_freq_retorno_dia,
         chart_freq_retorno_sem=chart_freq_retorno_sem,
         chart_freq_retorno_mes=chart_freq_retorno_mes,

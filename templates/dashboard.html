@@ -405,6 +405,10 @@
             <div class="chart-top-wrap"><canvas id="chart-top-qtde-dia"></canvas></div>
             <div class="chart-top-wrap"><canvas id="chart-top-fat-dia"></canvas></div>
         </div>
+        <div class="charts-row">
+            <div class="chart-top-wrap"><canvas id="chart-combinacoes-dia"></canvas></div>
+            <div class="chart-faixa-wrap"><canvas id="chart-ticket-tipo-dia"></canvas></div>
+        </div>
         {% endif %}
     </div>
 
@@ -791,6 +795,10 @@
             <div class="chart-top-wrap"><canvas id="chart-top-qtde-sem"></canvas></div>
             <div class="chart-top-wrap"><canvas id="chart-top-fat-sem"></canvas></div>
         </div>
+        <div class="charts-row">
+            <div class="chart-top-wrap"><canvas id="chart-combinacoes-sem"></canvas></div>
+            <div class="chart-faixa-wrap"><canvas id="chart-ticket-tipo-sem"></canvas></div>
+        </div>
         {% endif %}
     </div>
 
@@ -894,6 +902,10 @@
         <div class="charts-row">
             <div class="chart-top-wrap"><canvas id="chart-top-qtde-mes"></canvas></div>
             <div class="chart-top-wrap"><canvas id="chart-top-fat-mes"></canvas></div>
+        </div>
+        <div class="charts-row">
+            <div class="chart-top-wrap"><canvas id="chart-combinacoes-mes"></canvas></div>
+            <div class="chart-faixa-wrap"><canvas id="chart-ticket-tipo-mes"></canvas></div>
         </div>
         {% endif %}
     </div>
@@ -1507,6 +1519,100 @@ function _criarTopProdChart(canvasId, dados, titulo, cor) {
     });
 }
 
+const _combinacoesDia = {{ combinacoes_dia | tojson }};
+const _combinacoesSem = {{ combinacoes_sem | tojson }};
+const _combinacoesMes = {{ combinacoes_mes | tojson }};
+const _ticketDia = { novo: {{ kpi_est.ticket_novo     | tojson }}, rec: {{ kpi_est.ticket_rec     | tojson }} };
+const _ticketSem = { novo: {{ kpi_est_sem.ticket_novo | tojson }}, rec: {{ kpi_est_sem.ticket_rec | tojson }} };
+const _ticketMes = { novo: {{ kpi_est_mes.ticket_novo | tojson }}, rec: {{ kpi_est_mes.ticket_rec | tojson }} };
+
+function _criarCombinacoesChart(canvasId, dados) {
+    const el = document.getElementById(canvasId);
+    if (!el || !dados.length) return;
+    const trim = s => s && s.length > 22 ? s.substring(0, 20) + '…' : (s || '?');
+    const labels = dados.map(d => trim(d.nome_a) + ' + ' + trim(d.nome_b));
+    new Chart(el, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Compras juntos',
+                data: dados.map(d => d.qtd),
+                backgroundColor: _themeColor + 'bb',
+                borderColor: _themeColor,
+                borderWidth: 1,
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: 'Combinações de Compra', font: { size: 12 } },
+                datalabels: {
+                    anchor: 'end', align: 'right',
+                    font: { size: 11, weight: 'bold' },
+                    formatter: v => v,
+                    color: '#374151',
+                }
+            },
+            scales: {
+                x: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } },
+                y: { ticks: { font: { size: 10 } } }
+            }
+        },
+        plugins: [ChartDataLabels]
+    });
+}
+
+function _criarTicketTipoChart(canvasId, data, titulo) {
+    const el = document.getElementById(canvasId);
+    if (!el) return;
+    const vNovo = data.novo !== null ? data.novo : 0;
+    const vRec  = data.rec  !== null ? data.rec  : 0;
+    new Chart(el, {
+        type: 'bar',
+        data: {
+            labels: ['Novo', 'Recorrente'],
+            datasets: [{
+                label: titulo,
+                data: [vNovo, vRec],
+                backgroundColor: [_themeColor + 'bb', '#0057A8bb'],
+                borderColor: [_themeColor, '#0057A8'],
+                borderWidth: 1,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: titulo, font: { size: 12 } },
+                datalabels: {
+                    anchor: 'end', align: 'top',
+                    font: { size: 10, weight: 'bold' },
+                    formatter: v => v > 0
+                        ? 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})
+                        : '—',
+                    color: '#374151',
+                }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        font: { size: 10 },
+                        callback: v => v >= 1000 ? 'R$' + (v/1000).toFixed(1) + 'k' : 'R$' + v.toFixed(0)
+                    }
+                }
+            }
+        },
+        plugins: [ChartDataLabels]
+    });
+}
+
 window.addEventListener('load', () => {
     _criarFaixaChart('chart-faixa-dia', _faixaDia);
     _criarFaixaChart('chart-faixa-sem', _faixaSem);
@@ -1523,6 +1629,12 @@ window.addEventListener('load', () => {
     _criarTopProdChart('chart-top-fat-sem',  _topFatSem,  'Top 5 Produtos — Faturamento', '#0057A8');
     _criarTopProdChart('chart-top-qtde-mes', _topQtdeMes, 'Top 5 Produtos — Quantidade', _themeColor);
     _criarTopProdChart('chart-top-fat-mes',  _topFatMes,  'Top 5 Produtos — Faturamento', '#0057A8');
+    _criarCombinacoesChart('chart-combinacoes-dia', _combinacoesDia);
+    _criarCombinacoesChart('chart-combinacoes-sem', _combinacoesSem);
+    _criarCombinacoesChart('chart-combinacoes-mes', _combinacoesMes);
+    _criarTicketTipoChart('chart-ticket-tipo-dia', _ticketDia, 'Ticket Médio por Tipo de Cliente');
+    _criarTicketTipoChart('chart-ticket-tipo-sem', _ticketSem, 'Ticket Médio por Tipo de Cliente');
+    _criarTicketTipoChart('chart-ticket-tipo-mes', _ticketMes, 'Ticket Médio por Tipo de Cliente');
     // Estratégico
     _criarDistribuicaoChart('chart-dist-dia', _estNovos,    _estRec);
     _criarDistribuicaoChart('chart-dist-sem', _estSemNovos, _estSemRec);
