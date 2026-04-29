@@ -158,11 +158,8 @@
   .m-hdr-info:active { background: rgba(0,0,0,.06); }
   .m-hdr-info-row { display: flex; align-items: baseline; gap: 0.2rem; line-height: 1.45; }
   .m-hdr-info-lbl { font-size: 0.6rem; color: #6B7280; white-space: nowrap; }
-  .m-hdr-info-val { font-size: 0.68rem; font-weight: 700; color: #0057A8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 72px; }
-  .m-hdr-avatar { width: 28px; height: 28px; border-radius: 50%; border: none; background: #EFF6FF; color: #1D4ED8; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; padding: 0; }
-  .m-hdr-user-menu { position: absolute; top: calc(100% + 6px); right: 0; background: #fff; border: 1px solid #E5E7EB; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.12); min-width: 140px; z-index: 200; overflow: hidden; }
-  .m-hdr-user-menu-name { padding: 0.45rem 0.75rem; font-size: 0.78rem; color: #374151; font-weight: 600; border-bottom: 1px solid #E5E7EB; }
-  .m-hdr-user-menu a { display: block; padding: 0.45rem 0.75rem; font-size: 0.78rem; color: #DC2626; text-decoration: none; font-weight: 600; }
+  .m-hdr-info-val { font-size: 0.68rem; font-weight: 700; color: #0057A8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+  .m-hdr-sair { font-size: 0.72rem; font-weight: 600; color: #DC2626; text-decoration: none; flex-shrink: 0; padding: 0.15rem 0; }
   /* ── Bottom-sheet seletor ── */
   .m-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; display: none; }
   .m-sheet-overlay.open { display: block; }
@@ -215,15 +212,7 @@
           </span>
         </div>
       </div>
-      <button class="m-hdr-avatar" onclick="toggleMenuUsuario(event)">
-        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 12c2.67 0 4.8-2.13 4.8-4.8S14.67 2.4 12 2.4 7.2 4.53 7.2 7.2 9.33 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
-        </svg>
-      </button>
-      <div id="m-user-menu" class="m-hdr-user-menu" hidden>
-        <div class="m-hdr-user-menu-name">{{ session.username }}</div>
-        <a href="{{ url_for('mobile.logout') }}">Sair</a>
-      </div>
+      <a href="{{ url_for('mobile.logout') }}" class="m-hdr-sair">Sair</a>
     </div>
   </header>
 
@@ -1672,16 +1661,6 @@ function fecharSeletorLoja() {
   document.getElementById('m-sheet-overlay').classList.remove('open');
   document.getElementById('m-store-sheet').classList.remove('open');
 }
-function toggleMenuUsuario(e) {
-  e.stopPropagation();
-  const menu = document.getElementById('m-user-menu');
-  menu.hidden = !menu.hidden;
-}
-document.addEventListener('click', () => {
-  const menu = document.getElementById('m-user-menu');
-  if (menu) menu.hidden = true;
-});
-
 function selecionarEmpresa(id) {
   const url = new URL(window.location.href);
   if (id) { url.searchParams.set('company_id', id); }
