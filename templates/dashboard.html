@@ -1825,8 +1825,8 @@ function _fmtR(v) {
 function _criarEstFatChart(canvasId, faixaData) {
     const el = document.getElementById(canvasId);
     if (!el) return;
-    const fat = faixaData.faturamento || [];
-    const labels = Array.from({length: 24}, (_, i) => String(i).padStart(2,'0') + 'h');
+    const fat = (faixaData.faturamento || []).slice(8, 20);
+    const labels = Array.from({length: 24}, (_, i) => String(i).padStart(2,'0') + 'h').slice(8, 20);
     let acum = 0;
     const acumData = fat.map(v => { acum += (v || 0); return acum; });
     const lastIdx = fat.reduce((best, v, i) => (v > 0 ? i : best), -1);
@@ -1888,10 +1888,10 @@ function _criarEstFatChart(canvasId, faixaData) {
 function _criarEstTicketChart(canvasId, faixaData) {
     const el = document.getElementById(canvasId);
     if (!el) return;
-    const fat = faixaData.faturamento || [];
-    const vnd = faixaData.vendas || [];
+    const fat = (faixaData.faturamento || []).slice(8, 20);
+    const vnd = (faixaData.vendas || []).slice(8, 20);
     const ticket = fat.map((f, i) => (vnd[i] > 0 ? f / vnd[i] : null));
-    const labels = Array.from({length: 24}, (_, i) => String(i).padStart(2,'0') + 'h');
+    const labels = Array.from({length: 24}, (_, i) => String(i).padStart(2,'0') + 'h').slice(8, 20);
     const lastIdx = ticket.reduce((best, v, i) => (v != null ? i : best), -1);
     new Chart(el, {
         plugins: [ChartDataLabels],
