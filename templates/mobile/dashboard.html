@@ -235,6 +235,7 @@
       <button class="m-tab-l2 active" data-l2="dia"    onclick="ativarL2(this)">Dia</button>
       <button class="m-tab-l2"        data-l2="semana" onclick="ativarL2(this)">Semana</button>
       <button class="m-tab-l2"        data-l2="mes"    onclick="ativarL2(this)">Mês</button>
+      <button class="m-tab-l2"        data-l2="ytd"    onclick="ativarL2(this)">YTD</button>
     </div>
   </div>
 
@@ -1569,6 +1570,435 @@
       {% endif %}
     </div>
 
+    <!-- OPERACIONAL – YTD -->
+    <div class="m-panel" data-panel="operacional-ytd">
+      {% if not active_store %}
+      <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
+      {% else %}
+
+      {% macro delta_ytd(atual, anterior) %}
+        {% if atual is not none and anterior is not none and anterior|float > 0 %}
+          {% set pct = (((atual|float - anterior|float) / anterior|float) * 100)|round(0)|int %}
+          {% if pct > 0 %}<span class="kpi5-delta-up">▲ +{{ pct }}%</span>
+          {% elif pct < 0 %}<span class="kpi5-delta-down">▼ {{ pct }}%</span>
+          {% else %}<span class="kpi5-delta-flat">= 0%</span>{% endif %}
+        {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
+      {% endmacro %}
+
+      <div class="m-date-row">
+        <span class="m-period-label">{{ ytd_label }}</span>
+      </div>
+
+      <div class="kpi5-row">
+
+        <!-- Clientes Novos -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Clientes Novos</div>
+            <div class="kpi5-value">
+              {% if kpi_est_ytd.novos is not none %}{{ '{:,.0f}'.format(kpi_est_ytd.novos).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_ytd(kpi_est_ytd.novos, kpi_ant_ytd.novos) }}</div>
+          </div>
+        </div>
+
+        <!-- Clientes Recorrentes -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Clientes Recorrentes</div>
+            <div class="kpi5-value">
+              {% if kpi_ytd.recorrentes is not none %}{{ '{:,.0f}'.format(kpi_ytd.recorrentes).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_ytd(kpi_ytd.recorrentes, kpi_ant_ytd.recorrentes) }}</div>
+          </div>
+        </div>
+
+        <!-- Vendas -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Vendas</div>
+            <div class="kpi5-value">
+              {% if kpi_ytd.vendas is not none %}{{ '{:,.0f}'.format(kpi_ytd.vendas).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_ytd(kpi_ytd.vendas, kpi_ant_ytd.vendas) }}</div>
+          </div>
+        </div>
+
+        <!-- Conversão -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Conversão</div>
+            <div class="kpi5-value">
+              {% if kpi_ytd.conversao is not none %}{{ kpi_ytd.conversao }}%
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_ytd(kpi_ytd.conversao, kpi_ant_ytd.conversao) }}</div>
+          </div>
+        </div>
+
+        <!-- Tempo na Loja -->
+        <div class="kpi5-card kpi5-card-full">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Tempo na Loja</div>
+            <div class="kpi5-value kpi5-value-sm">
+              {% if kpi_ytd.tempo_loja is not none %}
+                {% set m = (kpi_ytd.tempo_loja // 60)|int %}
+                {% if m < 1 %}< 1 min
+                {% elif m < 60 %}{{ m }} min
+                {% else %}{{ m // 60 }}h {{ '{:02d}'.format(m % 60) }}min{% endif %}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            {% if kpi_tempo_gauge_ytd %}
+            <svg viewBox="0 0 100 62" class="kpi5-gauge-svg">
+              <path d="M 12,58 A 38,38 0 0,1 88,58" fill="none" stroke="#E5E7EB" stroke-width="9" stroke-linecap="round"/>
+              <path d="M 12,58 A 38,38 0 0,1 50,20" fill="none" stroke="#34d399" stroke-width="9" stroke-linecap="round"/>
+              <path d="M 50,20 A 38,38 0 0,1 88,58" fill="none" stroke="#fbbf24" stroke-width="9" stroke-linecap="round"/>
+              <line x1="50" y1="58" x2="{{ kpi_tempo_gauge_ytd.x }}" y2="{{ kpi_tempo_gauge_ytd.y }}"
+                    stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="50" cy="58" r="4" fill="#1f2937"/>
+            </svg>
+            {% else %}
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_ytd(kpi_ytd.tempo_loja, kpi_ant_ytd.tempo_loja) }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+
+      <div class="m-chart-faixa-wrap">
+        <canvas id="m-chart-faixa-ytd"></canvas>
+      </div>
+      <div class="m-chart-faixa-wrap">
+        <canvas id="m-chart-ocorrencias-ytd"></canvas>
+      </div>
+      <div class="m-chart-faixa-wrap">
+        <canvas id="m-chart-conversao-ytd"></canvas>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- COMERCIAL – YTD -->
+    <div class="m-panel" data-panel="comercial-ytd">
+      {% if not active_store %}
+      <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
+      {% else %}
+
+      {% macro delta_com_ytd(atual, anterior) %}
+        {% if atual is not none and anterior is not none and anterior|float > 0 %}
+          {% set pct = (((atual|float - anterior|float) / anterior|float) * 100)|round(0)|int %}
+          {% if pct > 0 %}<span class="kpi5-delta-up">▲ +{{ pct }}%</span>
+          {% elif pct < 0 %}<span class="kpi5-delta-down">▼ {{ pct }}%</span>
+          {% else %}<span class="kpi5-delta-flat">= 0%</span>{% endif %}
+        {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
+      {% endmacro %}
+
+      <div class="m-date-row">
+        <span class="m-period-label">{{ ytd_label }}</span>
+      </div>
+
+      <div class="kpi5-row-4">
+
+        <!-- Faturamento -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Faturamento</div>
+            <div class="kpi5-value kpi5-value-sm">
+              {% if kpi_com_ytd.faturamento is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_com_ytd.faturamento).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com_ytd(kpi_com_ytd.faturamento, kpi_ant_com_ytd.faturamento) }}</div>
+          </div>
+        </div>
+
+        <!-- Ticket Médio -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Ticket Médio</div>
+            <div class="kpi5-value kpi5-value-sm">
+              {% if kpi_com_ytd.ticket_medio is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_com_ytd.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com_ytd(kpi_com_ytd.ticket_medio, kpi_ant_com_ytd.ticket_medio) }}</div>
+          </div>
+        </div>
+
+        <!-- Vendas -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Vendas</div>
+            <div class="kpi5-value">
+              {% if kpi_com_ytd.vendas is not none %}{{ '{:,.0f}'.format(kpi_com_ytd.vendas).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com_ytd(kpi_com_ytd.vendas, kpi_ant_com_ytd.vendas) }}</div>
+          </div>
+        </div>
+
+        <!-- Itens/Venda -->
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Itens/ Venda</div>
+            <div class="kpi5-value">
+              {% if kpi_com_ytd.itens_venda is not none %}{{ kpi_com_ytd.itens_venda|string|replace('.', ',') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_com_ytd(kpi_com_ytd.itens_venda, kpi_ant_com_ytd.itens_venda) }}</div>
+          </div>
+        </div>
+
+      </div>
+
+      {% if top_produtos_qtde_ytd %}
+      {% set _yq = top_produtos_qtde_ytd[0].total %}
+      <div class="m-top-prod-section">
+        <div class="m-top-prod-title">Top 5 Produtos — Quantidade</div>
+        {% for p in top_produtos_qtde_ytd %}
+        <div class="m-top-prod-item">
+          <div class="m-top-prod-header">
+            <span class="m-top-prod-nome">{{ p.nome }}</span>
+            <span class="m-top-prod-valor">{{ '{:,.0f}'.format(p.total).replace(',','.') }}</span>
+          </div>
+          <div class="m-top-prod-bar-bg">
+            <div class="m-top-prod-bar" style="width:{{ ((p.total / _yq * 100)|round|int) if _yq > 0 else 0 }}%; background:var(--theme-primary)"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if top_produtos_fat_ytd %}
+      {% set _yf = top_produtos_fat_ytd[0].total %}
+      <div class="m-top-prod-section">
+        <div class="m-top-prod-title">Top 5 Produtos — Faturamento</div>
+        {% for p in top_produtos_fat_ytd %}
+        <div class="m-top-prod-item">
+          <div class="m-top-prod-header">
+            <span class="m-top-prod-nome">{{ p.nome }}</span>
+            <span class="m-top-prod-valor">R$ {{ '{:,.2f}'.format(p.total).replace(',','X').replace('.',',').replace('X','.') }}</span>
+          </div>
+          <div class="m-top-prod-bar-bg">
+            <div class="m-top-prod-bar" style="width:{{ ((p.total / _yf * 100)|round|int) if _yf > 0 else 0 }}%; background:#0057A8"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if combinacoes_ytd %}
+      <div class="m-comb-section">
+        <div class="m-comb-title">Combinações de Compra</div>
+        {% for c in combinacoes_ytd %}
+        <div class="m-comb-item">
+          <span class="m-comb-nomes">{{ c.nome_a }} + {{ c.nome_b }}</span>
+          <span class="m-comb-qtd">{{ c.qtd }}×</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if kpi_est_ytd.ticket_novo is not none or kpi_est_ytd.ticket_rec is not none %}
+      <div class="m-ticket-tipo-section">
+        <div class="m-ticket-tipo-title">Ticket Médio por Tipo de Cliente</div>
+        <div class="m-ticket-tipo-row">
+          <div class="m-ticket-tipo-card">
+            <div class="m-ticket-tipo-label">Novo</div>
+            <div class="m-ticket-tipo-value">
+              {% if kpi_est_ytd.ticket_novo is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_est_ytd.ticket_novo).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}—{% endif %}
+            </div>
+          </div>
+          <div class="m-ticket-tipo-card">
+            <div class="m-ticket-tipo-label">Recorrente</div>
+            <div class="m-ticket-tipo-value">
+              {% if kpi_est_ytd.ticket_rec is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_est_ytd.ticket_rec).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}—{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% endif %}
+    </div>
+
+    <!-- ESTRATÉGICO – YTD -->
+    <div class="m-panel" data-panel="estrategico-ytd">
+      {% if not active_store %}
+      <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
+      {% else %}
+
+      {% macro delta_est_ytd(atual, anterior) %}
+        {% if atual is not none and anterior is not none and anterior|float > 0 %}
+          {% set pct = (((atual|float - anterior|float) / anterior|float) * 100)|round(0)|int %}
+          {% if pct > 0 %}<span class="kpi5-delta-up">▲ +{{ pct }}%</span>
+          {% elif pct < 0 %}<span class="kpi5-delta-down">▼ {{ pct }}%</span>
+          {% else %}<span class="kpi5-delta-flat">= 0%</span>{% endif %}
+        {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
+      {% endmacro %}
+
+      <div class="m-date-row">
+        <span class="m-period-label">{{ ytd_label }}</span>
+      </div>
+
+      <div class="kpi5-row-4">
+
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Clientes<br>Novos</div>
+            <div class="kpi5-value">
+              {% if kpi_est_ytd.novos is not none %}{{ '{:,.0f}'.format(kpi_est_ytd.novos).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_est_ytd(kpi_est_ytd.novos, kpi_ant_ytd.novos) }}</div>
+          </div>
+        </div>
+
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Clientes<br>Recorrentes</div>
+            <div class="kpi5-value">
+              {% if kpi_est_ytd.recorrentes is not none %}{{ '{:,.0f}'.format(kpi_est_ytd.recorrentes).replace(',', '.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_est_ytd(kpi_est_ytd.recorrentes, kpi_ant_ytd.recorrentes) }}</div>
+          </div>
+        </div>
+
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Taxa de<br>Retorno</div>
+            <div class="kpi5-value">
+              {% if kpi_est_ytd.taxa_retorno is not none %}{{ kpi_est_ytd.taxa_retorno }}%
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_est_ytd(kpi_est_ytd.taxa_retorno, kpi_ant_ytd.taxa_retorno) }}</div>
+          </div>
+        </div>
+
+        <div class="kpi5-card">
+          <div class="kpi5-body">
+            <div class="kpi5-title">Valor<br>Médio/Cli.</div>
+            <div class="kpi5-value kpi5-value-sm">
+              {% if kpi_est_ytd.valor_medio is not none %}
+                R$ {{ '{:,.2f}'.format(kpi_est_ytd.valor_medio).replace(',','X').replace('.',',').replace('X','.') }}
+              {% else %}<span class="kpi5-na">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="kpi5-footer">
+            <svg viewBox="0 0 300 44" preserveAspectRatio="none" class="kpi5-wave-svg">
+              <path d="M0,28 C60,8 120,44 180,28 C240,12 270,36 300,24 L300,44 L0,44 Z"/>
+            </svg>
+            <div class="kpi5-delta-wrap">{{ delta_est_ytd(kpi_est_ytd.valor_medio, kpi_ant_ytd.valor_medio) }}</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="m-est-chart-wrap">
+        <div class="m-est-chart-title">Faturamento YTD</div>
+        <div class="m-est-chart-kpi">
+          <span class="m-est-chart-big">
+            {% if kpi_com_ytd.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com_ytd.faturamento).replace(',','X').replace('.',',').replace('X','.') }}
+            {% else %}—{% endif %}
+          </span>
+          {% if kpi_com_ytd.faturamento is not none and kpi_ant_com_ytd.faturamento is not none and kpi_ant_com_ytd.faturamento|float > 0 %}
+            {% set _pfm = (((kpi_com_ytd.faturamento|float - kpi_ant_com_ytd.faturamento|float) / kpi_ant_com_ytd.faturamento|float) * 100)|round(0)|int %}
+            {% if _pfm > 0 %}<span class="m-est-badge-up">▲ +{{ _pfm }}%</span>
+            {% elif _pfm < 0 %}<span class="m-est-badge-down">▼ {{ _pfm }}%</span>
+            {% else %}<span class="m-est-badge-flat">= 0%</span>{% endif %}
+          {% endif %}
+        </div>
+        <div class="m-est-chart-sub">vs YTD ano anterior</div>
+        <div class="m-est-canvas"><canvas id="m-chart-est-fat-ytd"></canvas></div>
+      </div>
+
+      <div class="m-est-chart-wrap">
+        <div class="m-est-chart-title">Ticket Médio YTD</div>
+        <div class="m-est-chart-kpi">
+          <span class="m-est-chart-big">
+            {% if kpi_com_ytd.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com_ytd.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}
+            {% else %}—{% endif %}
+          </span>
+          {% if kpi_com_ytd.ticket_medio is not none and kpi_ant_com_ytd.ticket_medio is not none and kpi_ant_com_ytd.ticket_medio|float > 0 %}
+            {% set _ptm = (((kpi_com_ytd.ticket_medio|float - kpi_ant_com_ytd.ticket_medio|float) / kpi_ant_com_ytd.ticket_medio|float) * 100)|round(0)|int %}
+            {% if _ptm > 0 %}<span class="m-est-badge-up">▲ +{{ _ptm }}%</span>
+            {% elif _ptm < 0 %}<span class="m-est-badge-down">▼ {{ _ptm }}%</span>
+            {% else %}<span class="m-est-badge-flat">= 0%</span>{% endif %}
+          {% endif %}
+        </div>
+        <div class="m-est-chart-sub">{% if kpi_ant_com_ytd.ticket_medio is not none and kpi_ant_com_ytd.ticket_medio|float > 0 %}vs YTD anterior: R$ {{ '{:,.2f}'.format(kpi_ant_com_ytd.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}vs YTD ano anterior{% endif %}</div>
+        <div class="m-est-canvas"><canvas id="m-chart-est-ticket-ytd"></canvas></div>
+      </div>
+      {% endif %}
+    </div>
+
     <!-- Link trocar senha -->
     <a href="{{ url_for('mobile.trocar_senha') }}"
        style="text-align:center;font-size:0.8rem;color:var(--muted);text-decoration:none;
@@ -1688,6 +2118,7 @@ const _mThemeColor  = '{{ theme.primary_color }}';
 const _mFaixaDia    = {{ chart_faixa_dia | tojson }};
 const _mFaixaSem    = {{ chart_faixa_sem | tojson }};
 const _mFaixaMes    = {{ chart_faixa_mes | tojson }};
+const _mFaixaYtd    = {{ chart_faixa_ytd | tojson }};
 
 function _mCriarFaixaChart(canvasId, data) {
   const el = document.getElementById(canvasId);
@@ -1781,9 +2212,11 @@ function _mCriarFaixaChart(canvasId, data) {
 const _mGeneroDia = {{ chart_genero_dia | tojson }};
 const _mGeneroSem = {{ chart_genero_sem | tojson }};
 const _mGeneroMes = {{ chart_genero_mes | tojson }};
+const _mGeneroYtd = {{ chart_genero_ytd | tojson }};
 const _mOcorrenciasDia = {{ chart_ocorrencias_dia | tojson }};
 const _mOcorrenciasSem = {{ chart_ocorrencias_sem | tojson }};
 const _mOcorrenciasMes = {{ chart_ocorrencias_mes | tojson }};
+const _mOcorrenciasYtd = {{ chart_ocorrencias_ytd | tojson }};
 
 function _mCriarGeneroChart(canvasId, data) {
   const el = document.getElementById(canvasId);
@@ -2025,18 +2458,23 @@ window.addEventListener('load', () => {
   _mCriarFaixaChart('m-chart-faixa-dia', _mFaixaDia);
   _mCriarFaixaChart('m-chart-faixa-sem', _mFaixaSem);
   _mCriarFaixaChart('m-chart-faixa-mes', _mFaixaMes);
+  _mCriarFaixaChart('m-chart-faixa-ytd', _mFaixaYtd);
   _mCriarOcorrenciasChart('m-chart-genero-dia', _mOcorrenciasDia);
   _mCriarOcorrenciasChart('m-chart-ocorrencias-sem', _mOcorrenciasSem);
   _mCriarOcorrenciasChart('m-chart-ocorrencias-mes', _mOcorrenciasMes);
+  _mCriarOcorrenciasChart('m-chart-ocorrencias-ytd', _mOcorrenciasYtd);
   _mCriarConversaoChart('m-chart-conversao-dia', _mFaixaDia);
   _mCriarConversaoChart('m-chart-conversao-sem', _mFaixaSem);
   _mCriarConversaoChart('m-chart-conversao-mes', _mFaixaMes);
+  _mCriarConversaoChart('m-chart-conversao-ytd', _mFaixaYtd);
   _mCriarEstFatChart('m-chart-est-fat-dia', _mFaixaDia);
   _mCriarEstFatChart('m-chart-est-fat-sem', _mFaixaSem);
   _mCriarEstFatChart('m-chart-est-fat-mes', _mFaixaMes);
+  _mCriarEstFatChart('m-chart-est-fat-ytd', _mFaixaYtd);
   _mCriarEstTicketChart('m-chart-est-ticket-dia', _mFaixaDia);
   _mCriarEstTicketChart('m-chart-est-ticket-sem', _mFaixaSem);
   _mCriarEstTicketChart('m-chart-est-ticket-mes', _mFaixaMes);
+  _mCriarEstTicketChart('m-chart-est-ticket-ytd', _mFaixaYtd);
 });
 </script>
 {% endblock %}

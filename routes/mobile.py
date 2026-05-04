@@ -330,6 +330,39 @@ def dashboard():
     semana_label = f"{semana_inicio.strftime('%d/%m')} – {semana_fim.strftime('%d/%m/%Y')}"
     mes_label    = f"{_MESES[selected_date.month - 1]} {selected_date.year}"
 
+    # ── YTD: período do ano fiscal ────────────────────────────────────────────
+    def _replace_year_safe(d, year):
+        try:
+            return d.replace(year=year)
+        except ValueError:
+            return date_type(year, d.month, 28)
+
+    _fiscal_row = None
+    if active_store:
+        _fiscal_row = db.query_one("""
+            SELECT c.fiscal_year_start_date
+            FROM   faciais.stores s
+            JOIN   faciais.companies c ON c.company_id = s.company_id
+            WHERE  s.store_id = %s
+        """, (active_store['store_id'],))
+    _fys = _fiscal_row['fiscal_year_start_date'] if _fiscal_row else None
+    if _fys:
+        try:
+            _ytd_cand = date_type(selected_date.year, _fys.month, _fys.day)
+        except ValueError:
+            _ytd_cand = date_type(selected_date.year, _fys.month, 28)
+        ytd_inicio = _ytd_cand if _ytd_cand <= selected_date else _replace_year_safe(_ytd_cand, selected_date.year - 1)
+    else:
+        ytd_inicio = selected_date.replace(month=1, day=1)
+    ytd_fim            = selected_date
+    ytd_ant_inicio     = _replace_year_safe(ytd_inicio, ytd_inicio.year - 1)
+    ytd_ant_fim        = _replace_year_safe(ytd_fim,    ytd_fim.year   - 1)
+    ytd_inicio_str     = ytd_inicio.strftime('%Y-%m-%d')
+    ytd_fim_str        = ytd_fim.strftime('%Y-%m-%d')
+    ytd_ant_inicio_str = ytd_ant_inicio.strftime('%Y-%m-%d')
+    ytd_ant_fim_str    = ytd_ant_fim.strftime('%Y-%m-%d')
+    ytd_label          = f"{ytd_inicio.strftime('%d/%m/%Y')} – {ytd_fim.strftime('%d/%m/%Y')}"
+
     # ── KPIs Operacional – Dia ───────────────────────────────────────────────
     kpi = dict(visitantes=None, recorrentes=None, vendas=None, conversao=None, tempo_loja=None)
 
@@ -343,6 +376,10 @@ def dashboard():
     # ── KPIs Comercial – Semana / Mês ────────────────────────────────────────
     kpi_com_sem = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
     kpi_com_mes = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
+
+    # ── KPIs Operacional / Comercial – YTD ───────────────────────────────────
+    kpi_ytd     = dict(visitantes=None, recorrentes=None, novos=None, vendas=None, conversao=None, tempo_loja=None)
+    kpi_com_ytd = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
 
     if active_store:
         sid = active_store['store_id']
@@ -631,6 +668,100 @@ def dashboard():
                 kpi_com_mes['vendas'] = 0; kpi_com_mes['faturamento'] = 0.0
                 kpi_com_mes['ticket_medio'] = 0.0; kpi_com_mes['itens_venda'] = 0.0
 
+        # ── Operacional – YTD ─────────────────────────────────────────────────
+        r = db.query_one("""
+            SELECT COUNT(DISTINCT dr.person_id) AS total
+            FROM   faciais.detection_records dr
+            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+            WHERE  dr.store_id      = %s
+              AND  p.person_type_id = 'C'
+              AND  dr.person_id     IS NOT NULL
+              AND  DATE(dr.created_at) BETWEEN %s AND %s
+        """, (sid, ytd_inicio_str, ytd_fim_str))
+        kpi_ytd['visitantes'] = r['total'] if r else 0
+
+        r = db.query_one("""
+            SELECT COUNT(DISTINCT dr.person_id) AS total
+            FROM   faciais.detection_records dr
+            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+            WHERE  dr.store_id      = %s
+              AND  p.person_type_id = 'C'
+              AND  dr.person_id     IS NOT NULL
+              AND  DATE(dr.created_at) BETWEEN %s AND %s
+              AND  EXISTS (
+                  SELECT 1
+                  FROM   faciais.detection_records dr2
+                  WHERE  dr2.person_id        = dr.person_id
+                    AND  dr2.store_id         = %s
+                    AND  DATE(dr2.created_at) < DATE(dr.created_at)
+              )
+        """, (sid, ytd_inicio_str, ytd_fim_str, sid))
+        kpi_ytd['recorrentes'] = r['total'] if r else 0
+
+        if active_microvix_portal and active_store_cnpj:
+            r = db.query_one("""
+                SELECT COUNT(DISTINCT documento) AS total
+                FROM   microvix.microvix_movimento
+                WHERE  portal                  = %s
+                  AND  cnpj_emp                = %s
+                  AND  DATE(data_documento)    BETWEEN %s AND %s
+                  AND  cancelado              <> 'S'
+                  AND  excluido              <> 'S'
+                  AND  soma_relatorio          = 'S'
+                  AND  tipo_transacao          = 'V'
+                  AND  cod_natureza_operacao   = '10030'
+            """, (active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str))
+            kpi_ytd['vendas'] = r['total'] if r else 0
+        else:
+            kpi_ytd['vendas'] = None
+
+        if kpi_ytd['visitantes']:
+            kpi_ytd['conversao'] = int(round((kpi_ytd['vendas'] or 0) / kpi_ytd['visitantes'] * 100))
+        else:
+            kpi_ytd['conversao'] = 0
+        kpi_ytd['novos'] = (kpi_ytd['visitantes'] or 0) - (kpi_ytd['recorrentes'] or 0)
+
+        r = db.query_one("""
+            SELECT ROUND(AVG(perm)::numeric) AS avg_seg
+            FROM (
+                SELECT EXTRACT(EPOCH FROM MAX(dr.created_at) - MIN(dr.created_at))::int AS perm
+                FROM   faciais.detection_records dr
+                JOIN   faciais.people p ON p.person_id = dr.person_id
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL
+                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                GROUP  BY dr.person_id, DATE(dr.created_at)
+                HAVING MAX(dr.created_at) > MIN(dr.created_at)
+            ) sub
+        """, (sid, ytd_inicio_str, ytd_fim_str))
+        kpi_ytd['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
+
+        # ── Comercial – YTD ───────────────────────────────────────────────────
+        if active_microvix_portal and active_store_cnpj:
+            r = db.query_one("""
+                SELECT COUNT(DISTINCT documento)          AS vendas,
+                       SUM(valor_liquido)                 AS faturamento,
+                       SUM(quantidade)                    AS total_itens
+                FROM   microvix.microvix_movimento
+                WHERE  portal                  = %s
+                  AND  cnpj_emp                = %s
+                  AND  DATE(data_documento)    BETWEEN %s AND %s
+                  AND  cancelado              <> 'S'
+                  AND  excluido              <> 'S'
+                  AND  soma_relatorio          = 'S'
+                  AND  tipo_transacao          = 'V'
+                  AND  cod_natureza_operacao   = '10030'
+            """, (active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str))
+            if r and r['vendas']:
+                v = int(r['vendas']); f = float(r['faturamento'] or 0); t = float(r['total_itens'] or 0)
+                kpi_com_ytd['vendas']       = v
+                kpi_com_ytd['faturamento']  = round(f, 2)
+                kpi_com_ytd['ticket_medio'] = round(f / v, 2) if v else 0.0
+                kpi_com_ytd['itens_venda']  = round(t / v, 1) if v else 0.0
+            else:
+                kpi_com_ytd['vendas'] = 0; kpi_com_ytd['faturamento'] = 0.0
+                kpi_com_ytd['ticket_medio'] = 0.0; kpi_com_ytd['itens_venda'] = 0.0
+
     # ── KPIs Estratégico – derivados dos KPIs já calculados ──────────────────
     kpi_est     = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None, taxa_retorno=None, valor_medio=None)
     kpi_est_sem = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None, taxa_retorno=None, valor_medio=None)
@@ -668,6 +799,18 @@ def dashboard():
             kpi_est_mes['ticket_novo'] = round(fat / kpi_est_mes['novos'], 2) if kpi_est_mes['novos'] else 0.0
             kpi_est_mes['ticket_rec']  = round(fat / kpi_est_mes['recorrentes'], 2) if kpi_est_mes['recorrentes'] else 0.0
             kpi_est_mes['valor_medio'] = round(fat / _t, 2) if _t else None
+
+    kpi_est_ytd = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None, taxa_retorno=None, valor_medio=None)
+    if kpi_ytd['visitantes'] is not None and kpi_ytd['recorrentes'] is not None:
+        kpi_est_ytd['novos']       = kpi_ytd['visitantes'] - kpi_ytd['recorrentes']
+        kpi_est_ytd['recorrentes'] = kpi_ytd['recorrentes']
+        _t = (kpi_est_ytd['novos'] or 0) + (kpi_est_ytd['recorrentes'] or 0)
+        kpi_est_ytd['taxa_retorno'] = round((kpi_est_ytd['recorrentes'] or 0) / _t * 100) if _t else 0
+        if kpi_com_ytd['faturamento'] is not None:
+            fat = kpi_com_ytd['faturamento'] or 0
+            kpi_est_ytd['ticket_novo'] = round(fat / kpi_est_ytd['novos'], 2) if kpi_est_ytd['novos'] else 0.0
+            kpi_est_ytd['ticket_rec']  = round(fat / kpi_est_ytd['recorrentes'], 2) if kpi_est_ytd['recorrentes'] else 0.0
+            kpi_est_ytd['valor_medio'] = round(fat / _t, 2) if _t else None
 
     # ── KPIs dia útil anterior (comparação) ──────────────────────────────────
     kpi_ant = dict(visitantes=None, recorrentes=None, novos=None,
@@ -935,6 +1078,108 @@ def dashboard():
         if kpi_ant_com_mes['faturamento'] is not None and _t_ant:
             kpi_ant_mes['valor_medio'] = round(kpi_ant_com_mes['faturamento'] / _t_ant, 2)
 
+    # ── KPIs YTD anterior (comparação) ───────────────────────────────────────
+    kpi_ant_ytd     = dict(visitantes=None, recorrentes=None, novos=None, vendas=None, conversao=None, tempo_loja=None, taxa_retorno=None, valor_medio=None)
+    kpi_ant_com_ytd = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
+
+    if active_store:
+        sid = active_store['store_id']
+
+        r = db.query_one("""
+            SELECT COUNT(DISTINCT dr.person_id) AS total
+            FROM   faciais.detection_records dr
+            JOIN   faciais.people p ON p.person_id = dr.person_id
+            WHERE  dr.store_id    = %s
+              AND  p.person_type_id  = 'C'
+              AND  dr.person_id     IS NOT NULL
+              AND  DATE(dr.created_at) BETWEEN %s AND %s
+        """, (sid, ytd_ant_inicio_str, ytd_ant_fim_str))
+        kpi_ant_ytd['visitantes'] = r['total'] if r else 0
+
+        r = db.query_one("""
+            SELECT COUNT(DISTINCT dr.person_id) AS total
+            FROM   faciais.detection_records dr
+            JOIN   faciais.people p ON p.person_id = dr.person_id
+            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+              AND  dr.person_id IS NOT NULL
+              AND  DATE(dr.created_at) BETWEEN %s AND %s
+              AND  EXISTS (
+                    SELECT 1 FROM faciais.detection_records dr2
+                    WHERE  dr2.person_id = dr.person_id
+                      AND  dr2.store_id  = %s
+                      AND  DATE(dr2.created_at) < DATE(dr.created_at)
+              )
+        """, (sid, ytd_ant_inicio_str, ytd_ant_fim_str, sid))
+        kpi_ant_ytd['recorrentes'] = r['total'] if r else 0
+
+        if active_microvix_portal and active_store_cnpj:
+            r = db.query_one("""
+                SELECT COUNT(DISTINCT documento) AS total
+                FROM   microvix.microvix_movimento
+                WHERE  portal                = %s
+                  AND  cnpj_emp             = %s
+                  AND  cancelado            <> 'S'
+                  AND  excluido             <> 'S'
+                  AND  soma_relatorio       = 'S'
+                  AND  tipo_transacao          = 'V'
+                  AND  cod_natureza_operacao   = '10030'
+                  AND  DATE(data_documento) BETWEEN %s AND %s
+            """, (active_microvix_portal, active_store_cnpj, ytd_ant_inicio_str, ytd_ant_fim_str))
+            kpi_ant_ytd['vendas'] = r['total'] if r else 0
+        else:
+            kpi_ant_ytd['vendas'] = None
+
+        if kpi_ant_ytd['visitantes']:
+            kpi_ant_ytd['conversao'] = int(round((kpi_ant_ytd['vendas'] or 0) / kpi_ant_ytd['visitantes'] * 100))
+        else:
+            kpi_ant_ytd['conversao'] = 0
+        kpi_ant_ytd['novos'] = (kpi_ant_ytd['visitantes'] or 0) - (kpi_ant_ytd['recorrentes'] or 0)
+
+        r = db.query_one("""
+            SELECT AVG(seg)::int AS avg_seg FROM (
+                SELECT EXTRACT(EPOCH FROM (MAX(dr.created_at) - MIN(dr.created_at)))::int AS seg
+                FROM   faciais.detection_records dr
+                JOIN   faciais.people p ON p.person_id = dr.person_id
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL
+                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                GROUP  BY dr.person_id, DATE(dr.created_at)
+                HAVING MAX(dr.created_at) > MIN(dr.created_at)
+            ) sub
+        """, (sid, ytd_ant_inicio_str, ytd_ant_fim_str))
+        kpi_ant_ytd['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
+
+        if active_microvix_portal and active_store_cnpj:
+            r = db.query_one("""
+                SELECT COUNT(DISTINCT documento) AS vendas,
+                       SUM(valor_liquido)        AS faturamento,
+                       SUM(quantidade)           AS total_itens
+                FROM   microvix.microvix_movimento
+                WHERE  portal                = %s
+                  AND  cnpj_emp             = %s
+                  AND  cancelado            <> 'S'
+                  AND  excluido             <> 'S'
+                  AND  soma_relatorio       = 'S'
+                  AND  tipo_transacao          = 'V'
+                  AND  cod_natureza_operacao   = '10030'
+                  AND  DATE(data_documento) BETWEEN %s AND %s
+            """, (active_microvix_portal, active_store_cnpj, ytd_ant_inicio_str, ytd_ant_fim_str))
+            if r and r['vendas']:
+                v = int(r['vendas']); f = float(r['faturamento'] or 0); t = float(r['total_itens'] or 0)
+                kpi_ant_com_ytd['vendas']       = v
+                kpi_ant_com_ytd['faturamento']  = round(f, 2)
+                kpi_ant_com_ytd['ticket_medio'] = round(f / v, 2) if v else 0.0
+                kpi_ant_com_ytd['itens_venda']  = round(t / v, 1) if v else 0.0
+            else:
+                kpi_ant_com_ytd['vendas'] = 0; kpi_ant_com_ytd['faturamento'] = 0.0
+                kpi_ant_com_ytd['ticket_medio'] = 0.0; kpi_ant_com_ytd['itens_venda'] = 0.0
+
+    if kpi_ant_ytd['novos'] is not None and kpi_ant_ytd['recorrentes'] is not None:
+        _t_ant = (kpi_ant_ytd['novos'] or 0) + (kpi_ant_ytd['recorrentes'] or 0)
+        kpi_ant_ytd['taxa_retorno'] = round((kpi_ant_ytd['recorrentes'] or 0) / _t_ant * 100) if _t_ant else 0
+        if kpi_ant_com_ytd['faturamento'] is not None and _t_ant:
+            kpi_ant_ytd['valor_medio'] = round(kpi_ant_com_ytd['faturamento'] / _t_ant, 2)
+
     # ── Gauge do Tempo na Loja (agulha SVG) ──────────────────────────────────
     kpi_tempo_gauge = None
     if kpi['tempo_loja'] is not None and kpi['tempo_loja'] > 0:
@@ -966,10 +1211,21 @@ def dashboard():
             'y': round(58 - 36 * math.sin(angle_rad), 1),
         }
 
+    kpi_tempo_gauge_ytd = None
+    if kpi_ytd['tempo_loja'] is not None and kpi_ytd['tempo_loja'] > 0:
+        max_seg   = 1800
+        pct       = min(kpi_ytd['tempo_loja'] / max_seg, 1.0)
+        angle_rad = math.radians(180 - pct * 180)
+        kpi_tempo_gauge_ytd = {
+            'x': round(50 + 36 * math.cos(angle_rad), 1),
+            'y': round(58 - 36 * math.sin(angle_rad), 1),
+        }
+
     # ── Gráfico faixa horária – Operacional ──────────────────────────────────
     chart_faixa_dia = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
     chart_faixa_sem = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
     chart_faixa_mes = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
+    chart_faixa_ytd = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
 
     if active_store:
         sid = active_store['store_id']
@@ -1333,22 +1589,106 @@ def dashboard():
             for row in db.query_all(_FREQ_RANGE_SQL, (sid, mes_inicio_str, mes_fim_str, sid))
         ]
 
+        # ── YTD charts ───────────────────────────────────────────────────────
+        rows = db.query_all("""
+            SELECT EXTRACT(HOUR FROM min_time)::int AS hora, COUNT(*) AS clientes
+            FROM (
+                SELECT dr.person_id, DATE(dr.created_at) AS dia, MIN(dr.created_at) AS min_time
+                FROM   faciais.detection_records dr
+                JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL
+                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                GROUP  BY dr.person_id, DATE(dr.created_at)
+            ) sub GROUP BY hora ORDER BY hora
+        """, (sid, ytd_inicio_str, ytd_fim_str))
+        for row in rows:
+            chart_faixa_ytd['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
+
+        if active_microvix_portal and active_store_cnpj:
+            rows = db.query_all("""
+                SELECT SPLIT_PART(hora_lancamento, ':', 1)::int AS hora,
+                       COUNT(DISTINCT documento)  AS vendas,
+                       SUM(valor_liquido)         AS faturamento
+                FROM   microvix.microvix_movimento
+                WHERE  portal = %s AND cnpj_emp = %s
+                  AND  DATE(data_documento) BETWEEN %s AND %s
+                  AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
+                  AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
+                  AND  hora_lancamento IS NOT NULL AND hora_lancamento <> ''
+                GROUP  BY hora ORDER BY hora
+            """, (active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str))
+            for row in rows:
+                chart_faixa_ytd['vendas'][int(row['hora'])]      = int(row['vendas'] or 0)
+                chart_faixa_ytd['faturamento'][int(row['hora'])] = float(row['faturamento'] or 0)
+
+        chart_genero_ytd = {'F': [0]*24, 'M': [0]*24}
+        for row in db.query_all(_GENERO_RANGE_QUERY, (sid, ytd_inicio_str, ytd_fim_str)):
+            g = row['gender_id']
+            if g in chart_genero_ytd:
+                chart_genero_ytd[g][int(row['hora'])] = int(row['total'] or 0)
+
+        chart_ocorrencias_ytd = {'novos': [0]*24, 'recorrentes': [0]*24}
+        for row in db.query_all("""
+            SELECT hora,
+                   SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
+                   SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
+            FROM (
+                SELECT EXTRACT(HOUR FROM MIN(dr.created_at))::int AS hora,
+                       EXISTS (
+                           SELECT 1 FROM faciais.detection_records dr2
+                           WHERE  dr2.person_id = dr.person_id
+                             AND  dr2.store_id  = %s
+                             AND  DATE(dr2.created_at) < %s
+                       ) AS is_rec
+                FROM   faciais.detection_records dr
+                JOIN   faciais.people p ON p.person_id = dr.person_id
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL
+                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                GROUP  BY dr.person_id
+            ) sub
+            GROUP BY hora ORDER BY hora
+        """, (sid, ytd_inicio_str, sid, ytd_inicio_str, ytd_fim_str)):
+            h = int(row['hora'])
+            chart_ocorrencias_ytd['recorrentes'][h] = int(row['recorrentes'] or 0)
+            chart_ocorrencias_ytd['novos'][h]        = int(row['novos'] or 0)
+
+        top_produtos_qtde_ytd = []
+        top_produtos_fat_ytd  = []
+        combinacoes_ytd       = []
+        if active_microvix_portal and active_store_cnpj:
+            top_produtos_qtde_ytd = _top_query(_date_sem, "SUM(m.quantidade)",    _p + (ytd_inicio_str, ytd_fim_str))
+            top_produtos_fat_ytd  = _top_query(_date_sem, "SUM(m.valor_liquido)", _p + (ytd_inicio_str, ytd_fim_str))
+            combinacoes_ytd       = _comb_query("DATE(a.data_documento) BETWEEN %s AND %s", _p + (ytd_inicio_str, ytd_fim_str))
+
+        chart_freq_retorno_ytd = [
+            {'label': row['visit_day'].strftime('%d/%m'), 'avg': float(row['avg_days'])}
+            for row in db.query_all(_FREQ_RANGE_SQL, (sid, ytd_inicio_str, ytd_fim_str, sid))
+        ]
+
     else:
         chart_genero_dia = {'F': [0]*24, 'M': [0]*24}
         chart_genero_sem = {'F': [0]*24, 'M': [0]*24}
         chart_genero_mes = {'F': [0]*24, 'M': [0]*24}
+        chart_genero_ytd = {'F': [0]*24, 'M': [0]*24}
         chart_ocorrencias_dia = {'novos': [0]*24, 'recorrentes': [0]*24}
         chart_ocorrencias_sem = {'novos': [0]*24, 'recorrentes': [0]*24}
         chart_ocorrencias_mes = {'novos': [0]*24, 'recorrentes': [0]*24}
+        chart_ocorrencias_ytd = {'novos': [0]*24, 'recorrentes': [0]*24}
         top_produtos_qtde_dia = []
         top_produtos_fat_dia  = []
         top_produtos_qtde_sem = []
         top_produtos_fat_sem  = []
         top_produtos_qtde_mes = []
         top_produtos_fat_mes  = []
+        top_produtos_qtde_ytd = []
+        top_produtos_fat_ytd  = []
+        combinacoes_ytd       = []
         chart_freq_retorno_dia = [None]*24
         chart_freq_retorno_sem = []
         chart_freq_retorno_mes = []
+        chart_freq_retorno_ytd = []
 
     # ── Tema da empresa ──────────────────────────────────────────────────────
     theme = dict(primary_color='#F47B20', secondary_color='#0057A8', accent_color='#FFFFFF', text_color='#111827')
@@ -1427,8 +1767,22 @@ def dashboard():
         kpi_tempo_gauge=kpi_tempo_gauge,
         kpi_tempo_gauge_sem=kpi_tempo_gauge_sem,
         kpi_tempo_gauge_mes=kpi_tempo_gauge_mes,
+        kpi_tempo_gauge_ytd=kpi_tempo_gauge_ytd,
         chart_ocorrencias_sem=chart_ocorrencias_sem,
         chart_ocorrencias_mes=chart_ocorrencias_mes,
+        kpi_ytd=kpi_ytd,
+        kpi_com_ytd=kpi_com_ytd,
+        kpi_est_ytd=kpi_est_ytd,
+        kpi_ant_ytd=kpi_ant_ytd,
+        kpi_ant_com_ytd=kpi_ant_com_ytd,
+        ytd_label=ytd_label,
+        chart_faixa_ytd=chart_faixa_ytd,
+        chart_genero_ytd=chart_genero_ytd,
+        chart_ocorrencias_ytd=chart_ocorrencias_ytd,
+        top_produtos_qtde_ytd=top_produtos_qtde_ytd,
+        top_produtos_fat_ytd=top_produtos_fat_ytd,
+        combinacoes_ytd=combinacoes_ytd,
+        chart_freq_retorno_ytd=chart_freq_retorno_ytd,
     )
 
 
