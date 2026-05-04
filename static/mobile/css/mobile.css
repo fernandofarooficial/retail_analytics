@@ -213,9 +213,13 @@ html, body {
   flex-shrink: 0;
 }
 
+.m-hdr-left {
+  margin-right: -0.375rem;
+}
+
 .m-header-company-logo {
-  height: 28px;
-  max-width: 90px;
+  height: 36px;
+  max-width: 120px;
   object-fit: contain;
   flex-shrink: 0;
 }
