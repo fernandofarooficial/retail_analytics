@@ -72,6 +72,10 @@
     font-size: 0.72rem; font-weight: 700; color: #374151;
     text-align: center; margin-bottom: 0.25rem;
   }
+  .m-top5-leg-wrap { margin-top: 0.3rem; }
+  .m-top5-leg { display: flex; align-items: center; gap: 4px; padding: 1px 0; }
+  .m-top5-leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .m-top5-leg-txt { font-size: 0.62rem; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .m-ticket-tipo-title {
     font-size: 0.8rem; font-weight: 700; color: #374151;
     text-align: center; margin-bottom: 0.5rem;
@@ -2538,10 +2542,11 @@ const _mTop5TipoYtd = {{ top5_tipo_ytd | tojson }};
 function _mCriarTop5TipoChart(canvasId, dados, cores) {
   const el = document.getElementById(canvasId);
   if (!el || !dados || !dados.length) return;
+  const trunc = s => s.length > 25 ? s.slice(0, 25) + '…' : s;
   new Chart(el, {
     type: 'doughnut',
     data: {
-      labels: dados.map(d => d.nome.length > 30 ? d.nome.slice(0, 30) + '…' : d.nome),
+      labels: dados.map(d => trunc(d.nome)),
       datasets: [{
         data: dados.map(d => d.total),
         backgroundColor: cores.slice(0, dados.length),
@@ -2554,30 +2559,10 @@ function _mCriarTop5TipoChart(canvasId, dados, cores) {
       maintainAspectRatio: false,
       cutout: '55%',
       plugins: {
-        legend: {
-          display: true,
-          position: 'bottom',
-          labels: {
-            font: { size: 9 },
-            boxWidth: 10,
-            generateLabels(chart) {
-              return dados.map((d, i) => ({
-                text: d.pct.toFixed(0) + '%  ' + (d.nome.length > 30 ? d.nome.slice(0, 30) + '…' : d.nome),
-                fillStyle: cores[i] || '#ccc',
-                strokeStyle: '#fff',
-                lineWidth: 1,
-                index: i,
-              }));
-            }
-          }
-        },
-        title: { display: false },
+        legend: { display: false },
         tooltip: {
           callbacks: {
-            label: ctx => {
-              const d = dados[ctx.dataIndex];
-              return ' ' + d.pct.toFixed(1) + '%';
-            }
+            label: ctx => ' ' + dados[ctx.dataIndex].pct.toFixed(1) + '%'
           }
         },
         datalabels: { display: false }
@@ -2585,6 +2570,14 @@ function _mCriarTop5TipoChart(canvasId, dados, cores) {
     },
     plugins: [ChartDataLabels]
   });
+  // Legenda HTML — um produto por linha
+  const legHtml = dados.map((d, i) =>
+    `<div class="m-top5-leg">` +
+    `<span class="m-top5-leg-dot" style="background:${cores[i]||'#ccc'}"></span>` +
+    `<span class="m-top5-leg-txt">${d.pct.toFixed(0)}% ${trunc(d.nome)}</span>` +
+    `</div>`
+  ).join('');
+  el.insertAdjacentHTML('afterend', `<div class="m-top5-leg-wrap">${legHtml}</div>`);
 }
 
 // ── Gráfico Ticket Médio por Tipo de Cliente ─────────────────────────────
