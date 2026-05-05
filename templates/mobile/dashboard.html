@@ -213,19 +213,8 @@
           </span>
         </div>
       </div>
-      <a href="{{ url_for('mobile.logout') }}" class="m-hdr-sair">Sair</a>
     </div>
   </header>
-
-  <!-- ── Navegação de páginas ──────────────────────────────────────── -->
-  <nav class="m-page-nav">
-    <a href="{{ url_for('mobile.dashboard') }}"
-       class="m-page-nav-link {% if request.endpoint == 'mobile.dashboard' %}active{% endif %}">Dashboard</a>
-    {% set vis_url = url_for('mobile.visitacao') %}
-    {% if selected_company_id %}{% set vis_url = vis_url + '?company_id=' + selected_company_id|string %}{% if selected_store_id %}{% set vis_url = vis_url + '&store_id=' + selected_store_id|string %}{% endif %}{% elif selected_store_id %}{% set vis_url = vis_url + '?store_id=' + selected_store_id|string %}{% endif %}
-    <a href="{{ vis_url }}"
-       class="m-page-nav-link {% if request.endpoint == 'mobile.visitacao' %}active{% endif %}">Visitação</a>
-  </nav>
 
   <!-- ── Barra de abas (laranja) ────────────────────────────────────── -->
   <div class="m-tabs-bar">
@@ -2010,13 +1999,6 @@
       </div>
       {% endif %}
     </div>
-
-    <!-- Link trocar senha -->
-    <a href="{{ url_for('mobile.trocar_senha') }}"
-       style="text-align:center;font-size:0.8rem;color:var(--muted);text-decoration:none;
-              margin-top:auto;padding-top:0.5rem;">
-      Trocar senha
-    </a>
 
   </main>
 </div>

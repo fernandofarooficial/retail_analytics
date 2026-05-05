@@ -166,19 +166,8 @@
           </span>
         </div>
       </div>
-      <a href="{{ url_for('mobile.logout') }}" class="m-hdr-sair">Sair</a>
     </div>
   </header>
-
-  <!-- ── Navegação de páginas ──────────────────────────────────────────── -->
-  <nav class="m-page-nav">
-    {% set dash_url = url_for('mobile.dashboard') %}
-    {% if selected_company_id %}{% set dash_url = dash_url + '?company_id=' + selected_company_id|string %}{% if selected_store_id %}{% set dash_url = dash_url + '&store_id=' + selected_store_id|string %}{% endif %}{% elif selected_store_id %}{% set dash_url = dash_url + '?store_id=' + selected_store_id|string %}{% endif %}
-    <a href="{{ dash_url }}"
-       class="m-page-nav-link {% if request.endpoint == 'mobile.dashboard' %}active{% endif %}">Dashboard</a>
-    <a href="{{ url_for('mobile.visitacao') }}"
-       class="m-page-nav-link {% if request.endpoint == 'mobile.visitacao' %}active{% endif %}">Visitação</a>
-  </nav>
 
   <!-- ── Conteúdo ──────────────────────────────────────────────────────── -->
   <main class="m-content">
@@ -261,12 +250,6 @@
     {% endif %}
 
     {% endif %}
-
-    <a href="{{ url_for('mobile.trocar_senha') }}"
-       style="text-align:center;font-size:0.8rem;color:var(--muted);text-decoration:none;
-              margin-top:auto;padding-top:0.5rem;display:block;">
-      Trocar senha
-    </a>
 
   </main>
 </div>
