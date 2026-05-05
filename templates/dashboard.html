@@ -30,6 +30,11 @@
     background: #fff; border-radius: 8px; padding: 0.75rem;
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
   }
+  .chart-donut-tipo-wrap {
+    flex: 1; height: 320px; position: relative;
+    background: #fff; border-radius: 8px; padding: 0.75rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
   .com-comb-title {
     font-size: 0.875rem; font-weight: 700; text-align: center;
     color: #374151; margin-bottom: 0.5rem;
@@ -476,6 +481,12 @@
             </div>
             <div class="com-pair-canvas-wrap"><canvas id="chart-ticket-tipo-dia"></canvas></div>
         </div>
+        {% if top5_tipo_dia.novos or top5_tipo_dia.recorrentes %}
+        <div class="charts-row">
+            <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-novos-dia"></canvas></div>
+            <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-rec-dia"></canvas></div>
+        </div>
+        {% endif %}
         {% endif %}
     </div>
 
@@ -886,6 +897,12 @@
             </div>
             <div class="com-pair-canvas-wrap"><canvas id="chart-ticket-tipo-sem"></canvas></div>
         </div>
+        {% if top5_tipo_sem.novos or top5_tipo_sem.recorrentes %}
+        <div class="charts-row">
+            <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-novos-sem"></canvas></div>
+            <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-rec-sem"></canvas></div>
+        </div>
+        {% endif %}
         {% endif %}
     </div>
 
@@ -1014,6 +1031,12 @@
             </div>
             <div class="com-pair-canvas-wrap"><canvas id="chart-ticket-tipo-mes"></canvas></div>
         </div>
+        {% if top5_tipo_mes.novos or top5_tipo_mes.recorrentes %}
+        <div class="charts-row">
+            <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-novos-mes"></canvas></div>
+            <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-rec-mes"></canvas></div>
+        </div>
+        {% endif %}
         {% endif %}
     </div>
 
@@ -1689,6 +1712,12 @@
             </div>
             <div class="com-pair-canvas-wrap"><canvas id="chart-ticket-tipo-ytd"></canvas></div>
         </div>
+        {% if top5_tipo_ytd.novos or top5_tipo_ytd.recorrentes %}
+        <div class="charts-row">
+            <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-novos-ytd"></canvas></div>
+            <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-rec-ytd"></canvas></div>
+        </div>
+        {% endif %}
         {% endif %}
     </div>
 
@@ -2223,6 +2252,62 @@ function _criarTicketTipoChart(canvasId, data, titulo) {
     });
 }
 
+const _top5TipoDia = {{ top5_tipo_dia | tojson }};
+const _top5TipoSem = {{ top5_tipo_sem | tojson }};
+const _top5TipoMes = {{ top5_tipo_mes | tojson }};
+const _top5TipoYtd = {{ top5_tipo_ytd | tojson }};
+
+function _criarTop5TipoChart(canvasId, dados, titulo, cores) {
+    const el = document.getElementById(canvasId);
+    if (!el || !dados || !dados.length) return;
+    new Chart(el, {
+        type: 'doughnut',
+        data: {
+            labels: dados.map(d => d.nome),
+            datasets: [{
+                data: dados.map(d => d.total),
+                backgroundColor: cores.slice(0, dados.length),
+                borderWidth: 2,
+                borderColor: '#fff',
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '58%',
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        font: { size: 11 },
+                        generateLabels(chart) {
+                            return dados.map((d, i) => ({
+                                text: d.nome + '  ' + d.pct.toFixed(1) + '%',
+                                fillStyle: cores[i] || '#ccc',
+                                strokeStyle: '#fff',
+                                lineWidth: 2,
+                                index: i,
+                            }));
+                        }
+                    }
+                },
+                title: { display: true, text: titulo, font: { size: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const d = dados[ctx.dataIndex];
+                            return ' ' + d.pct.toFixed(1) + '%  —  R$ ' + d.total.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                        }
+                    }
+                },
+                datalabels: { display: false }
+            }
+        },
+        plugins: [ChartDataLabels]
+    });
+}
+
 function _fmtR(v) {
     if (v == null) return '—';
     return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -2358,6 +2443,16 @@ window.addEventListener('load', () => {
     _criarTicketTipoChart('chart-ticket-tipo-sem', _ticketSem, 'Ticket Médio por Tipo de Cliente');
     _criarTicketTipoChart('chart-ticket-tipo-mes', _ticketMes, 'Ticket Médio por Tipo de Cliente');
     _criarTicketTipoChart('chart-ticket-tipo-ytd', _ticketYtd, 'Ticket Médio por Tipo de Cliente');
+    const _coresNovos = ['#1D4ED8','#2563EB','#3B82F6','#60A5FA','#93C5FD'];
+    const _coresRec   = ['#166534','#16A34A','#22C55E','#4ADE80','#86EFAC'];
+    _criarTop5TipoChart('chart-top5-novos-dia', _top5TipoDia.novos,        'Top 5 Produtos — Clientes Novos',        _coresNovos);
+    _criarTop5TipoChart('chart-top5-rec-dia',   _top5TipoDia.recorrentes,  'Top 5 Produtos — Clientes Recorrentes',  _coresRec);
+    _criarTop5TipoChart('chart-top5-novos-sem', _top5TipoSem.novos,        'Top 5 Produtos — Clientes Novos',        _coresNovos);
+    _criarTop5TipoChart('chart-top5-rec-sem',   _top5TipoSem.recorrentes,  'Top 5 Produtos — Clientes Recorrentes',  _coresRec);
+    _criarTop5TipoChart('chart-top5-novos-mes', _top5TipoMes.novos,        'Top 5 Produtos — Clientes Novos',        _coresNovos);
+    _criarTop5TipoChart('chart-top5-rec-mes',   _top5TipoMes.recorrentes,  'Top 5 Produtos — Clientes Recorrentes',  _coresRec);
+    _criarTop5TipoChart('chart-top5-novos-ytd', _top5TipoYtd.novos,        'Top 5 Produtos — Clientes Novos',        _coresNovos);
+    _criarTop5TipoChart('chart-top5-rec-ytd',   _top5TipoYtd.recorrentes,  'Top 5 Produtos — Clientes Recorrentes',  _coresRec);
     _criarEstFatChart('chart-est-fat-dia', _faixaDia);
     _criarEstFatChart('chart-est-fat-sem', _faixaSem);
     _criarEstFatChart('chart-est-fat-mes', _faixaMes);

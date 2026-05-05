@@ -60,6 +60,18 @@
     padding: 0.75rem; margin: 0;
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
   }
+  .m-top5-tipo-row {
+    display: flex; gap: 0; margin: 0;
+  }
+  .m-top5-tipo-card {
+    flex: 1; background: #fff; border-radius: 8px;
+    padding: 0.5rem; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .m-top5-tipo-card + .m-top5-tipo-card { margin-left: 0; }
+  .m-top5-tipo-title {
+    font-size: 0.72rem; font-weight: 700; color: #374151;
+    text-align: center; margin-bottom: 0.25rem;
+  }
   .m-ticket-tipo-title {
     font-size: 0.8rem; font-weight: 700; color: #374151;
     text-align: center; margin-bottom: 0.5rem;
@@ -597,6 +609,19 @@
       </div>
       {% endif %}
 
+      {% if top5_tipo_dia.novos or top5_tipo_dia.recorrentes %}
+      <div class="m-top5-tipo-row">
+        <div class="m-top5-tipo-card">
+          <div class="m-top5-tipo-title">Top 5 — Clientes Novos</div>
+          <div style="position:relative; height:180px;"><canvas id="m-chart-top5-novos-dia"></canvas></div>
+        </div>
+        <div class="m-top5-tipo-card">
+          <div class="m-top5-tipo-title">Top 5 — Clientes Recorrentes</div>
+          <div style="position:relative; height:180px;"><canvas id="m-chart-top5-rec-dia"></canvas></div>
+        </div>
+      </div>
+      {% endif %}
+
       {% endif %}
 
     </div><!-- /comercial-dia -->
@@ -1014,6 +1039,19 @@
       </div>
       {% endif %}
 
+      {% if top5_tipo_sem.novos or top5_tipo_sem.recorrentes %}
+      <div class="m-top5-tipo-row">
+        <div class="m-top5-tipo-card">
+          <div class="m-top5-tipo-title">Top 5 — Clientes Novos</div>
+          <div style="position:relative; height:180px;"><canvas id="m-chart-top5-novos-sem"></canvas></div>
+        </div>
+        <div class="m-top5-tipo-card">
+          <div class="m-top5-tipo-title">Top 5 — Clientes Recorrentes</div>
+          <div style="position:relative; height:180px;"><canvas id="m-chart-top5-rec-sem"></canvas></div>
+        </div>
+      </div>
+      {% endif %}
+
       {% endif %}
     </div>
 
@@ -1160,6 +1198,19 @@
         <div class="m-ticket-tipo-title">Ticket Médio por Tipo de Cliente</div>
         <div style="position:relative; height:160px;">
           <canvas id="m-chart-ticket-mes"></canvas>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if top5_tipo_mes.novos or top5_tipo_mes.recorrentes %}
+      <div class="m-top5-tipo-row">
+        <div class="m-top5-tipo-card">
+          <div class="m-top5-tipo-title">Top 5 — Clientes Novos</div>
+          <div style="position:relative; height:180px;"><canvas id="m-chart-top5-novos-mes"></canvas></div>
+        </div>
+        <div class="m-top5-tipo-card">
+          <div class="m-top5-tipo-title">Top 5 — Clientes Recorrentes</div>
+          <div style="position:relative; height:180px;"><canvas id="m-chart-top5-rec-mes"></canvas></div>
         </div>
       </div>
       {% endif %}
@@ -1814,6 +1865,19 @@
       </div>
       {% endif %}
 
+      {% if top5_tipo_ytd.novos or top5_tipo_ytd.recorrentes %}
+      <div class="m-top5-tipo-row">
+        <div class="m-top5-tipo-card">
+          <div class="m-top5-tipo-title">Top 5 — Clientes Novos</div>
+          <div style="position:relative; height:180px;"><canvas id="m-chart-top5-novos-ytd"></canvas></div>
+        </div>
+        <div class="m-top5-tipo-card">
+          <div class="m-top5-tipo-title">Top 5 — Clientes Recorrentes</div>
+          <div style="position:relative; height:180px;"><canvas id="m-chart-top5-rec-ytd"></canvas></div>
+        </div>
+      </div>
+      {% endif %}
+
       {% endif %}
     </div>
 
@@ -2392,6 +2456,64 @@ function _mCriarEstTicketChart(canvasId, faixaData) {
   });
 }
 
+// ── Top 5 Produtos por Tipo de Cliente ───────────────────────────────────
+const _mTop5TipoDia = {{ top5_tipo_dia | tojson }};
+const _mTop5TipoSem = {{ top5_tipo_sem | tojson }};
+const _mTop5TipoMes = {{ top5_tipo_mes | tojson }};
+const _mTop5TipoYtd = {{ top5_tipo_ytd | tojson }};
+
+function _mCriarTop5TipoChart(canvasId, dados, cores) {
+  const el = document.getElementById(canvasId);
+  if (!el || !dados || !dados.length) return;
+  new Chart(el, {
+    type: 'doughnut',
+    data: {
+      labels: dados.map(d => d.nome),
+      datasets: [{
+        data: dados.map(d => d.total),
+        backgroundColor: cores.slice(0, dados.length),
+        borderWidth: 2,
+        borderColor: '#fff',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '55%',
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            font: { size: 9 },
+            boxWidth: 10,
+            generateLabels(chart) {
+              return dados.map((d, i) => ({
+                text: d.pct.toFixed(0) + '%  ' + d.nome,
+                fillStyle: cores[i] || '#ccc',
+                strokeStyle: '#fff',
+                lineWidth: 1,
+                index: i,
+              }));
+            }
+          }
+        },
+        title: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const d = dados[ctx.dataIndex];
+              return ' ' + d.pct.toFixed(1) + '%';
+            }
+          }
+        },
+        datalabels: { display: false }
+      }
+    },
+    plugins: [ChartDataLabels]
+  });
+}
+
 // ── Gráfico Ticket Médio por Tipo de Cliente ─────────────────────────────
 const _mTicketDia = { novo: {{ kpi_est.ticket_novo     | tojson }}, rec: {{ kpi_est.ticket_rec     | tojson }} };
 const _mTicketSem = { novo: {{ kpi_est_sem.ticket_novo | tojson }}, rec: {{ kpi_est_sem.ticket_rec | tojson }} };
@@ -2470,6 +2592,16 @@ window.addEventListener('load', () => {
   _mCriarTicketChart('m-chart-ticket-sem', _mTicketSem);
   _mCriarTicketChart('m-chart-ticket-mes', _mTicketMes);
   _mCriarTicketChart('m-chart-ticket-ytd', _mTicketYtd);
+  const _mCoresNovos = ['#1D4ED8','#2563EB','#3B82F6','#60A5FA','#93C5FD'];
+  const _mCoresRec   = ['#166534','#16A34A','#22C55E','#4ADE80','#86EFAC'];
+  _mCriarTop5TipoChart('m-chart-top5-novos-dia', _mTop5TipoDia.novos,       _mCoresNovos);
+  _mCriarTop5TipoChart('m-chart-top5-rec-dia',   _mTop5TipoDia.recorrentes, _mCoresRec);
+  _mCriarTop5TipoChart('m-chart-top5-novos-sem', _mTop5TipoSem.novos,       _mCoresNovos);
+  _mCriarTop5TipoChart('m-chart-top5-rec-sem',   _mTop5TipoSem.recorrentes, _mCoresRec);
+  _mCriarTop5TipoChart('m-chart-top5-novos-mes', _mTop5TipoMes.novos,       _mCoresNovos);
+  _mCriarTop5TipoChart('m-chart-top5-rec-mes',   _mTop5TipoMes.recorrentes, _mCoresRec);
+  _mCriarTop5TipoChart('m-chart-top5-novos-ytd', _mTop5TipoYtd.novos,       _mCoresNovos);
+  _mCriarTop5TipoChart('m-chart-top5-rec-ytd',   _mTop5TipoYtd.recorrentes, _mCoresRec);
 });
 </script>
 {% endblock %}

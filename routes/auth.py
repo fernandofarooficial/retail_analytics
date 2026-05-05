@@ -126,6 +126,63 @@ def _ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim, corte_recorrente)
     return result
 
 
+def _top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim, corte_recorrente):
+    """Top 5 produtos por faturamento, separado em novo/recorrente, via faciais.person_purchases."""
+    rows = db.query_all("""
+        WITH recorrentes AS (
+            SELECT DISTINCT person_id
+            FROM   faciais.detection_records
+            WHERE  store_id = %s AND DATE(created_at) < %s AND person_id IS NOT NULL
+        ),
+        bills AS (
+            SELECT pp.bill, (r.person_id IS NOT NULL) AS is_rec
+            FROM   faciais.person_purchases pp
+            LEFT   JOIN recorrentes r ON r.person_id = pp.person_id
+            WHERE  pp.store_id = %s
+              AND  DATE(pp.created_at) BETWEEN %s AND %s
+              AND  (pp.is_cancelled IS NOT TRUE)
+        ),
+        linhas AS (
+            SELECT b.is_rec,
+                   COALESCE(NULLIF(TRIM(mp.descricao_basica), ''), mp.nome) AS produto,
+                   mm.valor_liquido
+            FROM   bills b
+            JOIN   microvix.microvix_movimento mm ON mm.documento = b.bill
+            JOIN   microvix.microvix_produtos mp
+                   ON mp.portal = mm.portal AND mp.cod_produto = mm.cod_produto
+            WHERE  mm.portal = %s AND mm.cnpj_emp = %s
+              AND  mm.cancelado <> 'S' AND mm.excluido <> 'S'
+              AND  mm.soma_relatorio = 'S' AND mm.tipo_transacao = 'V'
+              AND  mm.cod_natureza_operacao = '10030'
+        ),
+        totais AS (
+            SELECT is_rec, produto, SUM(valor_liquido) AS total_fat
+            FROM   linhas GROUP BY is_rec, produto
+        ),
+        fat_total AS (
+            SELECT is_rec, SUM(total_fat) AS grand_total FROM totais GROUP BY is_rec
+        ),
+        ranked AS (
+            SELECT t.is_rec, t.produto, t.total_fat, ft.grand_total,
+                   ROW_NUMBER() OVER (PARTITION BY t.is_rec ORDER BY t.total_fat DESC) AS rn
+            FROM   totais t JOIN fat_total ft ON ft.is_rec = t.is_rec
+            WHERE  t.total_fat > 0
+        )
+        SELECT is_rec, produto, total_fat,
+               ROUND(total_fat * 100.0 / NULLIF(grand_total, 0), 1) AS pct
+        FROM   ranked WHERE rn <= 5
+        ORDER  BY is_rec, rn
+    """, (sid, corte_recorrente, sid, data_inicio, data_fim, portal, cnpj))
+    result = {'novos': [], 'recorrentes': []}
+    for row in rows:
+        item = {'nome': row['produto'], 'total': round(float(row['total_fat'] or 0), 2), 'pct': float(row['pct'] or 0)}
+        if row['is_rec']:
+            result['recorrentes'].append(item)
+        else:
+            result['novos'].append(item)
+    return result
+
+
 @auth_bp.route('/dashboard')
 @login_required
 @screen_required('dashboard')
@@ -1503,6 +1560,10 @@ def dashboard():
         combinacoes_sem       = []
         combinacoes_mes       = []
         combinacoes_ytd       = []
+        top5_tipo_dia = {'novos': [], 'recorrentes': []}
+        top5_tipo_sem = {'novos': [], 'recorrentes': []}
+        top5_tipo_mes = {'novos': [], 'recorrentes': []}
+        top5_tipo_ytd = {'novos': [], 'recorrentes': []}
 
         _FILTRO_MV = (
             "m.portal = %s AND m.cnpj_emp = %s "
@@ -1572,6 +1633,11 @@ def dashboard():
             top_produtos_qtde_ytd = _top_query(_date_sem, "SUM(m.quantidade)",    _p + (ytd_inicio_str, ytd_fim_str))
             top_produtos_fat_ytd  = _top_query(_date_sem, "SUM(m.valor_liquido)", _p + (ytd_inicio_str, ytd_fim_str))
             combinacoes_ytd = _comb_query("DATE(a.data_documento) BETWEEN %s AND %s", _p + (ytd_inicio_str, ytd_fim_str))
+            _sid = active_store['store_id']
+            top5_tipo_dia = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, data_str, data_str, data_str)
+            top5_tipo_sem = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str, semana_inicio_str)
+            top5_tipo_mes = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str, mes_inicio_str)
+            top5_tipo_ytd = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str, ytd_inicio_str)
 
         # ── Frequência de retorno por horário/dia ────────────────────────────
         chart_freq_retorno_dia = [None]*24
@@ -1721,6 +1787,10 @@ def dashboard():
         top_produtos_qtde_ytd = []
         top_produtos_fat_ytd  = []
         combinacoes_ytd       = []
+        top5_tipo_dia = {'novos': [], 'recorrentes': []}
+        top5_tipo_sem = {'novos': [], 'recorrentes': []}
+        top5_tipo_mes = {'novos': [], 'recorrentes': []}
+        top5_tipo_ytd = {'novos': [], 'recorrentes': []}
         chart_genero_ytd      = {'F': [0]*24, 'M': [0]*24}
         chart_ocorrencias_ytd = {'novos': [0]*24, 'recorrentes': [0]*24}
         chart_freq_retorno_dia = [None]*24
@@ -1818,6 +1888,10 @@ def dashboard():
         top_produtos_fat_ytd=top_produtos_fat_ytd,
         combinacoes_ytd=combinacoes_ytd,
         chart_freq_retorno_ytd=chart_freq_retorno_ytd,
+        top5_tipo_dia=top5_tipo_dia,
+        top5_tipo_sem=top5_tipo_sem,
+        top5_tipo_mes=top5_tipo_mes,
+        top5_tipo_ytd=top5_tipo_ytd,
     )
 
 
