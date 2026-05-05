@@ -65,6 +65,68 @@ def logout():
     return redirect(url_for('auth.login'))
 
 
+def _ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim, corte_recorrente):
+    """Ticket médio por nota, separado em novo/recorrente, via faciais.person_purchases."""
+    rows = db.query_all("""
+        WITH recorrentes AS (
+            SELECT DISTINCT person_id
+            FROM   faciais.detection_records
+            WHERE  store_id         = %s
+              AND  DATE(created_at) < %s
+              AND  person_id IS NOT NULL
+        ),
+        bills AS (
+            SELECT pp.person_id,
+                   pp.bill,
+                   (r.person_id IS NOT NULL) AS is_rec
+            FROM   faciais.person_purchases pp
+            LEFT   JOIN recorrentes r ON r.person_id = pp.person_id
+            WHERE  pp.store_id              = %s
+              AND  DATE(pp.created_at) BETWEEN %s AND %s
+              AND  (pp.is_cancelled IS NOT TRUE)
+              AND  pp.person_id IS NOT NULL
+        ),
+        fat_bills AS (
+            SELECT mm.documento,
+                   SUM(mm.valor_liquido) AS valor_nota
+            FROM   microvix.microvix_movimento mm
+            WHERE  mm.portal                = %s
+              AND  mm.cnpj_emp              = %s
+              AND  DATE(mm.data_documento)  BETWEEN %s AND %s
+              AND  mm.cancelado            <> 'S'
+              AND  mm.excluido             <> 'S'
+              AND  mm.soma_relatorio        = 'S'
+              AND  mm.tipo_transacao        = 'V'
+              AND  mm.cod_natureza_operacao = '10030'
+            GROUP  BY mm.documento
+        )
+        SELECT  b.is_rec,
+                COUNT(DISTINCT b.bill)          AS num_bills,
+                COALESCE(SUM(fb.valor_nota), 0) AS faturamento
+        FROM    bills b
+        JOIN    fat_bills fb ON fb.documento = b.bill
+        GROUP   BY b.is_rec
+    """, (sid, corte_recorrente, sid, data_inicio, data_fim,
+          portal, cnpj, data_inicio, data_fim))
+    result = {'ticket_novo': None, 'ticket_rec': None}
+    for row in rows:
+        n = row['num_bills'] or 0
+        f = float(row['faturamento'] or 0)
+        ticket = round(f / n, 2) if n > 0 else 0.0
+        if row['is_rec']:
+            result['ticket_rec'] = ticket
+        else:
+            result['ticket_novo'] = ticket
+    if rows:
+        result.setdefault('ticket_novo', 0.0)
+        result.setdefault('ticket_rec', 0.0)
+        if result['ticket_novo'] is None:
+            result['ticket_novo'] = 0.0
+        if result['ticket_rec'] is None:
+            result['ticket_rec'] = 0.0
+    return result
+
+
 @auth_bp.route('/dashboard')
 @login_required
 @screen_required('dashboard')
@@ -754,9 +816,12 @@ def dashboard():
         kpi_est['taxa_retorno'] = round((kpi_est['recorrentes'] or 0) / _t * 100) if _t else 0
         if kpi_com['faturamento'] is not None:
             fat = kpi_com['faturamento'] or 0
-            kpi_est['ticket_novo'] = round(fat / kpi_est['novos'], 2) if kpi_est['novos'] else 0.0
-            kpi_est['ticket_rec']  = round(fat / kpi_est['recorrentes'], 2) if kpi_est['recorrentes'] else 0.0
             kpi_est['valor_medio'] = round(fat / _t, 2) if _t else None
+        if active_microvix_portal and active_store_cnpj:
+            _tk = _ticket_por_tipo(active_store['store_id'], active_microvix_portal, active_store_cnpj,
+                                   data_str, data_str, data_str)
+            kpi_est['ticket_novo'] = _tk['ticket_novo']
+            kpi_est['ticket_rec']  = _tk['ticket_rec']
 
     if kpi_sem['visitantes'] is not None and kpi_sem['recorrentes'] is not None:
         kpi_est_sem['novos']       = kpi_sem['visitantes'] - kpi_sem['recorrentes']
@@ -765,9 +830,12 @@ def dashboard():
         kpi_est_sem['taxa_retorno'] = round((kpi_est_sem['recorrentes'] or 0) / _t * 100) if _t else 0
         if kpi_com_sem['faturamento'] is not None:
             fat = kpi_com_sem['faturamento'] or 0
-            kpi_est_sem['ticket_novo'] = round(fat / kpi_est_sem['novos'], 2) if kpi_est_sem['novos'] else 0.0
-            kpi_est_sem['ticket_rec']  = round(fat / kpi_est_sem['recorrentes'], 2) if kpi_est_sem['recorrentes'] else 0.0
             kpi_est_sem['valor_medio'] = round(fat / _t, 2) if _t else None
+        if active_microvix_portal and active_store_cnpj:
+            _tk = _ticket_por_tipo(active_store['store_id'], active_microvix_portal, active_store_cnpj,
+                                   semana_inicio_str, semana_fim_str, semana_inicio_str)
+            kpi_est_sem['ticket_novo'] = _tk['ticket_novo']
+            kpi_est_sem['ticket_rec']  = _tk['ticket_rec']
 
     if kpi_mes['visitantes'] is not None and kpi_mes['recorrentes'] is not None:
         kpi_est_mes['novos']       = kpi_mes['visitantes'] - kpi_mes['recorrentes']
@@ -776,9 +844,12 @@ def dashboard():
         kpi_est_mes['taxa_retorno'] = round((kpi_est_mes['recorrentes'] or 0) / _t * 100) if _t else 0
         if kpi_com_mes['faturamento'] is not None:
             fat = kpi_com_mes['faturamento'] or 0
-            kpi_est_mes['ticket_novo'] = round(fat / kpi_est_mes['novos'], 2) if kpi_est_mes['novos'] else 0.0
-            kpi_est_mes['ticket_rec']  = round(fat / kpi_est_mes['recorrentes'], 2) if kpi_est_mes['recorrentes'] else 0.0
             kpi_est_mes['valor_medio'] = round(fat / _t, 2) if _t else None
+        if active_microvix_portal and active_store_cnpj:
+            _tk = _ticket_por_tipo(active_store['store_id'], active_microvix_portal, active_store_cnpj,
+                                   mes_inicio_str, mes_fim_str, mes_inicio_str)
+            kpi_est_mes['ticket_novo'] = _tk['ticket_novo']
+            kpi_est_mes['ticket_rec']  = _tk['ticket_rec']
 
     kpi_est_ytd = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None, taxa_retorno=None, valor_medio=None)
     if kpi_ytd['visitantes'] is not None and kpi_ytd['recorrentes'] is not None:
@@ -788,9 +859,12 @@ def dashboard():
         kpi_est_ytd['taxa_retorno'] = round((kpi_est_ytd['recorrentes'] or 0) / _t * 100) if _t else 0
         if kpi_com_ytd['faturamento'] is not None:
             fat = kpi_com_ytd['faturamento'] or 0
-            kpi_est_ytd['ticket_novo'] = round(fat / kpi_est_ytd['novos'], 2) if kpi_est_ytd['novos'] else 0.0
-            kpi_est_ytd['ticket_rec']  = round(fat / kpi_est_ytd['recorrentes'], 2) if kpi_est_ytd['recorrentes'] else 0.0
             kpi_est_ytd['valor_medio'] = round(fat / _t, 2) if _t else None
+        if active_microvix_portal and active_store_cnpj:
+            _tk = _ticket_por_tipo(active_store['store_id'], active_microvix_portal, active_store_cnpj,
+                                   ytd_inicio_str, ytd_fim_str, ytd_inicio_str)
+            kpi_est_ytd['ticket_novo'] = _tk['ticket_novo']
+            kpi_est_ytd['ticket_rec']  = _tk['ticket_rec']
 
     # ── KPIs dia útil anterior (comparação) ──────────────────────────────────
     kpi_ant = dict(visitantes=None, recorrentes=None, novos=None,
