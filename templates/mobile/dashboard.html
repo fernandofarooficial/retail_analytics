@@ -1,4 +1,4 @@
-{% extends 'mobile/base_mobile.html' %}
+﻿{% extends 'mobile/base_mobile.html' %}
 {% block title %}Dashboard — Retail Analytics{% endblock %}
 
 {% block body %}
@@ -2421,9 +2421,10 @@ function _mCriarTicketChart(canvasId, data) {
       plugins: {
         legend: { display: false },
         datalabels: {
-          anchor: 'end', align: 'top',
+          anchor: 'start', align: 'end',
+          offset: 4,
           font: { size: 10, weight: 'bold' },
-          color: '#374151',
+          color: '#ffffff',
           formatter: v => v > 0
             ? 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})
             : '—',
