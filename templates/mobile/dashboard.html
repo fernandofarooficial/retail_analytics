@@ -191,6 +191,21 @@
   .m-est-badge-flat { font-size: 0.7rem; color: #6B7280; }
   .m-est-chart-sub  { font-size: 0.68rem; color: #6B7280; margin: 0.1rem 0 0.4rem; }
   .m-est-canvas     { position: relative; height: 180px; }
+  .m-gauge-row { display: flex; gap: 0; margin: 0; }
+  .m-gauge-card {
+    flex: 1; background: #fff; border-radius: 8px; padding: 0.625rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .m-gauge-card + .m-gauge-card { margin-left: 0; }
+  .m-gauge-title {
+    font-size: 0.7rem; font-weight: 700; color: #374151; text-align: center;
+    margin-bottom: 0.15rem;
+  }
+  .m-gauge-canvas-wrap { position: relative; height: 110px; }
+  .m-gauge-footer {
+    text-align: center; font-size: 0.62rem; color: #6B7280; margin-top: 0.2rem;
+    line-height: 1.3;
+  }
 </style>
 <div class="m-app">
 
@@ -1337,6 +1352,20 @@
         <div class="m-est-chart-sub">{% if kpi_ant_com.ticket_medio is not none and kpi_ant_com.ticket_medio|float > 0 %}vs dia anterior: R$ {{ '{:,.2f}'.format(kpi_ant_com.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}vs dia anterior{% endif %}</div>
         <div class="m-est-canvas"><canvas id="m-chart-est-ticket-dia"></canvas></div>
       </div>
+      {% if metas and (kpi_com.faturamento is not none or kpi_com.ticket_medio is not none) %}
+      <div class="m-gauge-row">
+        <div class="m-gauge-card">
+          <div class="m-gauge-title">Faturamento</div>
+          <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-fat-dia"></canvas></div>
+          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.faturamento_dia).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com.faturamento).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+        </div>
+        <div class="m-gauge-card">
+          <div class="m-gauge-title">Ticket Médio</div>
+          <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-ticket-dia"></canvas></div>
+          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+        </div>
+      </div>
+      {% endif %}
       {% endif %}
     </div>
 
@@ -1460,6 +1489,20 @@
         <div class="m-est-chart-sub">{% if kpi_ant_com_sem.ticket_medio is not none and kpi_ant_com_sem.ticket_medio|float > 0 %}vs semana anterior: R$ {{ '{:,.2f}'.format(kpi_ant_com_sem.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}vs semana anterior{% endif %}</div>
         <div class="m-est-canvas"><canvas id="m-chart-est-ticket-sem"></canvas></div>
       </div>
+      {% if metas and (kpi_com_sem.faturamento is not none or kpi_com_sem.ticket_medio is not none) %}
+      <div class="m-gauge-row">
+        <div class="m-gauge-card">
+          <div class="m-gauge-title">Faturamento</div>
+          <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-fat-sem"></canvas></div>
+          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.faturamento_semana).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com_sem.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com_sem.faturamento).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+        </div>
+        <div class="m-gauge-card">
+          <div class="m-gauge-title">Ticket Médio</div>
+          <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-ticket-sem"></canvas></div>
+          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com_sem.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com_sem.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+        </div>
+      </div>
+      {% endif %}
       {% endif %}
     </div>
 
@@ -1583,6 +1626,20 @@
         <div class="m-est-chart-sub">{% if kpi_ant_com_mes.ticket_medio is not none and kpi_ant_com_mes.ticket_medio|float > 0 %}vs mês anterior: R$ {{ '{:,.2f}'.format(kpi_ant_com_mes.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}vs mês anterior{% endif %}</div>
         <div class="m-est-canvas"><canvas id="m-chart-est-ticket-mes"></canvas></div>
       </div>
+      {% if metas and (kpi_com_mes.faturamento is not none or kpi_com_mes.ticket_medio is not none) %}
+      <div class="m-gauge-row">
+        <div class="m-gauge-card">
+          <div class="m-gauge-title">Faturamento</div>
+          <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-fat-mes"></canvas></div>
+          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.faturamento_mes).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com_mes.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com_mes.faturamento).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+        </div>
+        <div class="m-gauge-card">
+          <div class="m-gauge-title">Ticket Médio</div>
+          <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-ticket-mes"></canvas></div>
+          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com_mes.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com_mes.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+        </div>
+      </div>
+      {% endif %}
       {% endif %}
     </div>
 
@@ -2001,6 +2058,20 @@
         <div class="m-est-chart-sub">{% if kpi_ant_com_ytd.ticket_medio is not none and kpi_ant_com_ytd.ticket_medio|float > 0 %}vs YTD anterior: R$ {{ '{:,.2f}'.format(kpi_ant_com_ytd.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}vs YTD ano anterior{% endif %}</div>
         <div class="m-est-canvas"><canvas id="m-chart-est-ticket-ytd"></canvas></div>
       </div>
+      {% if metas and (kpi_com_ytd.faturamento is not none or kpi_com_ytd.ticket_medio is not none) %}
+      <div class="m-gauge-row">
+        <div class="m-gauge-card">
+          <div class="m-gauge-title">Faturamento</div>
+          <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-fat-ytd"></canvas></div>
+          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.faturamento_ytd).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com_ytd.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com_ytd.faturamento).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+        </div>
+        <div class="m-gauge-card">
+          <div class="m-gauge-title">Ticket Médio</div>
+          <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-ticket-ytd"></canvas></div>
+          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com_ytd.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com_ytd.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+        </div>
+      </div>
+      {% endif %}
       {% endif %}
     </div>
 
@@ -2567,6 +2638,56 @@ function _mCriarTicketChart(canvasId, data) {
   });
 }
 
+const _mGaugeNeedle = {
+  id: 'mGaugeNeedle',
+  afterDraw(chart) {
+    if (!chart._gd) return;
+    const { actual, meta } = chart._gd;
+    if (actual == null || !meta) return;
+    const { ctx, chartArea } = chart;
+    const m0 = chart.getDatasetMeta(0);
+    if (!m0 || !m0.data.length) return;
+    const cx = (chartArea.left + chartArea.right) / 2;
+    const cy = (chartArea.top + chartArea.bottom) / 2;
+    const outerR = m0.data[0].outerRadius;
+    const innerR = m0.data[0].innerRadius;
+    const pct = Math.round(actual / meta * 100);
+    const pctC = Math.max(0, Math.min(pct, 100));
+    const angle = Math.PI * (1 - pctC / 100);
+    const nLen = innerR + (outerR - innerR) * 0.55;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(angle) * nLen, cy - Math.sin(angle) * nLen);
+    ctx.strokeStyle = '#111827'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#111827'; ctx.fill();
+    ctx.font = 'bold 15px system-ui,sans-serif';
+    ctx.fillStyle = pct >= 80 ? '#166534' : pct >= 60 ? '#92400E' : '#991B1B';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(pct + '%', cx, cy + 5);
+    ctx.restore();
+  }
+};
+
+function _mCriarGauge(canvasId, actual, meta) {
+  const el = document.getElementById(canvasId);
+  if (!el || actual == null || !meta) return;
+  const c = new Chart(el, {
+    type: 'doughnut',
+    data: { datasets: [{ data: [60, 20, 20, 100], backgroundColor: ['#EF4444','#F59E0B','#22C55E','transparent'], borderWidth: 0, hoverOffset: 0 }] },
+    options: {
+      circumference: 180, rotation: -90, cutout: '68%',
+      animation: { duration: 600 },
+      plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { display: false } }
+    },
+    plugins: [ChartDataLabels, _mGaugeNeedle]
+  });
+  c._gd = { actual, meta };
+}
+
 window.addEventListener('load', () => {
   _mCriarFaixaChart('m-chart-faixa-dia', _mFaixaDia);
   _mCriarFaixaChart('m-chart-faixa-sem', _mFaixaSem);
@@ -2588,6 +2709,14 @@ window.addEventListener('load', () => {
   _mCriarEstTicketChart('m-chart-est-ticket-sem', _mFaixaSem);
   _mCriarEstTicketChart('m-chart-est-ticket-mes', _mFaixaMes);
   _mCriarEstTicketChart('m-chart-est-ticket-ytd', _mFaixaYtd);
+  _mCriarGauge('m-chart-gauge-fat-dia',    {{ kpi_com.faturamento     | tojson }}, {{ (metas.faturamento_dia     if metas else none) | tojson }});
+  _mCriarGauge('m-chart-gauge-ticket-dia', {{ kpi_com.ticket_medio    | tojson }}, {{ (metas.ticket_medio        if metas else none) | tojson }});
+  _mCriarGauge('m-chart-gauge-fat-sem',    {{ kpi_com_sem.faturamento | tojson }}, {{ (metas.faturamento_semana  if metas else none) | tojson }});
+  _mCriarGauge('m-chart-gauge-ticket-sem', {{ kpi_com_sem.ticket_medio| tojson }}, {{ (metas.ticket_medio        if metas else none) | tojson }});
+  _mCriarGauge('m-chart-gauge-fat-mes',    {{ kpi_com_mes.faturamento | tojson }}, {{ (metas.faturamento_mes     if metas else none) | tojson }});
+  _mCriarGauge('m-chart-gauge-ticket-mes', {{ kpi_com_mes.ticket_medio| tojson }}, {{ (metas.ticket_medio        if metas else none) | tojson }});
+  _mCriarGauge('m-chart-gauge-fat-ytd',    {{ kpi_com_ytd.faturamento | tojson }}, {{ (metas.faturamento_ytd     if metas else none) | tojson }});
+  _mCriarGauge('m-chart-gauge-ticket-ytd', {{ kpi_com_ytd.ticket_medio| tojson }}, {{ (metas.ticket_medio        if metas else none) | tojson }});
   _mCriarTicketChart('m-chart-ticket-dia', _mTicketDia);
   _mCriarTicketChart('m-chart-ticket-sem', _mTicketSem);
   _mCriarTicketChart('m-chart-ticket-mes', _mTicketMes);
