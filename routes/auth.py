@@ -5,6 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.security import check_password_hash
 from routes.utils import login_required, screen_required
 import db
+from metas import get_metas as _get_metas
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -1818,6 +1819,13 @@ def dashboard():
             if row['text_color']:
                 theme['text_color'] = row['text_color']
 
+    # ── Metas ────────────────────────────────────────────────────────────────
+    metas = _get_metas(
+        theme_company_id,
+        selected_date, semana_inicio, semana_fim,
+        mes_inicio, mes_fim, ytd_inicio, ytd_fim,
+    ) if theme_company_id else None
+
     return render_template(
         'dashboard.html',
         company_logo=company_logo,
@@ -1892,6 +1900,7 @@ def dashboard():
         top5_tipo_sem=top5_tipo_sem,
         top5_tipo_mes=top5_tipo_mes,
         top5_tipo_ytd=top5_tipo_ytd,
+        metas=metas,
     )
 
 
