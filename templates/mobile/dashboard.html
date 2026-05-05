@@ -2541,7 +2541,7 @@ function _mCriarTop5TipoChart(canvasId, dados, cores) {
   new Chart(el, {
     type: 'doughnut',
     data: {
-      labels: dados.map(d => d.nome),
+      labels: dados.map(d => d.nome.length > 30 ? d.nome.slice(0, 30) + '…' : d.nome),
       datasets: [{
         data: dados.map(d => d.total),
         backgroundColor: cores.slice(0, dados.length),
@@ -2562,7 +2562,7 @@ function _mCriarTop5TipoChart(canvasId, dados, cores) {
             boxWidth: 10,
             generateLabels(chart) {
               return dados.map((d, i) => ({
-                text: d.pct.toFixed(0) + '%  ' + d.nome,
+                text: d.pct.toFixed(0) + '%  ' + (d.nome.length > 30 ? d.nome.slice(0, 30) + '…' : d.nome),
                 fillStyle: cores[i] || '#ccc',
                 strokeStyle: '#fff',
                 lineWidth: 1,
