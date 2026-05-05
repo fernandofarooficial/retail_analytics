@@ -221,7 +221,9 @@
   <nav class="m-page-nav">
     <a href="{{ url_for('mobile.dashboard') }}"
        class="m-page-nav-link {% if request.endpoint == 'mobile.dashboard' %}active{% endif %}">Dashboard</a>
-    <a href="{{ url_for('mobile.visitacao') }}"
+    {% set vis_url = url_for('mobile.visitacao') %}
+    {% if selected_company_id %}{% set vis_url = vis_url + '?company_id=' + selected_company_id|string %}{% if selected_store_id %}{% set vis_url = vis_url + '&store_id=' + selected_store_id|string %}{% endif %}{% elif selected_store_id %}{% set vis_url = vis_url + '?store_id=' + selected_store_id|string %}{% endif %}
+    <a href="{{ vis_url }}"
        class="m-page-nav-link {% if request.endpoint == 'mobile.visitacao' %}active{% endif %}">Visitação</a>
   </nav>
 
