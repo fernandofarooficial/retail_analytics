@@ -2560,7 +2560,7 @@ const _gaugeNeedle = {
         ctx.arc(cx, cy, 5, 0, Math.PI * 2);
         ctx.fillStyle = '#111827'; ctx.fill();
         ctx.font = 'bold 20px system-ui,sans-serif';
-        ctx.fillStyle = pct >= 80 ? '#166534' : pct >= 60 ? '#92400E' : '#991B1B';
+        ctx.fillStyle = pct >= 85 ? '#166534' : pct >= 65 ? '#92400E' : '#991B1B';
         ctx.textAlign = 'center'; ctx.textBaseline = 'top';
         ctx.fillText(pct + '%', cx, cy + 7);
         ctx.restore();
@@ -2572,7 +2572,7 @@ function _criarGauge(canvasId, actual, meta) {
     if (!el || actual == null || !meta) return;
     const c = new Chart(el, {
         type: 'doughnut',
-        data: { datasets: [{ data: [60, 20, 20, 100], backgroundColor: ['#EF4444','#F59E0B','#22C55E','transparent'], borderWidth: 0, hoverOffset: 0 }] },
+        data: { datasets: [{ data: [65, 20, 15], backgroundColor: ['#EF4444','#F59E0B','#22C55E'], borderWidth: 0, hoverOffset: 0 }] },
         options: {
             circumference: 180, rotation: -90, cutout: '68%',
             animation: { duration: 600 },
