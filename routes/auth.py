@@ -84,7 +84,6 @@ def _ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim, corte_recorrente)
             WHERE  pp.store_id              = %s
               AND  DATE(pp.created_at) BETWEEN %s AND %s
               AND  (pp.is_cancelled IS NOT TRUE)
-              AND  pp.person_id IS NOT NULL
         ),
         fat_bills AS (
             SELECT mm.documento,
