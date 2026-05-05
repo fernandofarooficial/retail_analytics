@@ -198,14 +198,16 @@
   }
   .m-gauge-card + .m-gauge-card { margin-left: 0; }
   .m-gauge-title {
-    font-size: 0.7rem; font-weight: 700; color: #374151; text-align: center;
+    font-size: 0.75rem; font-weight: 700; color: #374151; text-align: center;
     margin-bottom: 0.15rem;
   }
   .m-gauge-canvas-wrap { position: relative; height: 110px; }
   .m-gauge-footer {
-    text-align: center; font-size: 0.62rem; color: #6B7280; margin-top: 0.2rem;
-    line-height: 1.3;
+    text-align: center; font-size: 0.72rem; color: #374151; font-weight: 600;
+    margin-top: 0.35rem; line-height: 1.6;
   }
+  .m-gauge-footer .gf-label { color: #6B7280; font-weight: 500; font-size: 0.68rem; }
+  .m-gauge-footer .gf-val   { color: #111827; font-weight: 700; font-size: 0.78rem; }
 </style>
 <div class="m-app">
 
@@ -1357,12 +1359,12 @@
         <div class="m-gauge-card">
           <div class="m-gauge-title">Faturamento</div>
           <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-fat-dia"></canvas></div>
-          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.faturamento_dia).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com.faturamento).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+          <div class="m-gauge-footer"><span class="gf-label">Meta:</span> <span class="gf-val">R$ {{ '{:,.2f}'.format(metas.faturamento_dia).replace(',','X').replace('.',',').replace('X','.') }}</span><br><span class="gf-label">Realizado:</span> <span class="gf-val">{% if kpi_com.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com.faturamento).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</span></div>
         </div>
         <div class="m-gauge-card">
           <div class="m-gauge-title">Ticket Médio</div>
           <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-ticket-dia"></canvas></div>
-          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+          <div class="m-gauge-footer"><span class="gf-label">Meta:</span> <span class="gf-val">R$ {{ '{:,.2f}'.format(metas.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}</span><br><span class="gf-label">Realizado:</span> <span class="gf-val">{% if kpi_com.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</span></div>
         </div>
       </div>
       {% endif %}
@@ -1494,12 +1496,12 @@
         <div class="m-gauge-card">
           <div class="m-gauge-title">Faturamento</div>
           <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-fat-sem"></canvas></div>
-          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.faturamento_semana).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com_sem.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com_sem.faturamento).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+          <div class="m-gauge-footer"><span class="gf-label">Meta:</span> <span class="gf-val">R$ {{ '{:,.2f}'.format(metas.faturamento_semana).replace(',','X').replace('.',',').replace('X','.') }}</span><br><span class="gf-label">Realizado:</span> <span class="gf-val">{% if kpi_com_sem.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com_sem.faturamento).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</span></div>
         </div>
         <div class="m-gauge-card">
           <div class="m-gauge-title">Ticket Médio</div>
           <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-ticket-sem"></canvas></div>
-          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com_sem.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com_sem.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+          <div class="m-gauge-footer"><span class="gf-label">Meta:</span> <span class="gf-val">R$ {{ '{:,.2f}'.format(metas.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}</span><br><span class="gf-label">Realizado:</span> <span class="gf-val">{% if kpi_com_sem.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com_sem.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</span></div>
         </div>
       </div>
       {% endif %}
@@ -1631,12 +1633,12 @@
         <div class="m-gauge-card">
           <div class="m-gauge-title">Faturamento</div>
           <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-fat-mes"></canvas></div>
-          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.faturamento_mes).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com_mes.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com_mes.faturamento).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+          <div class="m-gauge-footer"><span class="gf-label">Meta:</span> <span class="gf-val">R$ {{ '{:,.2f}'.format(metas.faturamento_mes).replace(',','X').replace('.',',').replace('X','.') }}</span><br><span class="gf-label">Realizado:</span> <span class="gf-val">{% if kpi_com_mes.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com_mes.faturamento).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</span></div>
         </div>
         <div class="m-gauge-card">
           <div class="m-gauge-title">Ticket Médio</div>
           <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-ticket-mes"></canvas></div>
-          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com_mes.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com_mes.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+          <div class="m-gauge-footer"><span class="gf-label">Meta:</span> <span class="gf-val">R$ {{ '{:,.2f}'.format(metas.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}</span><br><span class="gf-label">Realizado:</span> <span class="gf-val">{% if kpi_com_mes.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com_mes.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</span></div>
         </div>
       </div>
       {% endif %}
@@ -2063,12 +2065,12 @@
         <div class="m-gauge-card">
           <div class="m-gauge-title">Faturamento</div>
           <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-fat-ytd"></canvas></div>
-          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.faturamento_ytd).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com_ytd.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com_ytd.faturamento).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+          <div class="m-gauge-footer"><span class="gf-label">Meta:</span> <span class="gf-val">R$ {{ '{:,.2f}'.format(metas.faturamento_ytd).replace(',','X').replace('.',',').replace('X','.') }}</span><br><span class="gf-label">Realizado:</span> <span class="gf-val">{% if kpi_com_ytd.faturamento is not none %}R$ {{ '{:,.2f}'.format(kpi_com_ytd.faturamento).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</span></div>
         </div>
         <div class="m-gauge-card">
           <div class="m-gauge-title">Ticket Médio</div>
           <div class="m-gauge-canvas-wrap"><canvas id="m-chart-gauge-ticket-ytd"></canvas></div>
-          <div class="m-gauge-footer">Meta: R$ {{ '{:,.2f}'.format(metas.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}<br>Realizado: {% if kpi_com_ytd.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com_ytd.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</div>
+          <div class="m-gauge-footer"><span class="gf-label">Meta:</span> <span class="gf-val">R$ {{ '{:,.2f}'.format(metas.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}</span><br><span class="gf-label">Realizado:</span> <span class="gf-val">{% if kpi_com_ytd.ticket_medio is not none %}R$ {{ '{:,.2f}'.format(kpi_com_ytd.ticket_medio).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}</span></div>
         </div>
       </div>
       {% endif %}
