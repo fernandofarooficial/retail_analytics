@@ -19,6 +19,7 @@
   {% block body %}{% endblock %}
 
   <!-- ── Bottom Navigation ─────────────────────────────────────────── -->
+  {% if session.get('user_id') %}
   {% set _ep  = request.endpoint %}
   {% set _cid = request.args.get('company_id', '') %}
   {% set _sid = request.args.get('store_id', '') %}
@@ -88,6 +89,7 @@
       <span class="m-bn-label">Gestão</span>
     </span>
   </nav>
+  {% endif %}
 
   <script>
     if ('serviceWorker' in navigator) {
