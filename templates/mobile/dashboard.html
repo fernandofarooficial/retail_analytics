@@ -231,11 +231,90 @@
       <button class="m-tab-l1"        data-l1="comercial"   onclick="ativarL1(this)">Comercial</button>
       <button class="m-tab-l1"        data-l1="estrategico" onclick="ativarL1(this)">Estratégico</button>
     </div>
-    <div class="m-tabs-l2">
-      <button class="m-tab-l2 active" data-l2="dia"    onclick="ativarL2(this)">Dia</button>
-      <button class="m-tab-l2"        data-l2="semana" onclick="ativarL2(this)">Semana</button>
-      <button class="m-tab-l2"        data-l2="mes"    onclick="ativarL2(this)">Mês</button>
-      <button class="m-tab-l2"        data-l2="ytd"    onclick="ativarL2(this)">YTD</button>
+    <div class="m-period-bar">
+      <div class="m-period-tabs">
+
+        <button class="m-period-tab active" data-l2="dia" onclick="ativarL2(this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <path d="M16 2v4M8 2v4M3 10h18"/>
+          </svg>
+          <span>Dia</span>
+        </button>
+
+        <button class="m-period-tab" data-l2="semana" onclick="ativarL2(this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/>
+          </svg>
+          <span>Semana</span>
+        </button>
+
+        <button class="m-period-tab" data-l2="mes" onclick="ativarL2(this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <path d="M16 2v4M8 2v4M3 10h18"/>
+            <circle cx="8" cy="15" r="1.1" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="15" r="1.1" fill="currentColor" stroke="none"/>
+            <circle cx="16" cy="15" r="1.1" fill="currentColor" stroke="none"/>
+            <circle cx="8" cy="19" r="1.1" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="19" r="1.1" fill="currentColor" stroke="none"/>
+          </svg>
+          <span>Mês</span>
+        </button>
+
+        <button class="m-period-tab" data-l2="ytd" onclick="ativarL2(this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 18l4-4 4 4 5-8 3-2"/>
+            <path d="M3 21h18M21 3v18"/>
+          </svg>
+          <span>YTD</span>
+        </button>
+
+      </div>
+
+      <!-- Caixa de data/período (muda conforme o período ativo) -->
+      <div class="m-period-date">
+
+        <div class="m-pdate-inner" id="mpd-dia">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0057A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <path d="M16 2v4M8 2v4M3 10h18"/>
+          </svg>
+          <div class="m-pdate-texts">
+            <span class="m-pdate-sub">Dia selecionado</span>
+            <span class="m-pdate-val">{{ data_str[8:10] }}/{{ data_str[5:7] }}/{{ data_str[0:4] }}</span>
+          </div>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+          <input type="date" class="m-pdate-input-overlay" value="{{ data_str }}" onchange="mudarData(this.value)">
+        </div>
+
+        <div class="m-pdate-inner" id="mpd-semana" style="display:none">
+          <button class="m-pdate-nav-btn" onclick="mudarData('{{ semana_anterior_str }}')">&#8249;</button>
+          <div class="m-pdate-texts">
+            <span class="m-pdate-sub">Semana</span>
+            <span class="m-pdate-val">{{ semana_label }}</span>
+          </div>
+          <button class="m-pdate-nav-btn" onclick="mudarData('{{ semana_proxima_str }}')">&#8250;</button>
+        </div>
+
+        <div class="m-pdate-inner" id="mpd-mes" style="display:none">
+          <button class="m-pdate-nav-btn" onclick="mudarData('{{ mes_anterior_str }}')">&#8249;</button>
+          <div class="m-pdate-texts">
+            <span class="m-pdate-sub">Mês</span>
+            <span class="m-pdate-val">{{ mes_label }}</span>
+          </div>
+          <button class="m-pdate-nav-btn" onclick="mudarData('{{ mes_proximo_str }}')">&#8250;</button>
+        </div>
+
+        <div class="m-pdate-inner" id="mpd-ytd" style="display:none">
+          <div class="m-pdate-texts">
+            <span class="m-pdate-sub">YTD</span>
+            <span class="m-pdate-val">{{ ytd_label }}</span>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
 
@@ -250,13 +329,6 @@
       {% if not active_store %}
       <p class="m-hint">Selecione uma loja para visualizar os indicadores.</p>
       {% else %}
-
-      <!-- Barra de data -->
-      <div class="m-date-row">
-        <span class="m-date-label">Data</span>
-        <input type="date" class="m-date-input" value="{{ data_str }}"
-               onchange="mudarData(this.value)">
-      </div>
 
       <!-- KPIs Operacional Dia – 5 cards -->
       {# macro: seta de comparação com dia útil anterior #}
@@ -401,12 +473,6 @@
           {% else %}<span class="kpi5-delta-flat">= 0%</span>{% endif %}
         {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
       {% endmacro %}
-
-      <div class="m-date-row">
-        <span class="m-date-label">Data</span>
-        <input type="date" class="m-date-input" value="{{ data_str }}"
-               onchange="mudarData(this.value)">
-      </div>
 
       <div class="kpi5-row-4">
 
@@ -574,13 +640,6 @@
         {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
       {% endmacro %}
 
-      <div class="m-date-row">
-        <div class="m-nav-row">
-          <button class="m-nav-btn" onclick="mudarData('{{ semana_anterior_str }}')">&#8249;</button>
-          <span class="m-period-label">{{ semana_label }}</span>
-          <button class="m-nav-btn" onclick="mudarData('{{ semana_proxima_str }}')">&#8250;</button>
-        </div>
-      </div>
 
       <div class="kpi5-row">
 
@@ -714,13 +773,6 @@
         {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
       {% endmacro %}
 
-      <div class="m-date-row">
-        <div class="m-nav-row">
-          <button class="m-nav-btn" onclick="mudarData('{{ mes_anterior_str }}')">&#8249;</button>
-          <span class="m-period-label">{{ mes_label }}</span>
-          <button class="m-nav-btn" onclick="mudarData('{{ mes_proximo_str }}')">&#8250;</button>
-        </div>
-      </div>
 
       <div class="kpi5-row">
 
@@ -853,13 +905,6 @@
         {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
       {% endmacro %}
 
-      <div class="m-date-row">
-        <div class="m-nav-row">
-          <button class="m-nav-btn" onclick="mudarData('{{ semana_anterior_str }}')">&#8249;</button>
-          <span class="m-period-label">{{ semana_label }}</span>
-          <button class="m-nav-btn" onclick="mudarData('{{ semana_proxima_str }}')">&#8250;</button>
-        </div>
-      </div>
 
       <div class="kpi5-row-4">
 
@@ -1025,13 +1070,6 @@
         {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
       {% endmacro %}
 
-      <div class="m-date-row">
-        <div class="m-nav-row">
-          <button class="m-nav-btn" onclick="mudarData('{{ mes_anterior_str }}')">&#8249;</button>
-          <span class="m-period-label">{{ mes_label }}</span>
-          <button class="m-nav-btn" onclick="mudarData('{{ mes_proximo_str }}')">&#8250;</button>
-        </div>
-      </div>
 
       <div class="kpi5-row-4">
 
@@ -1197,12 +1235,6 @@
         {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
       {% endmacro %}
 
-      <div class="m-date-row">
-        <span class="m-date-label">Data</span>
-        <input type="date" class="m-date-input" value="{{ data_str }}"
-               onchange="mudarData(this.value)">
-      </div>
-
       <div class="kpi5-row-4">
 
         <div class="kpi5-card">
@@ -1325,13 +1357,6 @@
         {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
       {% endmacro %}
 
-      <div class="m-date-row">
-        <div class="m-nav-row">
-          <button class="m-nav-btn" onclick="mudarData('{{ semana_anterior_str }}')">&#8249;</button>
-          <span class="m-period-label">{{ semana_label }}</span>
-          <button class="m-nav-btn" onclick="mudarData('{{ semana_proxima_str }}')">&#8250;</button>
-        </div>
-      </div>
 
       <div class="kpi5-row-4">
 
@@ -1455,13 +1480,6 @@
         {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
       {% endmacro %}
 
-      <div class="m-date-row">
-        <div class="m-nav-row">
-          <button class="m-nav-btn" onclick="mudarData('{{ mes_anterior_str }}')">&#8249;</button>
-          <span class="m-period-label">{{ mes_label }}</span>
-          <button class="m-nav-btn" onclick="mudarData('{{ mes_proximo_str }}')">&#8250;</button>
-        </div>
-      </div>
 
       <div class="kpi5-row-4">
 
@@ -1585,9 +1603,6 @@
         {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
       {% endmacro %}
 
-      <div class="m-date-row">
-        <span class="m-period-label">{{ ytd_label }}</span>
-      </div>
 
       <div class="kpi5-row">
 
@@ -1720,9 +1735,6 @@
         {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
       {% endmacro %}
 
-      <div class="m-date-row">
-        <span class="m-period-label">{{ ytd_label }}</span>
-      </div>
 
       <div class="kpi5-row-4">
 
@@ -1888,9 +1900,6 @@
         {% else %}<span class="kpi5-delta-flat">—</span>{% endif %}
       {% endmacro %}
 
-      <div class="m-date-row">
-        <span class="m-period-label">{{ ytd_label }}</span>
-      </div>
 
       <div class="kpi5-row-4">
 
@@ -2064,9 +2073,13 @@ function ativarL1(btn) {
 }
 
 function ativarL2(btn) {
-  document.querySelectorAll('.m-tab-l2').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.m-period-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
   l2Ativo = btn.dataset.l2;
+  ['dia','semana','mes','ytd'].forEach(p => {
+    const el = document.getElementById('mpd-' + p);
+    if (el) el.style.display = p === l2Ativo ? 'flex' : 'none';
+  });
   atualizarPainel();
 }
 
