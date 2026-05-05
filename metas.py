@@ -17,7 +17,18 @@ METAS = {
     1: {                                  # company_id = 1
         'faturamento_mensal': 30_000.00,  # R$ por mês cheio
         'ticket_medio':          375.00,  # R$ por venda
-        'fecha_domingo':           False, # True → loja fecha aos domingos
+
+        # Peso de cada dia da semana no rateio da meta mensal.
+        # 0 = loja fechada | 0.5 = meio período | 1.0 = dia inteiro
+        'peso_dia': {
+            0: 1.0,   # Segunda-feira
+            1: 1.0,   # Terça-feira
+            2: 1.0,   # Quarta-feira
+            3: 1.0,   # Quinta-feira
+            4: 1.0,   # Sexta-feira
+            5: 0.5,   # Sábado  (meio dia)
+            6: 0.0,   # Domingo (fechado)
+        },
     },
 }
 
@@ -26,7 +37,9 @@ METAS = {
 # FERIADOS  ← adicione ou remova datas conforme necessário
 # =============================================================================
 # Inclui feriados nacionais, estaduais (RS) e o municipal de Porto Alegre
-# (Nossa Senhora dos Navegantes – 02/fev). Ajuste se necessário.
+# (Nossa Senhora dos Navegantes – 02/fev). Feriados que caem em domingo ou
+# sábado já têm peso 0 / 0.5 pelo calendário, mas são listados para garantir
+# que não gerem meta mesmo se o peso_dia for ajustado futuramente.
 
 FERIADOS: set[date] = {
 
@@ -93,31 +106,39 @@ FERIADOS: set[date] = {
 # FUNÇÕES DE CÁLCULO  (não precisa editar)
 # =============================================================================
 
-def _aberto(company_id: int, d: date) -> bool:
-    """Retorna True se a loja está aberta nesse dia."""
+def _peso(company_id: int, d: date) -> float:
+    """
+    Retorna o peso do dia no rateio: 0.0 se fechado, 0.5 se meio período,
+    1.0 se dia inteiro. Feriados sempre retornam 0.0.
+    """
     if d in FERIADOS:
-        return False
+        return 0.0
     cfg = METAS.get(company_id, {})
-    if cfg.get('fecha_domingo', False) and d.weekday() == 6:
-        return False
-    return True
+    pesos = cfg.get('peso_dia', {})
+    return pesos.get(d.weekday(), 1.0)
 
 
-def _dias_abertos_mes(company_id: int, ano: int, mes: int) -> int:
-    """Total de dias abertos no mês (usado para rateio diário)."""
+def _peso_total_mes(company_id: int, ano: int, mes: int) -> float:
+    """Soma dos pesos de todos os dias do mês (divisor do rateio)."""
     _, ndias = _calendar.monthrange(ano, mes)
-    total = sum(1 for i in range(1, ndias + 1) if _aberto(company_id, date(ano, mes, i)))
-    return total or 1  # evita divisão por zero
+    total = sum(_peso(company_id, date(ano, mes, i)) for i in range(1, ndias + 1))
+    return total or 1.0  # evita divisão por zero
 
 
 def meta_diaria(company_id: int, d: date) -> float | None:
-    """Meta de faturamento de um dia. 0.0 se loja fechada. None se sem meta."""
+    """
+    Meta de faturamento de um dia.
+    0.0 se loja fechada (feriado, domingo, etc.).
+    None se a empresa não tiver metas configuradas.
+    """
     cfg = METAS.get(company_id)
     if cfg is None:
         return None
-    if not _aberto(company_id, d):
+    p = _peso(company_id, d)
+    if p == 0.0:
         return 0.0
-    return round(cfg['faturamento_mensal'] / _dias_abertos_mes(company_id, d.year, d.month), 2)
+    taxa = cfg['faturamento_mensal'] / _peso_total_mes(company_id, d.year, d.month)
+    return round(taxa * p, 2)
 
 
 def meta_periodo(company_id: int, inicio: date, fim: date) -> float | None:
