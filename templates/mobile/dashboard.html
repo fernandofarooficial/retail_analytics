@@ -1368,6 +1368,7 @@
         </div>
       </div>
       {% endif %}
+      <div class="m-chart-faixa-wrap"><canvas id="m-chart-freq-retorno-est-dia"></canvas></div>
       {% endif %}
     </div>
 
@@ -1505,6 +1506,7 @@
         </div>
       </div>
       {% endif %}
+      <div class="m-chart-faixa-wrap"><canvas id="m-chart-freq-retorno-est-sem"></canvas></div>
       {% endif %}
     </div>
 
@@ -1642,6 +1644,7 @@
         </div>
       </div>
       {% endif %}
+      <div class="m-chart-faixa-wrap"><canvas id="m-chart-freq-retorno-est-mes"></canvas></div>
       {% endif %}
     </div>
 
@@ -2074,6 +2077,7 @@
         </div>
       </div>
       {% endif %}
+      <div class="m-chart-faixa-wrap"><canvas id="m-chart-freq-retorno-est-ytd"></canvas></div>
       {% endif %}
     </div>
 
@@ -2529,6 +2533,61 @@ function _mCriarEstTicketChart(canvasId, faixaData) {
   });
 }
 
+function _mCriarFreqRetornoEstChart(canvasId, ocorrenciasData) {
+  const el = document.getElementById(canvasId);
+  if (!el) return;
+  const data = ocorrenciasData.recorrentes.slice(8, 20);
+  new Chart(el, {
+    type: 'line',
+    plugins: [ChartDataLabels],
+    data: {
+      labels: _mHorasLabels,
+      datasets: [{
+        label: 'Clientes Recorrentes',
+        data: data,
+        borderColor: '#16A34A',
+        backgroundColor: 'rgba(22,163,74,0.08)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#fff',
+        pointBorderColor: '#16A34A',
+        pointBorderWidth: 2,
+        tension: 0.3,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: 'Frequência de Retorno (Clientes Recorrentes)', font: { size: 11 } },
+        tooltip: {
+          callbacks: {
+            label(ctx) { return ' Recorrentes: ' + (ctx.parsed.y ?? '—'); }
+          }
+        },
+        datalabels: {
+          display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
+          align: 'top',
+          anchor: 'top',
+          color: '#374151',
+          font: { size: 9, weight: '700' },
+          formatter: v => v
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+        y: {
+          beginAtZero: true,
+          ticks: { precision: 0, font: { size: 9 } }
+        }
+      }
+    }
+  });
+}
+
 // ── Top 5 Produtos por Tipo de Cliente ───────────────────────────────────
 const _mTop5TipoDia = {{ top5_tipo_dia | tojson }};
 const _mTop5TipoSem = {{ top5_tipo_sem | tojson }};
@@ -2711,6 +2770,10 @@ window.addEventListener('load', () => {
   _mCriarEstTicketChart('m-chart-est-ticket-sem', _mFaixaSem);
   _mCriarEstTicketChart('m-chart-est-ticket-mes', _mFaixaMes);
   _mCriarEstTicketChart('m-chart-est-ticket-ytd', _mFaixaYtd);
+  _mCriarFreqRetornoEstChart('m-chart-freq-retorno-est-dia', _mOcorrenciasDia);
+  _mCriarFreqRetornoEstChart('m-chart-freq-retorno-est-sem', _mOcorrenciasSem);
+  _mCriarFreqRetornoEstChart('m-chart-freq-retorno-est-mes', _mOcorrenciasMes);
+  _mCriarFreqRetornoEstChart('m-chart-freq-retorno-est-ytd', _mOcorrenciasYtd);
   _mCriarGauge('m-chart-gauge-fat-dia',    {{ kpi_com.faturamento     | tojson }}, {{ (metas.faturamento_dia     if metas else none) | tojson }});
   _mCriarGauge('m-chart-gauge-ticket-dia', {{ kpi_com.ticket_medio    | tojson }}, {{ (metas.ticket_medio        if metas else none) | tojson }});
   _mCriarGauge('m-chart-gauge-fat-sem',    {{ kpi_com_sem.faturamento | tojson }}, {{ (metas.faturamento_semana  if metas else none) | tojson }});

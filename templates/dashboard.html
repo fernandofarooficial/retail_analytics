@@ -1220,6 +1220,9 @@
             </div>
         </div>
         {% endif %}
+        <div class="charts-row">
+            <div class="chart-faixa-wrap"><canvas id="chart-freq-retorno-est-dia"></canvas></div>
+        </div>
         {% endif %}
     </div>
 
@@ -1380,6 +1383,9 @@
             </div>
         </div>
         {% endif %}
+        <div class="charts-row">
+            <div class="chart-faixa-wrap"><canvas id="chart-freq-retorno-est-sem"></canvas></div>
+        </div>
         {% endif %}
     </div>
 
@@ -1540,6 +1546,9 @@
             </div>
         </div>
         {% endif %}
+        <div class="charts-row">
+            <div class="chart-faixa-wrap"><canvas id="chart-freq-retorno-est-mes"></canvas></div>
+        </div>
         {% endif %}
     </div>
 
@@ -1968,6 +1977,9 @@
             </div>
         </div>
         {% endif %}
+        <div class="charts-row">
+            <div class="chart-faixa-wrap"><canvas id="chart-freq-retorno-est-ytd"></canvas></div>
+        </div>
         {% endif %}
     </div>
 
@@ -2273,6 +2285,61 @@ function _criarConversaoChart(canvasId, faixaData) {
     });
 }
 
+
+function _criarFreqRetornoEstChart(canvasId, ocorrenciasData) {
+    const el = document.getElementById(canvasId);
+    if (!el) return;
+    const data = ocorrenciasData.recorrentes.slice(8, 20);
+    new Chart(el, {
+        type: 'line',
+        plugins: [ChartDataLabels],
+        data: {
+            labels: _horasLabels,
+            datasets: [{
+                label: 'Clientes Recorrentes',
+                data: data,
+                borderColor: '#16A34A',
+                backgroundColor: 'rgba(22,163,74,0.08)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#16A34A',
+                pointBorderWidth: 2,
+                tension: 0.3,
+                fill: true,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: 'Frequência de Retorno (Clientes Recorrentes)', font: { size: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label(ctx) { return ' Recorrentes: ' + (ctx.parsed.y ?? '—'); }
+                    }
+                },
+                datalabels: {
+                    display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
+                    align: 'top',
+                    anchor: 'top',
+                    color: '#374151',
+                    font: { size: 10, weight: '700' },
+                    formatter: v => v
+                }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0, font: { size: 10 } }
+                }
+            }
+        }
+    });
+}
 
 const _topQtdeDia = {{ top_produtos_qtde_dia | tojson }};
 const _topFatDia  = {{ top_produtos_fat_dia  | tojson }};
@@ -2626,6 +2693,10 @@ window.addEventListener('load', () => {
     _criarEstTicketChart('chart-est-ticket-sem', _faixaSem);
     _criarEstTicketChart('chart-est-ticket-mes', _faixaMes);
     _criarEstTicketChart('chart-est-ticket-ytd', _faixaYtd);
+    _criarFreqRetornoEstChart('chart-freq-retorno-est-dia', _ocorrenciasDia);
+    _criarFreqRetornoEstChart('chart-freq-retorno-est-sem', _ocorrenciasSem);
+    _criarFreqRetornoEstChart('chart-freq-retorno-est-mes', _ocorrenciasMes);
+    _criarFreqRetornoEstChart('chart-freq-retorno-est-ytd', _ocorrenciasYtd);
     _criarGauge('chart-gauge-fat-dia',    {{ kpi_com.faturamento     | tojson }}, {{ (metas.faturamento_dia     if metas else none) | tojson }});
     _criarGauge('chart-gauge-ticket-dia', {{ kpi_com.ticket_medio    | tojson }}, {{ (metas.ticket_medio        if metas else none) | tojson }});
     _criarGauge('chart-gauge-fat-sem',    {{ kpi_com_sem.faturamento | tojson }}, {{ (metas.faturamento_semana  if metas else none) | tojson }});
