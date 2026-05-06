@@ -22,6 +22,7 @@
                 <th>Destaque</th>
                 <th>Texto</th>
                 <th>Fundo</th>
+                <th>Cores Gráfico</th>
                 <th>Logo</th>
                 <th class="col-actions">Ações</th>
             </tr>
@@ -36,6 +37,12 @@
                 <td><span class="color-swatch" style="background:{{ r.accent_color }}; border:1px solid #ccc"></span> {{ r.accent_color }}</td>
                 <td><span class="color-swatch" style="background:{{ r.text_color }}"></span> {{ r.text_color }}</td>
                 <td><span class="color-swatch" style="background:{{ r.background_color }}; border:1px solid #ccc"></span> {{ r.background_color }}</td>
+                <td>
+                    <span class="color-swatch" style="background:{{ r.graph_color_1 or '#1339F6' }}" title="{{ r.graph_color_1 or '#1339F6' }}"></span>
+                    <span class="color-swatch" style="background:{{ r.graph_color_2 or '#44AC0C' }}" title="{{ r.graph_color_2 or '#44AC0C' }}"></span>
+                    <span class="color-swatch" style="background:{{ r.graph_color_3 or '#F08205' }}" title="{{ r.graph_color_3 or '#F08205' }}"></span>
+                    <span class="color-swatch" style="background:{{ r.graph_color_4 or '#DC0929' }}" title="{{ r.graph_color_4 or '#DC0929' }}"></span>
+                </td>
                 <td>
                     {% if r.logo_url %}
                         <img src="{{ url_for('static', filename=r.logo_url) }}"
@@ -52,6 +59,10 @@
                         data-text="{{ r.text_color }}"
                         data-background="{{ r.background_color }}"
                         data-logo="{{ r.logo_url or '' }}"
+                        data-graph1="{{ r.graph_color_1 or '#1339F6' }}"
+                        data-graph2="{{ r.graph_color_2 or '#44AC0C' }}"
+                        data-graph3="{{ r.graph_color_3 or '#F08205' }}"
+                        data-graph4="{{ r.graph_color_4 or '#DC0929' }}"
                         onclick="abrirEditar(this)">Editar</button>
                     <form method="POST" style="display:inline"
                           onsubmit="return confirm('Confirma a exclusão deste tema?')">
@@ -62,7 +73,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="9" class="table-empty">Nenhum tema cadastrado.</td></tr>
+            <tr><td colspan="10" class="table-empty">Nenhum tema cadastrado.</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -111,6 +122,24 @@
                     <input type="color" name="background_color" id="f-background" value="#F5F5F5">
                 </div>
             </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Gráfico 1</label>
+                    <input type="color" name="graph_color_1" id="f-graph1" value="#1339F6">
+                </div>
+                <div class="form-group">
+                    <label>Gráfico 2</label>
+                    <input type="color" name="graph_color_2" id="f-graph2" value="#44AC0C">
+                </div>
+                <div class="form-group">
+                    <label>Gráfico 3</label>
+                    <input type="color" name="graph_color_3" id="f-graph3" value="#F08205">
+                </div>
+                <div class="form-group">
+                    <label>Gráfico 4</label>
+                    <input type="color" name="graph_color_4" id="f-graph4" value="#DC0929">
+                </div>
+            </div>
             <div class="form-group">
                 <label>Logo <small>(PNG, JPG, SVG — opcional)</small></label>
                 <input type="hidden" name="logo_url_existing" id="f-logo-existing">
@@ -156,6 +185,10 @@ function abrirNovo() {
     document.getElementById('f-accent').value           = '#FFFFFF';
     document.getElementById('f-text').value             = '#000000';
     document.getElementById('f-background').value       = '#F5F5F5';
+    document.getElementById('f-graph1').value           = '#1339F6';
+    document.getElementById('f-graph2').value           = '#44AC0C';
+    document.getElementById('f-graph3').value           = '#F08205';
+    document.getElementById('f-graph4').value           = '#DC0929';
     _setLogoPreview('');
     modal.showModal();
 }
@@ -171,6 +204,10 @@ function abrirEditar(btn) {
     document.getElementById('f-accent').value           = d.accent;
     document.getElementById('f-text').value             = d.text;
     document.getElementById('f-background').value       = d.background;
+    document.getElementById('f-graph1').value           = d.graph1;
+    document.getElementById('f-graph2').value           = d.graph2;
+    document.getElementById('f-graph3').value           = d.graph3;
+    document.getElementById('f-graph4').value           = d.graph4;
     _setLogoPreview(d.logo || '');
     modal.showModal();
 }

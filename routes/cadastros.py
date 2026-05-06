@@ -240,8 +240,9 @@ def temas():
                 db.execute(
                     """INSERT INTO faciais.company_themes
                        (company_id, primary_color, secondary_color, accent_color,
-                        text_color, background_color, logo_url)
-                       VALUES (%s,%s,%s,%s,%s,%s,%s)""",
+                        text_color, background_color, logo_url,
+                        graph_color_1, graph_color_2, graph_color_3, graph_color_4)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                     (
                         company_id,
                         request.form.get('primary_color', '#F47B20'),
@@ -250,6 +251,10 @@ def temas():
                         request.form.get('text_color', '#000000'),
                         request.form.get('background_color', '#F5F5F5'),
                         logo_url,
+                        request.form.get('graph_color_1', '#1339F6'),
+                        request.form.get('graph_color_2', '#44AC0C'),
+                        request.form.get('graph_color_3', '#F08205'),
+                        request.form.get('graph_color_4', '#DC0929'),
                     )
                 )
                 flash('Tema criado com sucesso.', 'success')
@@ -262,7 +267,8 @@ def temas():
                 db.execute(
                     """UPDATE faciais.company_themes SET
                        company_id=%s, primary_color=%s, secondary_color=%s, accent_color=%s,
-                       text_color=%s, background_color=%s, logo_url=%s
+                       text_color=%s, background_color=%s, logo_url=%s,
+                       graph_color_1=%s, graph_color_2=%s, graph_color_3=%s, graph_color_4=%s
                        WHERE company_theme_id=%s""",
                     (
                         company_id,
@@ -272,6 +278,10 @@ def temas():
                         request.form.get('text_color', '#000000'),
                         request.form.get('background_color', '#F5F5F5'),
                         logo_url,
+                        request.form.get('graph_color_1', '#1339F6'),
+                        request.form.get('graph_color_2', '#44AC0C'),
+                        request.form.get('graph_color_3', '#F08205'),
+                        request.form.get('graph_color_4', '#DC0929'),
                         request.form['_id'],
                     )
                 )
