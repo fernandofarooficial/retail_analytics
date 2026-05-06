@@ -1800,7 +1800,7 @@ def dashboard():
         chart_freq_retorno_ytd = []
 
     # ── Tema da empresa ──────────────────────────────────────────────────────
-    theme = dict(primary_color='#F47B20', text_color='#111827')
+    theme = dict(primary_color='#F47B20', text_color='#111827', graph_color_1='#1339F6')
     theme_company_id = selected_company_id
     if not theme_company_id and active_store:
         row = db.query_one(
@@ -1811,13 +1811,15 @@ def dashboard():
             theme_company_id = row['company_id']
     if theme_company_id:
         row = db.query_one(
-            "SELECT primary_color, text_color FROM faciais.company_themes WHERE company_id = %s",
+            "SELECT primary_color, text_color, graph_color_1 FROM faciais.company_themes WHERE company_id = %s",
             (theme_company_id,)
         )
         if row:
             theme['primary_color'] = row['primary_color']
             if row['text_color']:
                 theme['text_color'] = row['text_color']
+            if row['graph_color_1']:
+                theme['graph_color_1'] = row['graph_color_1']
 
     # ── Metas ────────────────────────────────────────────────────────────────
     metas = _get_metas(
