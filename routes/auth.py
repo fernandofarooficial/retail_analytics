@@ -468,15 +468,15 @@ def dashboard():
     kpi_com = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
 
     # ── KPIs Operacional – Semana / Mês ──────────────────────────────────────
-    kpi_sem     = dict(visitantes=None, recorrentes=None, vendas=None, conversao=None, tempo_loja=None)
-    kpi_mes     = dict(visitantes=None, recorrentes=None, vendas=None, conversao=None, tempo_loja=None)
+    kpi_sem     = dict(visitantes=None, recorrentes=None, novos=None, vendas=None, conversao=None, tempo_loja=None)
+    kpi_mes     = dict(visitantes=None, recorrentes=None, novos=None, vendas=None, conversao=None, tempo_loja=None)
 
     # ── KPIs Comercial – Semana / Mês ────────────────────────────────────────
     kpi_com_sem = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
     kpi_com_mes = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
 
     # ── KPIs Operacional / Comercial – YTD ───────────────────────────────────
-    kpi_ytd     = dict(visitantes=None, recorrentes=None, vendas=None, conversao=None, tempo_loja=None)
+    kpi_ytd     = dict(visitantes=None, recorrentes=None, novos=None, vendas=None, conversao=None, tempo_loja=None)
     kpi_com_ytd = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
 
     if active_store:

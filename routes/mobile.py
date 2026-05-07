@@ -600,6 +600,7 @@ def dashboard():
               AND  vpc.first_record::date < DATE(dr.created_at)
         """, (sid, semana_inicio_str, semana_fim_str))
         kpi_sem['recorrentes'] = r['total'] if r else 0
+        kpi_sem['novos']       = (kpi_sem['visitantes'] or 0) - (kpi_sem['recorrentes'] or 0)
 
         if active_microvix_portal and active_store_cnpj:
             r = db.query_one("""
@@ -622,7 +623,6 @@ def dashboard():
             kpi_sem['conversao'] = int(round((kpi_sem['vendas'] or 0) / kpi_sem['visitantes'] * 100))
         else:
             kpi_sem['conversao'] = 0
-        kpi_sem['novos'] = (kpi_sem['visitantes'] or 0) - (kpi_sem['recorrentes'] or 0)
 
         kpi_sem['tempo_loja'] = kpi_tempo_loja_range(sid, semana_inicio_str, semana_fim_str)
 
@@ -676,6 +676,7 @@ def dashboard():
               AND  vpc.first_record::date < DATE(dr.created_at)
         """, (sid, mes_inicio_str, mes_fim_str))
         kpi_mes['recorrentes'] = r['total'] if r else 0
+        kpi_mes['novos']       = (kpi_mes['visitantes'] or 0) - (kpi_mes['recorrentes'] or 0)
 
         if active_microvix_portal and active_store_cnpj:
             r = db.query_one("""
@@ -698,7 +699,6 @@ def dashboard():
             kpi_mes['conversao'] = int(round((kpi_mes['vendas'] or 0) / kpi_mes['visitantes'] * 100))
         else:
             kpi_mes['conversao'] = 0
-        kpi_mes['novos'] = (kpi_mes['visitantes'] or 0) - (kpi_mes['recorrentes'] or 0)
 
         kpi_mes['tempo_loja'] = kpi_tempo_loja_range(sid, mes_inicio_str, mes_fim_str)
 
@@ -752,6 +752,7 @@ def dashboard():
               AND  vpc.first_record::date < DATE(dr.created_at)
         """, (sid, ytd_inicio_str, ytd_fim_str))
         kpi_ytd['recorrentes'] = r['total'] if r else 0
+        kpi_ytd['novos']       = (kpi_ytd['visitantes'] or 0) - (kpi_ytd['recorrentes'] or 0)
 
         if active_microvix_portal and active_store_cnpj:
             r = db.query_one("""
@@ -774,7 +775,6 @@ def dashboard():
             kpi_ytd['conversao'] = int(round((kpi_ytd['vendas'] or 0) / kpi_ytd['visitantes'] * 100))
         else:
             kpi_ytd['conversao'] = 0
-        kpi_ytd['novos'] = (kpi_ytd['visitantes'] or 0) - (kpi_ytd['recorrentes'] or 0)
 
         kpi_ytd['tempo_loja'] = kpi_tempo_loja_range(sid, ytd_inicio_str, ytd_fim_str)
 
@@ -1114,6 +1114,7 @@ def dashboard():
               AND  vpc.first_record::date < DATE(dr.created_at)
         """, (sid, ytd_ant_inicio_str, ytd_ant_fim_str))
         kpi_ant_ytd['recorrentes'] = r['total'] if r else 0
+        kpi_ant_ytd['novos'] = kpi_ant_ytd['visitantes'] - kpi_ant_ytd['recorrentes']
 
         if active_microvix_portal and active_store_cnpj:
             r = db.query_one("""
