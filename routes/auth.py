@@ -1,9 +1,10 @@
 import calendar
-import math
 from datetime import date as date_type, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, session
 from werkzeug.security import check_password_hash
-from routes.utils import login_required, screen_required
+from routes.utils import (login_required, screen_required,
+                           fmt_permanencia, kpi_tempo_loja, kpi_tempo_loja_range,
+                           tempo_gauge, HEIMDALL_IMAGE_BASE)
 import db
 from metas import get_metas as _get_metas
 
@@ -537,19 +538,7 @@ def dashboard():
         else:
             kpi['conversao'] = 0
 
-        r = db.query_one("""
-            SELECT ROUND(AVG(perm)::numeric) AS avg_seg
-            FROM (
-                SELECT EXTRACT(EPOCH FROM MAX(dr.created_at) - MIN(dr.created_at))::int AS perm
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
-                GROUP  BY dr.person_id
-                HAVING MAX(dr.created_at) > MIN(dr.created_at)
-            ) sub
-        """, (sid, data_str))
-        kpi['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
+        kpi['tempo_loja'] = kpi_tempo_loja(sid, data_str)
 
         # ── Comercial – Dia ───────────────────────────────────────────────────
         if active_microvix_portal and active_store_cnpj:
@@ -634,20 +623,7 @@ def dashboard():
         else:
             kpi_sem['conversao'] = 0
 
-        r = db.query_one("""
-            SELECT ROUND(AVG(perm)::numeric) AS avg_seg
-            FROM (
-                SELECT EXTRACT(EPOCH FROM MAX(dr.created_at) - MIN(dr.created_at))::int AS perm
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  DATE(dr.created_at) BETWEEN %s AND %s
-                GROUP  BY dr.person_id, DATE(dr.created_at)
-                HAVING MAX(dr.created_at) > MIN(dr.created_at)
-            ) sub
-        """, (sid, semana_inicio_str, semana_fim_str))
-        kpi_sem['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
+        kpi_sem['tempo_loja'] = kpi_tempo_loja_range(sid, semana_inicio_str, semana_fim_str)
 
         # ── Comercial – Semana ────────────────────────────────────────────────
         if active_microvix_portal and active_store_cnpj:
@@ -727,20 +703,7 @@ def dashboard():
         else:
             kpi_mes['conversao'] = 0
 
-        r = db.query_one("""
-            SELECT ROUND(AVG(perm)::numeric) AS avg_seg
-            FROM (
-                SELECT EXTRACT(EPOCH FROM MAX(dr.created_at) - MIN(dr.created_at))::int AS perm
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  DATE(dr.created_at) BETWEEN %s AND %s
-                GROUP  BY dr.person_id, DATE(dr.created_at)
-                HAVING MAX(dr.created_at) > MIN(dr.created_at)
-            ) sub
-        """, (sid, mes_inicio_str, mes_fim_str))
-        kpi_mes['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
+        kpi_mes['tempo_loja'] = kpi_tempo_loja_range(sid, mes_inicio_str, mes_fim_str)
 
         # ── Comercial – Mês ───────────────────────────────────────────────────
         if active_microvix_portal and active_store_cnpj:
@@ -820,20 +783,7 @@ def dashboard():
         else:
             kpi_ytd['conversao'] = 0
 
-        r = db.query_one("""
-            SELECT ROUND(AVG(perm)::numeric) AS avg_seg
-            FROM (
-                SELECT EXTRACT(EPOCH FROM MAX(dr.created_at) - MIN(dr.created_at))::int AS perm
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  DATE(dr.created_at) BETWEEN %s AND %s
-                GROUP  BY dr.person_id, DATE(dr.created_at)
-                HAVING MAX(dr.created_at) > MIN(dr.created_at)
-            ) sub
-        """, (sid, ytd_inicio_str, ytd_fim_str))
-        kpi_ytd['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
+        kpi_ytd['tempo_loja'] = kpi_tempo_loja_range(sid, ytd_inicio_str, ytd_fim_str)
 
         # ── Comercial – YTD ───────────────────────────────────────────────────
         if active_microvix_portal and active_store_cnpj:
@@ -970,19 +920,7 @@ def dashboard():
         else:
             kpi_ant['conversao'] = 0
 
-        r = db.query_one("""
-            SELECT ROUND(AVG(perm)::numeric) AS avg_seg
-            FROM (
-                SELECT EXTRACT(EPOCH FROM MAX(dr.created_at) - MIN(dr.created_at))::int AS perm
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
-                GROUP  BY dr.person_id
-                HAVING MAX(dr.created_at) > MIN(dr.created_at)
-            ) sub
-        """, (sid, _ps))
-        kpi_ant['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
+        kpi_ant['tempo_loja'] = kpi_tempo_loja(sid, _ps)
 
     kpi_ant_com = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
     if active_store and active_microvix_portal and active_store_cnpj:
@@ -1058,20 +996,7 @@ def dashboard():
         else:
             kpi_ant_sem['conversao'] = 0
 
-        r = db.query_one("""
-            SELECT ROUND(AVG(perm)::numeric) AS avg_seg
-            FROM (
-                SELECT EXTRACT(EPOCH FROM MAX(dr.created_at) - MIN(dr.created_at))::int AS perm
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  DATE(dr.created_at) BETWEEN %s AND %s
-                GROUP  BY dr.person_id, DATE(dr.created_at)
-                HAVING MAX(dr.created_at) > MIN(dr.created_at)
-            ) sub
-        """, (sid, semana_ant_inicio_str, semana_ant_fim_str))
-        kpi_ant_sem['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
+        kpi_ant_sem['tempo_loja'] = kpi_tempo_loja_range(sid, semana_ant_inicio_str, semana_ant_fim_str)
 
     kpi_ant_com_sem = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
     if active_store and active_microvix_portal and active_store_cnpj:
@@ -1147,20 +1072,7 @@ def dashboard():
         else:
             kpi_ant_mes['conversao'] = 0
 
-        r = db.query_one("""
-            SELECT ROUND(AVG(perm)::numeric) AS avg_seg
-            FROM (
-                SELECT EXTRACT(EPOCH FROM MAX(dr.created_at) - MIN(dr.created_at))::int AS perm
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  DATE(dr.created_at) BETWEEN %s AND %s
-                GROUP  BY dr.person_id, DATE(dr.created_at)
-                HAVING MAX(dr.created_at) > MIN(dr.created_at)
-            ) sub
-        """, (sid, mes_ant_inicio_str, mes_ant_fim_str))
-        kpi_ant_mes['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
+        kpi_ant_mes['tempo_loja'] = kpi_tempo_loja_range(sid, mes_ant_inicio_str, mes_ant_fim_str)
 
     kpi_ant_com_mes = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
     if active_store and active_microvix_portal and active_store_cnpj:
@@ -1236,20 +1148,7 @@ def dashboard():
         else:
             kpi_ant_ytd['conversao'] = 0
 
-        r = db.query_one("""
-            SELECT ROUND(AVG(perm)::numeric) AS avg_seg
-            FROM (
-                SELECT EXTRACT(EPOCH FROM MAX(dr.created_at) - MIN(dr.created_at))::int AS perm
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  DATE(dr.created_at) BETWEEN %s AND %s
-                GROUP  BY dr.person_id, DATE(dr.created_at)
-                HAVING MAX(dr.created_at) > MIN(dr.created_at)
-            ) sub
-        """, (sid, ytd_ant_inicio_str, ytd_ant_fim_str))
-        kpi_ant_ytd['tempo_loja'] = int(r['avg_seg']) if r and r['avg_seg'] else None
+        kpi_ant_ytd['tempo_loja'] = kpi_tempo_loja_range(sid, ytd_ant_inicio_str, ytd_ant_fim_str)
 
     kpi_ant_com_ytd = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
     if active_store and active_microvix_portal and active_store_cnpj:
@@ -1279,45 +1178,10 @@ def dashboard():
             kpi_ant_ytd['valor_medio'] = round(kpi_ant_com_ytd['faturamento'] / _t_ant, 2)
 
     # ── Gauge do Tempo na Loja (agulha SVG) ──────────────────────────────────
-    kpi_tempo_gauge = None
-    if kpi['tempo_loja'] is not None and kpi['tempo_loja'] > 0:
-        max_seg   = 1800  # referência: 30 minutos
-        pct       = min(kpi['tempo_loja'] / max_seg, 1.0)
-        angle_rad = math.radians(180 - pct * 180)
-        kpi_tempo_gauge = {
-            'x': round(50 + 36 * math.cos(angle_rad), 1),
-            'y': round(58 - 36 * math.sin(angle_rad), 1),
-        }
-
-    kpi_tempo_gauge_sem = None
-    if kpi_sem['tempo_loja'] is not None and kpi_sem['tempo_loja'] > 0:
-        max_seg   = 1800
-        pct       = min(kpi_sem['tempo_loja'] / max_seg, 1.0)
-        angle_rad = math.radians(180 - pct * 180)
-        kpi_tempo_gauge_sem = {
-            'x': round(50 + 36 * math.cos(angle_rad), 1),
-            'y': round(58 - 36 * math.sin(angle_rad), 1),
-        }
-
-    kpi_tempo_gauge_mes = None
-    if kpi_mes['tempo_loja'] is not None and kpi_mes['tempo_loja'] > 0:
-        max_seg   = 1800
-        pct       = min(kpi_mes['tempo_loja'] / max_seg, 1.0)
-        angle_rad = math.radians(180 - pct * 180)
-        kpi_tempo_gauge_mes = {
-            'x': round(50 + 36 * math.cos(angle_rad), 1),
-            'y': round(58 - 36 * math.sin(angle_rad), 1),
-        }
-
-    kpi_tempo_gauge_ytd = None
-    if kpi_ytd['tempo_loja'] is not None and kpi_ytd['tempo_loja'] > 0:
-        max_seg   = 1800
-        pct       = min(kpi_ytd['tempo_loja'] / max_seg, 1.0)
-        angle_rad = math.radians(180 - pct * 180)
-        kpi_tempo_gauge_ytd = {
-            'x': round(50 + 36 * math.cos(angle_rad), 1),
-            'y': round(58 - 36 * math.sin(angle_rad), 1),
-        }
+    kpi_tempo_gauge     = tempo_gauge(kpi['tempo_loja'])
+    kpi_tempo_gauge_sem = tempo_gauge(kpi_sem['tempo_loja'])
+    kpi_tempo_gauge_mes = tempo_gauge(kpi_mes['tempo_loja'])
+    kpi_tempo_gauge_ytd = tempo_gauge(kpi_ytd['tempo_loja'])
 
     # ── Gráfico faixa horária – Operacional ──────────────────────────────────
     chart_faixa_dia = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
@@ -1908,20 +1772,6 @@ def dashboard():
 
 # ── Visitação ─────────────────────────────────────────────────────────────────
 
-_HEIMDALL_IMAGE_BASE = 'http://187.17.228.160:6500/api/facial/images'
-
-
-def _fmt_permanencia(segundos):
-    if segundos is None or segundos <= 0:
-        return None
-    m = int(segundos) // 60
-    if m < 1:
-        return '< 1 min'
-    if m < 60:
-        return f'{m} min'
-    h = m // 60
-    return f'{h}h {m % 60:02d}min'
-
 
 @auth_bp.route('/visitacao')
 @login_required
@@ -2154,8 +2004,8 @@ def visitacao():
                 'notes':             r['notes'],
                 'is_recorrente':     r['is_recorrente'],
                 'primeiro_registro': r['primeiro_registro'].strftime('%H:%M') if r['primeiro_registro'] else None,
-                'permanencia':       _fmt_permanencia(r['permanencia_seg']),
-                'img_url':           (_HEIMDALL_IMAGE_BASE + r['image_path']) if r['image_path'] else None,
+                'permanencia':       fmt_permanencia(r['permanencia_seg']),
+                'img_url':           (HEIMDALL_IMAGE_BASE + r['image_path']) if r['image_path'] else None,
             })
 
     # ── Tema da empresa ───────────────────────────────────────────────────────
