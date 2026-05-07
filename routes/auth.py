@@ -67,22 +67,18 @@ def logout():
     return redirect(url_for('auth.login'))
 
 
-def _ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim, corte_recorrente):
+def _ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
     """Ticket médio por nota, separado em novo/recorrente, via faciais.person_purchases."""
     rows = db.query_all("""
-        WITH recorrentes AS (
-            SELECT DISTINCT person_id
-            FROM   faciais.detection_records
-            WHERE  store_id         = %s
-              AND  DATE(created_at) < %s
-              AND  person_id IS NOT NULL
-        ),
-        bills AS (
+        WITH bills AS (
             SELECT pp.person_id,
                    pp.bill,
-                   (r.person_id IS NOT NULL) AS is_rec
+                   EXISTS (
+                       SELECT 1 FROM faciais.detection_records dr
+                       WHERE  dr.person_id = pp.person_id AND dr.store_id = %s
+                         AND  DATE(dr.created_at) < DATE(pp.created_at)
+                   ) AS is_rec
             FROM   faciais.person_purchases pp
-            LEFT   JOIN recorrentes r ON r.person_id = pp.person_id
             WHERE  pp.store_id              = %s
               AND  DATE(pp.created_at) BETWEEN %s AND %s
               AND  (pp.is_cancelled IS NOT TRUE)
@@ -107,7 +103,7 @@ def _ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim, corte_recorrente)
         FROM    bills b
         JOIN    fat_bills fb ON fb.documento = b.bill
         GROUP   BY b.is_rec
-    """, (sid, corte_recorrente, sid, data_inicio, data_fim,
+    """, (sid, sid, data_inicio, data_fim,
           portal, cnpj, data_inicio, data_fim))
     result = {'ticket_novo': None, 'ticket_rec': None}
     for row in rows:
@@ -128,18 +124,17 @@ def _ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim, corte_recorrente)
     return result
 
 
-def _top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim, corte_recorrente):
+def _top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
     """Top 5 produtos por faturamento, separado em novo/recorrente, via faciais.person_purchases."""
     rows = db.query_all("""
-        WITH recorrentes AS (
-            SELECT DISTINCT person_id
-            FROM   faciais.detection_records
-            WHERE  store_id = %s AND DATE(created_at) < %s AND person_id IS NOT NULL
-        ),
-        bills AS (
-            SELECT pp.bill, (r.person_id IS NOT NULL) AS is_rec
+        WITH bills AS (
+            SELECT pp.bill,
+                   EXISTS (
+                       SELECT 1 FROM faciais.detection_records dr
+                       WHERE  dr.person_id = pp.person_id AND dr.store_id = %s
+                         AND  DATE(dr.created_at) < DATE(pp.created_at)
+                   ) AS is_rec
             FROM   faciais.person_purchases pp
-            LEFT   JOIN recorrentes r ON r.person_id = pp.person_id
             WHERE  pp.store_id = %s
               AND  DATE(pp.created_at) BETWEEN %s AND %s
               AND  (pp.is_cancelled IS NOT TRUE)
@@ -174,7 +169,7 @@ def _top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim, corte_recorrente):
                ROUND(total_fat * 100.0 / NULLIF(grand_total, 0), 1) AS pct
         FROM   ranked WHERE rn <= 5
         ORDER  BY is_rec, rn
-    """, (sid, corte_recorrente, sid, data_inicio, data_fim, portal, cnpj))
+    """, (sid, sid, data_inicio, data_fim, portal, cnpj))
     result = {'novos': [], 'recorrentes': []}
     for row in rows:
         item = {'nome': row['produto'], 'total': round(float(row['total_fat'] or 0), 2), 'pct': float(row['pct'] or 0)}
@@ -826,7 +821,7 @@ def dashboard():
             kpi_est['valor_medio'] = round(fat / _t, 2) if _t else None
         if active_microvix_portal and active_store_cnpj:
             _tk = _ticket_por_tipo(active_store['store_id'], active_microvix_portal, active_store_cnpj,
-                                   data_str, data_str, data_str)
+                                   data_str, data_str)
             kpi_est['ticket_novo'] = _tk['ticket_novo']
             kpi_est['ticket_rec']  = _tk['ticket_rec']
 
@@ -840,7 +835,7 @@ def dashboard():
             kpi_est_sem['valor_medio'] = round(fat / _t, 2) if _t else None
         if active_microvix_portal and active_store_cnpj:
             _tk = _ticket_por_tipo(active_store['store_id'], active_microvix_portal, active_store_cnpj,
-                                   semana_inicio_str, semana_fim_str, semana_inicio_str)
+                                   semana_inicio_str, semana_fim_str)
             kpi_est_sem['ticket_novo'] = _tk['ticket_novo']
             kpi_est_sem['ticket_rec']  = _tk['ticket_rec']
 
@@ -854,7 +849,7 @@ def dashboard():
             kpi_est_mes['valor_medio'] = round(fat / _t, 2) if _t else None
         if active_microvix_portal and active_store_cnpj:
             _tk = _ticket_por_tipo(active_store['store_id'], active_microvix_portal, active_store_cnpj,
-                                   mes_inicio_str, mes_fim_str, mes_inicio_str)
+                                   mes_inicio_str, mes_fim_str)
             kpi_est_mes['ticket_novo'] = _tk['ticket_novo']
             kpi_est_mes['ticket_rec']  = _tk['ticket_rec']
 
@@ -869,7 +864,7 @@ def dashboard():
             kpi_est_ytd['valor_medio'] = round(fat / _t, 2) if _t else None
         if active_microvix_portal and active_store_cnpj:
             _tk = _ticket_por_tipo(active_store['store_id'], active_microvix_portal, active_store_cnpj,
-                                   ytd_inicio_str, ytd_fim_str, ytd_inicio_str)
+                                   ytd_inicio_str, ytd_fim_str)
             kpi_est_ytd['ticket_novo'] = _tk['ticket_novo']
             kpi_est_ytd['ticket_rec']  = _tk['ticket_rec']
 
@@ -1337,52 +1332,58 @@ def dashboard():
 
         chart_ocorrencias_sem = {'novos': [0]*24, 'recorrentes': [0]*24}
         for row in db.query_all("""
-            SELECT hora,
-                   SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
-                   SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
-            FROM (
-                SELECT EXTRACT(HOUR FROM MIN(dr.created_at))::int AS hora,
-                       EXISTS (
-                           SELECT 1 FROM faciais.detection_records dr2
-                           WHERE  dr2.person_id = dr.person_id
-                             AND  dr2.store_id  = %s
-                             AND  DATE(dr2.created_at) < %s
-                       ) AS is_rec
+            WITH pv AS (
+                SELECT dr.person_id, MIN(dr.created_at) AS primeira_visita
                 FROM   faciais.detection_records dr
                 JOIN   faciais.people p ON p.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
                   AND  DATE(dr.created_at) BETWEEN %s AND %s
                 GROUP  BY dr.person_id
+            )
+            SELECT hora,
+                   SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
+                   SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
+            FROM (
+                SELECT EXTRACT(HOUR FROM pv.primeira_visita)::int AS hora,
+                       EXISTS (
+                           SELECT 1 FROM faciais.detection_records dr2
+                           WHERE  dr2.person_id = pv.person_id AND dr2.store_id = %s
+                             AND  DATE(dr2.created_at) < DATE(pv.primeira_visita)
+                       ) AS is_rec
+                FROM pv
             ) sub
             GROUP BY hora ORDER BY hora
-        """, (sid, semana_inicio_str, sid, semana_inicio_str, semana_fim_str)):
+        """, (sid, semana_inicio_str, semana_fim_str, sid)):
             h = int(row['hora'])
             chart_ocorrencias_sem['recorrentes'][h] = int(row['recorrentes'] or 0)
             chart_ocorrencias_sem['novos'][h]        = int(row['novos'] or 0)
 
         chart_ocorrencias_mes = {'novos': [0]*24, 'recorrentes': [0]*24}
         for row in db.query_all("""
-            SELECT hora,
-                   SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
-                   SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
-            FROM (
-                SELECT EXTRACT(HOUR FROM MIN(dr.created_at))::int AS hora,
-                       EXISTS (
-                           SELECT 1 FROM faciais.detection_records dr2
-                           WHERE  dr2.person_id = dr.person_id
-                             AND  dr2.store_id  = %s
-                             AND  DATE(dr2.created_at) < %s
-                       ) AS is_rec
+            WITH pv AS (
+                SELECT dr.person_id, MIN(dr.created_at) AS primeira_visita
                 FROM   faciais.detection_records dr
                 JOIN   faciais.people p ON p.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
                   AND  DATE(dr.created_at) BETWEEN %s AND %s
                 GROUP  BY dr.person_id
+            )
+            SELECT hora,
+                   SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
+                   SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
+            FROM (
+                SELECT EXTRACT(HOUR FROM pv.primeira_visita)::int AS hora,
+                       EXISTS (
+                           SELECT 1 FROM faciais.detection_records dr2
+                           WHERE  dr2.person_id = pv.person_id AND dr2.store_id = %s
+                             AND  DATE(dr2.created_at) < DATE(pv.primeira_visita)
+                       ) AS is_rec
+                FROM pv
             ) sub
             GROUP BY hora ORDER BY hora
-        """, (sid, mes_inicio_str, sid, mes_inicio_str, mes_fim_str)):
+        """, (sid, mes_inicio_str, mes_fim_str, sid)):
             h = int(row['hora'])
             chart_ocorrencias_mes['recorrentes'][h] = int(row['recorrentes'] or 0)
             chart_ocorrencias_mes['novos'][h]        = int(row['novos'] or 0)
@@ -1499,10 +1500,10 @@ def dashboard():
             top_produtos_fat_ytd  = _top_query(_date_sem, "SUM(m.valor_liquido)", _p + (ytd_inicio_str, ytd_fim_str))
             combinacoes_ytd = _comb_query("DATE(a.data_documento) BETWEEN %s AND %s", _p + (ytd_inicio_str, ytd_fim_str))
             _sid = active_store['store_id']
-            top5_tipo_dia = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, data_str, data_str, data_str)
-            top5_tipo_sem = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str, semana_inicio_str)
-            top5_tipo_mes = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str, mes_inicio_str)
-            top5_tipo_ytd = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str, ytd_inicio_str)
+            top5_tipo_dia = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, data_str, data_str)
+            top5_tipo_sem = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str)
+            top5_tipo_mes = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str)
+            top5_tipo_ytd = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str)
 
         # ── Frequência de retorno por horário/dia ────────────────────────────
         chart_freq_retorno_dia = [None]*24
@@ -1612,26 +1613,29 @@ def dashboard():
 
         chart_ocorrencias_ytd = {'novos': [0]*24, 'recorrentes': [0]*24}
         for row in db.query_all("""
-            SELECT hora,
-                   SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
-                   SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
-            FROM (
-                SELECT EXTRACT(HOUR FROM MIN(dr.created_at))::int AS hora,
-                       dr.person_id,
-                       EXISTS (
-                           SELECT 1 FROM faciais.detection_records dr2
-                           WHERE  dr2.person_id = dr.person_id AND dr2.store_id = %s
-                             AND  DATE(dr2.created_at) < %s
-                       ) AS is_rec
+            WITH pv AS (
+                SELECT dr.person_id, MIN(dr.created_at) AS primeira_visita
                 FROM   faciais.detection_records dr
                 JOIN   faciais.people p ON p.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
                   AND  DATE(dr.created_at) BETWEEN %s AND %s
                 GROUP  BY dr.person_id
+            )
+            SELECT hora,
+                   SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
+                   SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
+            FROM (
+                SELECT EXTRACT(HOUR FROM pv.primeira_visita)::int AS hora,
+                       EXISTS (
+                           SELECT 1 FROM faciais.detection_records dr2
+                           WHERE  dr2.person_id = pv.person_id AND dr2.store_id = %s
+                             AND  DATE(dr2.created_at) < DATE(pv.primeira_visita)
+                       ) AS is_rec
+                FROM pv
             ) sub
             GROUP BY hora ORDER BY hora
-        """, (sid, ytd_inicio_str, sid, ytd_inicio_str, ytd_fim_str)):
+        """, (sid, ytd_inicio_str, ytd_fim_str, sid)):
             h = int(row['hora'])
             chart_ocorrencias_ytd['recorrentes'][h] = int(row['recorrentes'] or 0)
             chart_ocorrencias_ytd['novos'][h]        = int(row['novos'] or 0)
