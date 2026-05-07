@@ -591,9 +591,9 @@ def dashboard():
                   FROM   faciais.detection_records dr2
                   WHERE  dr2.person_id        = dr.person_id
                     AND  dr2.store_id         = %s
-                    AND  DATE(dr2.created_at) < DATE(dr.created_at)
+                    AND  DATE(dr2.created_at) < %s
               )
-        """, (sid, semana_inicio_str, semana_fim_str, sid))
+        """, (sid, semana_inicio_str, semana_fim_str, sid, semana_inicio_str))
         kpi_sem['recorrentes'] = r['total'] if r else 0
 
         if active_microvix_portal and active_store_cnpj:
@@ -671,9 +671,9 @@ def dashboard():
                   FROM   faciais.detection_records dr2
                   WHERE  dr2.person_id        = dr.person_id
                     AND  dr2.store_id         = %s
-                    AND  DATE(dr2.created_at) < DATE(dr.created_at)
+                    AND  DATE(dr2.created_at) < %s
               )
-        """, (sid, mes_inicio_str, mes_fim_str, sid))
+        """, (sid, mes_inicio_str, mes_fim_str, sid, mes_inicio_str))
         kpi_mes['recorrentes'] = r['total'] if r else 0
 
         if active_microvix_portal and active_store_cnpj:
@@ -751,9 +751,9 @@ def dashboard():
                   FROM   faciais.detection_records dr2
                   WHERE  dr2.person_id        = dr.person_id
                     AND  dr2.store_id         = %s
-                    AND  DATE(dr2.created_at) < DATE(dr.created_at)
+                    AND  DATE(dr2.created_at) < %s
               )
-        """, (sid, ytd_inicio_str, ytd_fim_str, sid))
+        """, (sid, ytd_inicio_str, ytd_fim_str, sid, ytd_inicio_str))
         kpi_ytd['recorrentes'] = r['total'] if r else 0
 
         if active_microvix_portal and active_store_cnpj:
@@ -969,9 +969,9 @@ def dashboard():
               AND  EXISTS (
                   SELECT 1 FROM faciais.detection_records dr2
                   WHERE  dr2.person_id = dr.person_id AND dr2.store_id = %s
-                    AND  DATE(dr2.created_at) < DATE(dr.created_at)
+                    AND  DATE(dr2.created_at) < %s
               )
-        """, (sid, semana_ant_inicio_str, semana_ant_fim_str, sid))
+        """, (sid, semana_ant_inicio_str, semana_ant_fim_str, sid, semana_ant_inicio_str))
         kpi_ant_sem['recorrentes'] = r['total'] if r else 0
         kpi_ant_sem['novos'] = kpi_ant_sem['visitantes'] - kpi_ant_sem['recorrentes']
 
@@ -1045,9 +1045,9 @@ def dashboard():
               AND  EXISTS (
                   SELECT 1 FROM faciais.detection_records dr2
                   WHERE  dr2.person_id = dr.person_id AND dr2.store_id = %s
-                    AND  DATE(dr2.created_at) < DATE(dr.created_at)
+                    AND  DATE(dr2.created_at) < %s
               )
-        """, (sid, mes_ant_inicio_str, mes_ant_fim_str, sid))
+        """, (sid, mes_ant_inicio_str, mes_ant_fim_str, sid, mes_ant_inicio_str))
         kpi_ant_mes['recorrentes'] = r['total'] if r else 0
         kpi_ant_mes['novos'] = kpi_ant_mes['visitantes'] - kpi_ant_mes['recorrentes']
 
@@ -1121,9 +1121,9 @@ def dashboard():
               AND  EXISTS (
                   SELECT 1 FROM faciais.detection_records dr2
                   WHERE  dr2.person_id = dr.person_id AND dr2.store_id = %s
-                    AND  DATE(dr2.created_at) < DATE(dr.created_at)
+                    AND  DATE(dr2.created_at) < %s
               )
-        """, (sid, ytd_ant_inicio_str, ytd_ant_fim_str, sid))
+        """, (sid, ytd_ant_inicio_str, ytd_ant_fim_str, sid, ytd_ant_inicio_str))
         kpi_ant_ytd['recorrentes'] = r['total'] if r else 0
         kpi_ant_ytd['novos'] = kpi_ant_ytd['visitantes'] - kpi_ant_ytd['recorrentes']
 
