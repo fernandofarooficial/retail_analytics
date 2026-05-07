@@ -597,8 +597,8 @@ def dashboard():
               AND  p.person_type_id = 'C'
               AND  dr.person_id     IS NOT NULL
               AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  vpc.first_record::date < %s
-        """, (sid, semana_inicio_str, semana_fim_str, semana_inicio_str))
+              AND  vpc.first_record::date < DATE(dr.created_at)
+        """, (sid, semana_inicio_str, semana_fim_str))
         kpi_sem['recorrentes'] = r['total'] if r else 0
 
         if active_microvix_portal and active_store_cnpj:
@@ -673,8 +673,8 @@ def dashboard():
               AND  p.person_type_id = 'C'
               AND  dr.person_id     IS NOT NULL
               AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  vpc.first_record::date < %s
-        """, (sid, mes_inicio_str, mes_fim_str, mes_inicio_str))
+              AND  vpc.first_record::date < DATE(dr.created_at)
+        """, (sid, mes_inicio_str, mes_fim_str))
         kpi_mes['recorrentes'] = r['total'] if r else 0
 
         if active_microvix_portal and active_store_cnpj:
@@ -749,8 +749,8 @@ def dashboard():
               AND  p.person_type_id = 'C'
               AND  dr.person_id     IS NOT NULL
               AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  vpc.first_record::date < %s
-        """, (sid, ytd_inicio_str, ytd_fim_str, ytd_inicio_str))
+              AND  vpc.first_record::date < DATE(dr.created_at)
+        """, (sid, ytd_inicio_str, ytd_fim_str))
         kpi_ytd['recorrentes'] = r['total'] if r else 0
 
         if active_microvix_portal and active_store_cnpj:
@@ -962,8 +962,8 @@ def dashboard():
             WHERE  dr.store_id = %s AND p.person_type_id = 'C'
               AND  dr.person_id IS NOT NULL
               AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  vpc.first_record::date < %s
-        """, (sid, semana_ant_inicio_str, semana_ant_fim_str, semana_ant_inicio_str))
+              AND  vpc.first_record::date < DATE(dr.created_at)
+        """, (sid, semana_ant_inicio_str, semana_ant_fim_str))
         kpi_ant_sem['recorrentes'] = r['total'] if r else 0
         kpi_ant_sem['novos'] = kpi_ant_sem['visitantes'] - kpi_ant_sem['recorrentes']
 
@@ -1035,8 +1035,8 @@ def dashboard():
             WHERE  dr.store_id = %s AND p.person_type_id = 'C'
               AND  dr.person_id IS NOT NULL
               AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  vpc.first_record::date < %s
-        """, (sid, mes_ant_inicio_str, mes_ant_fim_str, mes_ant_inicio_str))
+              AND  vpc.first_record::date < DATE(dr.created_at)
+        """, (sid, mes_ant_inicio_str, mes_ant_fim_str))
         kpi_ant_mes['recorrentes'] = r['total'] if r else 0
         kpi_ant_mes['novos'] = kpi_ant_mes['visitantes'] - kpi_ant_mes['recorrentes']
 
@@ -1111,8 +1111,8 @@ def dashboard():
             WHERE  dr.store_id = %s AND p.person_type_id = 'C'
               AND  dr.person_id IS NOT NULL
               AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  vpc.first_record::date < %s
-        """, (sid, ytd_ant_inicio_str, ytd_ant_fim_str, ytd_ant_inicio_str))
+              AND  vpc.first_record::date < DATE(dr.created_at)
+        """, (sid, ytd_ant_inicio_str, ytd_ant_fim_str))
         kpi_ant_ytd['recorrentes'] = r['total'] if r else 0
 
         if active_microvix_portal and active_store_cnpj:
