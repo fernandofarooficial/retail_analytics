@@ -497,18 +497,13 @@ def dashboard():
             SELECT COUNT(DISTINCT dr.person_id) AS total
             FROM   faciais.detection_records dr
             JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
             WHERE  dr.store_id      = %s
               AND  p.person_type_id = 'C'
               AND  dr.person_id     IS NOT NULL
               AND  DATE(dr.created_at) = %s
-              AND  EXISTS (
-                  SELECT 1
-                  FROM   faciais.detection_records dr2
-                  WHERE  dr2.person_id  = dr.person_id
-                    AND  dr2.store_id   = %s
-                    AND  DATE(dr2.created_at) < %s
-              )
-        """, (sid, data_str, sid, data_str))
+              AND  vpc.first_record::date < %s
+        """, (sid, data_str, data_str))
         kpi['recorrentes'] = r['total'] if r else 0
 
         if active_microvix_portal and active_store_cnpj:
@@ -582,18 +577,13 @@ def dashboard():
             SELECT COUNT(DISTINCT dr.person_id) AS total
             FROM   faciais.detection_records dr
             JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
             WHERE  dr.store_id      = %s
               AND  p.person_type_id = 'C'
               AND  dr.person_id     IS NOT NULL
               AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  EXISTS (
-                  SELECT 1
-                  FROM   faciais.detection_records dr2
-                  WHERE  dr2.person_id        = dr.person_id
-                    AND  dr2.store_id         = %s
-                    AND  DATE(dr2.created_at) < %s
-              )
-        """, (sid, semana_inicio_str, semana_fim_str, sid, semana_inicio_str))
+              AND  vpc.first_record::date < %s
+        """, (sid, semana_inicio_str, semana_fim_str, semana_inicio_str))
         kpi_sem['recorrentes'] = r['total'] if r else 0
 
         if active_microvix_portal and active_store_cnpj:
@@ -662,18 +652,13 @@ def dashboard():
             SELECT COUNT(DISTINCT dr.person_id) AS total
             FROM   faciais.detection_records dr
             JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
             WHERE  dr.store_id      = %s
               AND  p.person_type_id = 'C'
               AND  dr.person_id     IS NOT NULL
               AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  EXISTS (
-                  SELECT 1
-                  FROM   faciais.detection_records dr2
-                  WHERE  dr2.person_id        = dr.person_id
-                    AND  dr2.store_id         = %s
-                    AND  DATE(dr2.created_at) < %s
-              )
-        """, (sid, mes_inicio_str, mes_fim_str, sid, mes_inicio_str))
+              AND  vpc.first_record::date < %s
+        """, (sid, mes_inicio_str, mes_fim_str, mes_inicio_str))
         kpi_mes['recorrentes'] = r['total'] if r else 0
 
         if active_microvix_portal and active_store_cnpj:
@@ -742,18 +727,13 @@ def dashboard():
             SELECT COUNT(DISTINCT dr.person_id) AS total
             FROM   faciais.detection_records dr
             JOIN   faciais.people  p   ON p.person_id  = dr.person_id
+            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
             WHERE  dr.store_id      = %s
               AND  p.person_type_id = 'C'
               AND  dr.person_id     IS NOT NULL
               AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  EXISTS (
-                  SELECT 1
-                  FROM   faciais.detection_records dr2
-                  WHERE  dr2.person_id        = dr.person_id
-                    AND  dr2.store_id         = %s
-                    AND  DATE(dr2.created_at) < %s
-              )
-        """, (sid, ytd_inicio_str, ytd_fim_str, sid, ytd_inicio_str))
+              AND  vpc.first_record::date < %s
+        """, (sid, ytd_inicio_str, ytd_fim_str, ytd_inicio_str))
         kpi_ytd['recorrentes'] = r['total'] if r else 0
 
         if active_microvix_portal and active_store_cnpj:
@@ -889,14 +869,11 @@ def dashboard():
             SELECT COUNT(DISTINCT dr.person_id) AS total
             FROM   faciais.detection_records dr
             JOIN   faciais.people p ON p.person_id = dr.person_id
+            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
             WHERE  dr.store_id = %s AND p.person_type_id = 'C'
               AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
-              AND  EXISTS (
-                  SELECT 1 FROM faciais.detection_records dr2
-                  WHERE  dr2.person_id = dr.person_id AND dr2.store_id = %s
-                    AND  DATE(dr2.created_at) < %s
-              )
-        """, (sid, _ps, sid, _ps))
+              AND  vpc.first_record::date < %s
+        """, (sid, _ps, _ps))
         kpi_ant['recorrentes'] = r['total'] if r else 0
         kpi_ant['novos'] = kpi_ant['visitantes'] - kpi_ant['recorrentes']
 
@@ -963,15 +940,12 @@ def dashboard():
             SELECT COUNT(DISTINCT dr.person_id) AS total
             FROM   faciais.detection_records dr
             JOIN   faciais.people p ON p.person_id = dr.person_id
+            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
             WHERE  dr.store_id = %s AND p.person_type_id = 'C'
               AND  dr.person_id IS NOT NULL
               AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  EXISTS (
-                  SELECT 1 FROM faciais.detection_records dr2
-                  WHERE  dr2.person_id = dr.person_id AND dr2.store_id = %s
-                    AND  DATE(dr2.created_at) < %s
-              )
-        """, (sid, semana_ant_inicio_str, semana_ant_fim_str, sid, semana_ant_inicio_str))
+              AND  vpc.first_record::date < %s
+        """, (sid, semana_ant_inicio_str, semana_ant_fim_str, semana_ant_inicio_str))
         kpi_ant_sem['recorrentes'] = r['total'] if r else 0
         kpi_ant_sem['novos'] = kpi_ant_sem['visitantes'] - kpi_ant_sem['recorrentes']
 
@@ -1039,15 +1013,12 @@ def dashboard():
             SELECT COUNT(DISTINCT dr.person_id) AS total
             FROM   faciais.detection_records dr
             JOIN   faciais.people p ON p.person_id = dr.person_id
+            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
             WHERE  dr.store_id = %s AND p.person_type_id = 'C'
               AND  dr.person_id IS NOT NULL
               AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  EXISTS (
-                  SELECT 1 FROM faciais.detection_records dr2
-                  WHERE  dr2.person_id = dr.person_id AND dr2.store_id = %s
-                    AND  DATE(dr2.created_at) < %s
-              )
-        """, (sid, mes_ant_inicio_str, mes_ant_fim_str, sid, mes_ant_inicio_str))
+              AND  vpc.first_record::date < %s
+        """, (sid, mes_ant_inicio_str, mes_ant_fim_str, mes_ant_inicio_str))
         kpi_ant_mes['recorrentes'] = r['total'] if r else 0
         kpi_ant_mes['novos'] = kpi_ant_mes['visitantes'] - kpi_ant_mes['recorrentes']
 
@@ -1115,15 +1086,12 @@ def dashboard():
             SELECT COUNT(DISTINCT dr.person_id) AS total
             FROM   faciais.detection_records dr
             JOIN   faciais.people p ON p.person_id = dr.person_id
+            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
             WHERE  dr.store_id = %s AND p.person_type_id = 'C'
               AND  dr.person_id IS NOT NULL
               AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  EXISTS (
-                  SELECT 1 FROM faciais.detection_records dr2
-                  WHERE  dr2.person_id = dr.person_id AND dr2.store_id = %s
-                    AND  DATE(dr2.created_at) < %s
-              )
-        """, (sid, ytd_ant_inicio_str, ytd_ant_fim_str, sid, ytd_ant_inicio_str))
+              AND  vpc.first_record::date < %s
+        """, (sid, ytd_ant_inicio_str, ytd_ant_fim_str, ytd_ant_inicio_str))
         kpi_ant_ytd['recorrentes'] = r['total'] if r else 0
         kpi_ant_ytd['novos'] = kpi_ant_ytd['visitantes'] - kpi_ant_ytd['recorrentes']
 
@@ -1312,20 +1280,16 @@ def dashboard():
                    SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
             FROM (
                 SELECT EXTRACT(HOUR FROM MIN(dr.created_at))::int AS hora,
-                       EXISTS (
-                           SELECT 1 FROM faciais.detection_records dr2
-                           WHERE  dr2.person_id = dr.person_id
-                             AND  dr2.store_id  = %s
-                             AND  DATE(dr2.created_at) < %s
-                       ) AS is_rec
+                       (vpc.first_record::date < %s) AS is_rec
                 FROM   faciais.detection_records dr
                 JOIN   faciais.people p ON p.person_id = dr.person_id
+                JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
-                GROUP  BY dr.person_id
+                GROUP  BY dr.person_id, vpc.first_record
             ) sub
             GROUP BY hora ORDER BY hora
-        """, (sid, data_str, sid, data_str)):
+        """, (data_str, sid, data_str)):
             h = int(row['hora'])
             chart_ocorrencias_dia['recorrentes'][h] = int(row['recorrentes'] or 0)
             chart_ocorrencias_dia['novos'][h]        = int(row['novos'] or 0)
@@ -1333,28 +1297,26 @@ def dashboard():
         chart_ocorrencias_sem = {'novos': [0]*24, 'recorrentes': [0]*24}
         for row in db.query_all("""
             WITH pv AS (
-                SELECT dr.person_id, MIN(dr.created_at) AS primeira_visita
+                SELECT dr.person_id, MIN(dr.created_at) AS primeira_visita,
+                       vpc.first_record
                 FROM   faciais.detection_records dr
                 JOIN   faciais.people p ON p.person_id = dr.person_id
+                JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
                   AND  DATE(dr.created_at) BETWEEN %s AND %s
-                GROUP  BY dr.person_id
+                GROUP  BY dr.person_id, vpc.first_record
             )
             SELECT hora,
                    SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
                    SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
             FROM (
                 SELECT EXTRACT(HOUR FROM pv.primeira_visita)::int AS hora,
-                       EXISTS (
-                           SELECT 1 FROM faciais.detection_records dr2
-                           WHERE  dr2.person_id = pv.person_id AND dr2.store_id = %s
-                             AND  DATE(dr2.created_at) < DATE(pv.primeira_visita)
-                       ) AS is_rec
+                       (pv.first_record::date < DATE(pv.primeira_visita)) AS is_rec
                 FROM pv
             ) sub
             GROUP BY hora ORDER BY hora
-        """, (sid, semana_inicio_str, semana_fim_str, sid)):
+        """, (sid, semana_inicio_str, semana_fim_str)):
             h = int(row['hora'])
             chart_ocorrencias_sem['recorrentes'][h] = int(row['recorrentes'] or 0)
             chart_ocorrencias_sem['novos'][h]        = int(row['novos'] or 0)
@@ -1362,28 +1324,26 @@ def dashboard():
         chart_ocorrencias_mes = {'novos': [0]*24, 'recorrentes': [0]*24}
         for row in db.query_all("""
             WITH pv AS (
-                SELECT dr.person_id, MIN(dr.created_at) AS primeira_visita
+                SELECT dr.person_id, MIN(dr.created_at) AS primeira_visita,
+                       vpc.first_record
                 FROM   faciais.detection_records dr
                 JOIN   faciais.people p ON p.person_id = dr.person_id
+                JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
                   AND  DATE(dr.created_at) BETWEEN %s AND %s
-                GROUP  BY dr.person_id
+                GROUP  BY dr.person_id, vpc.first_record
             )
             SELECT hora,
                    SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
                    SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
             FROM (
                 SELECT EXTRACT(HOUR FROM pv.primeira_visita)::int AS hora,
-                       EXISTS (
-                           SELECT 1 FROM faciais.detection_records dr2
-                           WHERE  dr2.person_id = pv.person_id AND dr2.store_id = %s
-                             AND  DATE(dr2.created_at) < DATE(pv.primeira_visita)
-                       ) AS is_rec
+                       (pv.first_record::date < DATE(pv.primeira_visita)) AS is_rec
                 FROM pv
             ) sub
             GROUP BY hora ORDER BY hora
-        """, (sid, mes_inicio_str, mes_fim_str, sid)):
+        """, (sid, mes_inicio_str, mes_fim_str)):
             h = int(row['hora'])
             chart_ocorrencias_mes['recorrentes'][h] = int(row['recorrentes'] or 0)
             chart_ocorrencias_mes['novos'][h]        = int(row['novos'] or 0)
@@ -1614,28 +1574,26 @@ def dashboard():
         chart_ocorrencias_ytd = {'novos': [0]*24, 'recorrentes': [0]*24}
         for row in db.query_all("""
             WITH pv AS (
-                SELECT dr.person_id, MIN(dr.created_at) AS primeira_visita
+                SELECT dr.person_id, MIN(dr.created_at) AS primeira_visita,
+                       vpc.first_record
                 FROM   faciais.detection_records dr
                 JOIN   faciais.people p ON p.person_id = dr.person_id
+                JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
                   AND  DATE(dr.created_at) BETWEEN %s AND %s
-                GROUP  BY dr.person_id
+                GROUP  BY dr.person_id, vpc.first_record
             )
             SELECT hora,
                    SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
                    SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
             FROM (
                 SELECT EXTRACT(HOUR FROM pv.primeira_visita)::int AS hora,
-                       EXISTS (
-                           SELECT 1 FROM faciais.detection_records dr2
-                           WHERE  dr2.person_id = pv.person_id AND dr2.store_id = %s
-                             AND  DATE(dr2.created_at) < DATE(pv.primeira_visita)
-                       ) AS is_rec
+                       (pv.first_record::date < DATE(pv.primeira_visita)) AS is_rec
                 FROM pv
             ) sub
             GROUP BY hora ORDER BY hora
-        """, (sid, ytd_inicio_str, ytd_fim_str, sid)):
+        """, (sid, ytd_inicio_str, ytd_fim_str)):
             h = int(row['hora'])
             chart_ocorrencias_ytd['recorrentes'][h] = int(row['recorrentes'] or 0)
             chart_ocorrencias_ytd['novos'][h]        = int(row['novos'] or 0)
