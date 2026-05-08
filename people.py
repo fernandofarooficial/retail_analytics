@@ -43,6 +43,24 @@ def qtd_recorrentes(loja, dia_i, dia_f):
     return row['total'] if row else 0
 
 
+def faixa_horaria(portal, cnpj, dia_i, dia_f):
+    return db.query_all("""
+        SELECT SPLIT_PART(hora_lancamento, ':', 1)::int AS hora,
+               COUNT(DISTINCT documento)  AS vendas,
+               SUM(valor_total)           AS faturamento
+        FROM   microvix.microvix_movimento
+        WHERE  portal   = %s AND cnpj_emp = %s
+          AND  DATE(data_documento) BETWEEN %s AND %s
+          AND  cancelado           <> 'S'
+          AND  excluido            <> 'S'
+          AND  soma_relatorio       = 'S'
+          AND  tipo_transacao       = 'V'
+          AND  cod_natureza_operacao = '10030'
+          AND  hora_lancamento IS NOT NULL AND hora_lancamento <> ''
+        GROUP  BY hora ORDER BY hora
+    """, (portal, cnpj, dia_i, dia_f))
+
+
 def qtd_novos(loja, dia_i, dia_f):
     row = db.query_one("""
         SELECT COUNT(DISTINCT p.person_id) AS total

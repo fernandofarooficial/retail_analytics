@@ -7,7 +7,8 @@ from routes.utils import (login_required, screen_required,
                            tempo_gauge, HEIMDALL_IMAGE_BASE)
 import db
 from metas import get_metas as _get_metas
-from people import qtd_novos as _qtd_novos, qtd_recorrentes as _qtd_recorrentes, kpi_microvix as _kpi_microvix
+from people import (qtd_novos as _qtd_novos, qtd_recorrentes as _qtd_recorrentes,
+                    kpi_microvix as _kpi_microvix, faixa_horaria as _faixa_horaria)
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -765,18 +766,7 @@ def dashboard():
             chart_faixa_dia['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
 
         if active_microvix_portal and active_store_cnpj:
-            rows = db.query_all("""
-                SELECT SPLIT_PART(hora_lancamento, ':', 1)::int AS hora,
-                       COUNT(DISTINCT documento)  AS vendas,
-                       SUM(valor_liquido)         AS faturamento
-                FROM   microvix.microvix_movimento
-                WHERE  portal = %s AND cnpj_emp = %s AND DATE(data_documento) = %s
-                  AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
-                  AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
-                  AND  hora_lancamento IS NOT NULL AND hora_lancamento <> ''
-                GROUP  BY hora ORDER BY hora
-            """, (active_microvix_portal, active_store_cnpj, data_str))
-            for row in rows:
+            for row in _faixa_horaria(active_microvix_portal, active_store_cnpj, data_str, data_str):
                 chart_faixa_dia['vendas'][int(row['hora'])]       = int(row['vendas'] or 0)
                 chart_faixa_dia['faturamento'][int(row['hora'])]  = float(row['faturamento'] or 0)
 
@@ -796,19 +786,7 @@ def dashboard():
             chart_faixa_sem['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
 
         if active_microvix_portal and active_store_cnpj:
-            rows = db.query_all("""
-                SELECT SPLIT_PART(hora_lancamento, ':', 1)::int AS hora,
-                       COUNT(DISTINCT documento)  AS vendas,
-                       SUM(valor_liquido)         AS faturamento
-                FROM   microvix.microvix_movimento
-                WHERE  portal = %s AND cnpj_emp = %s
-                  AND  DATE(data_documento) BETWEEN %s AND %s
-                  AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
-                  AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
-                  AND  hora_lancamento IS NOT NULL AND hora_lancamento <> ''
-                GROUP  BY hora ORDER BY hora
-            """, (active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str))
-            for row in rows:
+            for row in _faixa_horaria(active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str):
                 chart_faixa_sem['vendas'][int(row['hora'])]      = int(row['vendas'] or 0)
                 chart_faixa_sem['faturamento'][int(row['hora'])] = float(row['faturamento'] or 0)
 
@@ -828,19 +806,7 @@ def dashboard():
             chart_faixa_mes['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
 
         if active_microvix_portal and active_store_cnpj:
-            rows = db.query_all("""
-                SELECT SPLIT_PART(hora_lancamento, ':', 1)::int AS hora,
-                       COUNT(DISTINCT documento)  AS vendas,
-                       SUM(valor_liquido)         AS faturamento
-                FROM   microvix.microvix_movimento
-                WHERE  portal = %s AND cnpj_emp = %s
-                  AND  DATE(data_documento) BETWEEN %s AND %s
-                  AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
-                  AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
-                  AND  hora_lancamento IS NOT NULL AND hora_lancamento <> ''
-                GROUP  BY hora ORDER BY hora
-            """, (active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str))
-            for row in rows:
+            for row in _faixa_horaria(active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str):
                 chart_faixa_mes['vendas'][int(row['hora'])]      = int(row['vendas'] or 0)
                 chart_faixa_mes['faturamento'][int(row['hora'])] = float(row['faturamento'] or 0)
 
@@ -1144,19 +1110,7 @@ def dashboard():
             chart_faixa_ytd['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
 
         if active_microvix_portal and active_store_cnpj:
-            rows = db.query_all("""
-                SELECT SPLIT_PART(hora_lancamento, ':', 1)::int AS hora,
-                       COUNT(DISTINCT documento)  AS vendas,
-                       SUM(valor_liquido)         AS faturamento
-                FROM   microvix.microvix_movimento
-                WHERE  portal = %s AND cnpj_emp = %s
-                  AND  DATE(data_documento) BETWEEN %s AND %s
-                  AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
-                  AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
-                  AND  hora_lancamento IS NOT NULL AND hora_lancamento <> ''
-                GROUP  BY hora ORDER BY hora
-            """, (active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str))
-            for row in rows:
+            for row in _faixa_horaria(active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str):
                 chart_faixa_ytd['vendas'][int(row['hora'])]      = int(row['vendas'] or 0)
                 chart_faixa_ytd['faturamento'][int(row['hora'])] = float(row['faturamento'] or 0)
 
