@@ -7,6 +7,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import os
 import db
 from metas import get_metas as _get_metas
+from people import qtd_novos as _qtd_novos, qtd_recorrentes as _qtd_recorrentes
 from routes.utils import (fmt_permanencia, kpi_tempo_loja, kpi_tempo_loja_range,
                            tempo_gauge, HEIMDALL_IMAGE_BASE)
 
@@ -477,7 +478,7 @@ def dashboard():
     ytd_label          = f"{ytd_inicio.strftime('%d/%m/%Y')} – {ytd_fim.strftime('%d/%m/%Y')}"
 
     # ── KPIs Operacional – Dia ───────────────────────────────────────────────
-    kpi = dict(visitantes=None, recorrentes=None, vendas=None, conversao=None, tempo_loja=None)
+    kpi = dict(visitantes=None, recorrentes=None, novos=None, vendas=None, conversao=None, tempo_loja=None)
 
     # ── KPIs Comercial – Dia ─────────────────────────────────────────────────
     kpi_com = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
@@ -497,29 +498,9 @@ def dashboard():
     if active_store:
         sid = active_store['store_id']
 
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-            WHERE  dr.store_id      = %s
-              AND  p.person_type_id = 'C'
-              AND  dr.person_id     IS NOT NULL
-              AND  DATE(dr.created_at) = %s
-        """, (sid, data_str))
-        kpi['visitantes'] = r['total'] if r else 0
-
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
-            WHERE  dr.store_id      = %s
-              AND  p.person_type_id = 'C'
-              AND  dr.person_id     IS NOT NULL
-              AND  DATE(dr.created_at) = %s
-              AND  vpc.first_record::date < %s
-        """, (sid, data_str, data_str))
-        kpi['recorrentes'] = r['total'] if r else 0
+        kpi['recorrentes'] = _qtd_recorrentes(sid, data_str, data_str) or 0
+        kpi['novos']       = _qtd_novos(sid, data_str, data_str) or 0
+        kpi['visitantes']  = kpi['recorrentes'] + kpi['novos']
 
         if active_microvix_portal and active_store_cnpj:
             r = db.query_one("""
@@ -577,30 +558,9 @@ def dashboard():
                 kpi_com['itens_venda']  = 0.0
 
         # ── Operacional – Semana ─────────────────────────────────────────────
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-            WHERE  dr.store_id      = %s
-              AND  p.person_type_id = 'C'
-              AND  dr.person_id     IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
-        """, (sid, semana_inicio_str, semana_fim_str))
-        kpi_sem['visitantes'] = r['total'] if r else 0
-
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
-            WHERE  dr.store_id      = %s
-              AND  p.person_type_id = 'C'
-              AND  dr.person_id     IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  vpc.first_record::date < DATE(dr.created_at)
-        """, (sid, semana_inicio_str, semana_fim_str))
-        kpi_sem['recorrentes'] = r['total'] if r else 0
-        kpi_sem['novos']       = (kpi_sem['visitantes'] or 0) - (kpi_sem['recorrentes'] or 0)
+        kpi_sem['recorrentes'] = _qtd_recorrentes(sid, semana_inicio_str, semana_fim_str) or 0
+        kpi_sem['novos']       = _qtd_novos(sid, semana_inicio_str, semana_fim_str) or 0
+        kpi_sem['visitantes']  = kpi_sem['recorrentes'] + kpi_sem['novos']
 
         if active_microvix_portal and active_store_cnpj:
             r = db.query_one("""
@@ -653,30 +613,9 @@ def dashboard():
                 kpi_com_sem['ticket_medio'] = 0.0; kpi_com_sem['itens_venda'] = 0.0
 
         # ── Operacional – Mês ─────────────────────────────────────────────────
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-            WHERE  dr.store_id      = %s
-              AND  p.person_type_id = 'C'
-              AND  dr.person_id     IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
-        """, (sid, mes_inicio_str, mes_fim_str))
-        kpi_mes['visitantes'] = r['total'] if r else 0
-
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
-            WHERE  dr.store_id      = %s
-              AND  p.person_type_id = 'C'
-              AND  dr.person_id     IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  vpc.first_record::date < DATE(dr.created_at)
-        """, (sid, mes_inicio_str, mes_fim_str))
-        kpi_mes['recorrentes'] = r['total'] if r else 0
-        kpi_mes['novos']       = (kpi_mes['visitantes'] or 0) - (kpi_mes['recorrentes'] or 0)
+        kpi_mes['recorrentes'] = _qtd_recorrentes(sid, mes_inicio_str, mes_fim_str) or 0
+        kpi_mes['novos']       = _qtd_novos(sid, mes_inicio_str, mes_fim_str) or 0
+        kpi_mes['visitantes']  = kpi_mes['recorrentes'] + kpi_mes['novos']
 
         if active_microvix_portal and active_store_cnpj:
             r = db.query_one("""
@@ -729,30 +668,9 @@ def dashboard():
                 kpi_com_mes['ticket_medio'] = 0.0; kpi_com_mes['itens_venda'] = 0.0
 
         # ── Operacional – YTD ─────────────────────────────────────────────────
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-            WHERE  dr.store_id      = %s
-              AND  p.person_type_id = 'C'
-              AND  dr.person_id     IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
-        """, (sid, ytd_inicio_str, ytd_fim_str))
-        kpi_ytd['visitantes'] = r['total'] if r else 0
-
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
-            WHERE  dr.store_id      = %s
-              AND  p.person_type_id = 'C'
-              AND  dr.person_id     IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  vpc.first_record::date < DATE(dr.created_at)
-        """, (sid, ytd_inicio_str, ytd_fim_str))
-        kpi_ytd['recorrentes'] = r['total'] if r else 0
-        kpi_ytd['novos']       = (kpi_ytd['visitantes'] or 0) - (kpi_ytd['recorrentes'] or 0)
+        kpi_ytd['recorrentes'] = _qtd_recorrentes(sid, ytd_inicio_str, ytd_fim_str) or 0
+        kpi_ytd['novos']       = _qtd_novos(sid, ytd_inicio_str, ytd_fim_str) or 0
+        kpi_ytd['visitantes']  = kpi_ytd['recorrentes'] + kpi_ytd['novos']
 
         if active_microvix_portal and active_store_cnpj:
             r = db.query_one("""
@@ -810,7 +728,7 @@ def dashboard():
     kpi_est_mes = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None, taxa_retorno=None, valor_medio=None)
 
     if kpi['visitantes'] is not None and kpi['recorrentes'] is not None:
-        kpi_est['novos']       = kpi['visitantes'] - kpi['recorrentes']
+        kpi_est['novos']       = kpi['novos']
         kpi_est['recorrentes'] = kpi['recorrentes']
         _t = (kpi_est['novos'] or 0) + (kpi_est['recorrentes'] or 0)
         kpi_est['taxa_retorno'] = round((kpi_est['recorrentes'] or 0) / _t * 100) if _t else 0
@@ -824,7 +742,7 @@ def dashboard():
             kpi_est['ticket_rec']  = _tk['ticket_rec']
 
     if kpi_sem['visitantes'] is not None and kpi_sem['recorrentes'] is not None:
-        kpi_est_sem['novos']       = kpi_sem['visitantes'] - kpi_sem['recorrentes']
+        kpi_est_sem['novos']       = kpi_sem['novos']
         kpi_est_sem['recorrentes'] = kpi_sem['recorrentes']
         _t = (kpi_est_sem['novos'] or 0) + (kpi_est_sem['recorrentes'] or 0)
         kpi_est_sem['taxa_retorno'] = round((kpi_est_sem['recorrentes'] or 0) / _t * 100) if _t else 0
@@ -838,7 +756,7 @@ def dashboard():
             kpi_est_sem['ticket_rec']  = _tk['ticket_rec']
 
     if kpi_mes['visitantes'] is not None and kpi_mes['recorrentes'] is not None:
-        kpi_est_mes['novos']       = kpi_mes['visitantes'] - kpi_mes['recorrentes']
+        kpi_est_mes['novos']       = kpi_mes['novos']
         kpi_est_mes['recorrentes'] = kpi_mes['recorrentes']
         _t = (kpi_est_mes['novos'] or 0) + (kpi_est_mes['recorrentes'] or 0)
         kpi_est_mes['taxa_retorno'] = round((kpi_est_mes['recorrentes'] or 0) / _t * 100) if _t else 0
@@ -853,7 +771,7 @@ def dashboard():
 
     kpi_est_ytd = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None, taxa_retorno=None, valor_medio=None)
     if kpi_ytd['visitantes'] is not None and kpi_ytd['recorrentes'] is not None:
-        kpi_est_ytd['novos']       = kpi_ytd['visitantes'] - kpi_ytd['recorrentes']
+        kpi_est_ytd['novos']       = kpi_ytd['novos']
         kpi_est_ytd['recorrentes'] = kpi_ytd['recorrentes']
         _t = (kpi_est_ytd['novos'] or 0) + (kpi_est_ytd['recorrentes'] or 0)
         kpi_est_ytd['taxa_retorno'] = round((kpi_est_ytd['recorrentes'] or 0) / _t * 100) if _t else 0
@@ -874,26 +792,9 @@ def dashboard():
         _ps   = _prev.strftime('%Y-%m-%d')
         sid   = active_store['store_id']
 
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people p ON p.person_id = dr.person_id
-            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-              AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
-        """, (sid, _ps))
-        kpi_ant['visitantes'] = r['total'] if r else 0
-
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people p ON p.person_id = dr.person_id
-            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
-            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-              AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
-              AND  vpc.first_record::date < %s
-        """, (sid, _ps, _ps))
-        kpi_ant['recorrentes'] = r['total'] if r else 0
-        kpi_ant['novos'] = kpi_ant['visitantes'] - kpi_ant['recorrentes']
+        kpi_ant['recorrentes'] = _qtd_recorrentes(sid, _ps, _ps) or 0
+        kpi_ant['novos']       = _qtd_novos(sid, _ps, _ps) or 0
+        kpi_ant['visitantes']  = kpi_ant['recorrentes'] + kpi_ant['novos']
 
         if active_microvix_portal and active_store_cnpj:
             r = db.query_one("""
@@ -944,28 +845,9 @@ def dashboard():
     if active_store:
         sid = active_store['store_id']
 
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people p ON p.person_id = dr.person_id
-            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-              AND  dr.person_id IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
-        """, (sid, semana_ant_inicio_str, semana_ant_fim_str))
-        kpi_ant_sem['visitantes'] = r['total'] if r else 0
-
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people p ON p.person_id = dr.person_id
-            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
-            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-              AND  dr.person_id IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  vpc.first_record::date < DATE(dr.created_at)
-        """, (sid, semana_ant_inicio_str, semana_ant_fim_str))
-        kpi_ant_sem['recorrentes'] = r['total'] if r else 0
-        kpi_ant_sem['novos'] = kpi_ant_sem['visitantes'] - kpi_ant_sem['recorrentes']
+        kpi_ant_sem['recorrentes'] = _qtd_recorrentes(sid, semana_ant_inicio_str, semana_ant_fim_str) or 0
+        kpi_ant_sem['novos']       = _qtd_novos(sid, semana_ant_inicio_str, semana_ant_fim_str) or 0
+        kpi_ant_sem['visitantes']  = kpi_ant_sem['recorrentes'] + kpi_ant_sem['novos']
 
         if active_microvix_portal and active_store_cnpj:
             r = db.query_one("""
@@ -1017,28 +899,9 @@ def dashboard():
     if active_store:
         sid = active_store['store_id']
 
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people p ON p.person_id = dr.person_id
-            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-              AND  dr.person_id IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
-        """, (sid, mes_ant_inicio_str, mes_ant_fim_str))
-        kpi_ant_mes['visitantes'] = r['total'] if r else 0
-
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people p ON p.person_id = dr.person_id
-            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
-            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-              AND  dr.person_id IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  vpc.first_record::date < DATE(dr.created_at)
-        """, (sid, mes_ant_inicio_str, mes_ant_fim_str))
-        kpi_ant_mes['recorrentes'] = r['total'] if r else 0
-        kpi_ant_mes['novos'] = kpi_ant_mes['visitantes'] - kpi_ant_mes['recorrentes']
+        kpi_ant_mes['recorrentes'] = _qtd_recorrentes(sid, mes_ant_inicio_str, mes_ant_fim_str) or 0
+        kpi_ant_mes['novos']       = _qtd_novos(sid, mes_ant_inicio_str, mes_ant_fim_str) or 0
+        kpi_ant_mes['visitantes']  = kpi_ant_mes['recorrentes'] + kpi_ant_mes['novos']
 
         if active_microvix_portal and active_store_cnpj:
             r = db.query_one("""
@@ -1092,29 +955,9 @@ def dashboard():
     if active_store:
         sid = active_store['store_id']
 
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people p ON p.person_id = dr.person_id
-            WHERE  dr.store_id    = %s
-              AND  p.person_type_id  = 'C'
-              AND  dr.person_id     IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
-        """, (sid, ytd_ant_inicio_str, ytd_ant_fim_str))
-        kpi_ant_ytd['visitantes'] = r['total'] if r else 0
-
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT dr.person_id) AS total
-            FROM   faciais.detection_records dr
-            JOIN   faciais.people p ON p.person_id = dr.person_id
-            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
-            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-              AND  dr.person_id IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
-              AND  vpc.first_record::date < DATE(dr.created_at)
-        """, (sid, ytd_ant_inicio_str, ytd_ant_fim_str))
-        kpi_ant_ytd['recorrentes'] = r['total'] if r else 0
-        kpi_ant_ytd['novos'] = kpi_ant_ytd['visitantes'] - kpi_ant_ytd['recorrentes']
+        kpi_ant_ytd['recorrentes'] = _qtd_recorrentes(sid, ytd_ant_inicio_str, ytd_ant_fim_str) or 0
+        kpi_ant_ytd['novos']       = _qtd_novos(sid, ytd_ant_inicio_str, ytd_ant_fim_str) or 0
+        kpi_ant_ytd['visitantes']  = kpi_ant_ytd['recorrentes'] + kpi_ant_ytd['novos']
 
         if active_microvix_portal and active_store_cnpj:
             r = db.query_one("""
@@ -1137,8 +980,6 @@ def dashboard():
             kpi_ant_ytd['conversao'] = int(round((kpi_ant_ytd['vendas'] or 0) / kpi_ant_ytd['visitantes'] * 100))
         else:
             kpi_ant_ytd['conversao'] = 0
-        kpi_ant_ytd['novos'] = (kpi_ant_ytd['visitantes'] or 0) - (kpi_ant_ytd['recorrentes'] or 0)
-
         kpi_ant_ytd['tempo_loja'] = kpi_tempo_loja_range(sid, ytd_ant_inicio_str, ytd_ant_fim_str)
 
         if active_microvix_portal and active_store_cnpj:
