@@ -7,7 +7,7 @@ from routes.utils import (login_required, screen_required,
                            tempo_gauge, HEIMDALL_IMAGE_BASE)
 import db
 from metas import get_metas as _get_metas
-from people import qtd_novos as _qtd_novos, qtd_recorrentes as _qtd_recorrentes
+from people import qtd_novos as _qtd_novos, qtd_recorrentes as _qtd_recorrentes, kpi_microvix as _kpi_microvix
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -488,19 +488,9 @@ def dashboard():
         kpi['visitantes']  = kpi['recorrentes'] + kpi['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            r = db.query_one("""
-                SELECT COUNT(DISTINCT documento) AS total
-                FROM   microvix.microvix_movimento
-                WHERE  portal                  = %s
-                  AND  cnpj_emp                = %s
-                  AND  DATE(data_documento)    = %s
-                  AND  cancelado              <> 'S'
-                  AND  excluido              <> 'S'
-                  AND  soma_relatorio          = 'S'
-                  AND  tipo_transacao          = 'V'
-                  AND  cod_natureza_operacao   = '10030'
-            """, (active_microvix_portal, active_store_cnpj, data_str))
-            kpi['vendas'] = r['total'] if r else 0
+            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, data_str, data_str)
+            kpi['vendas'] = _com['vendas']
+            kpi_com.update(_com)
         else:
             kpi['vendas'] = None
 
@@ -511,56 +501,15 @@ def dashboard():
 
         kpi['tempo_loja'] = kpi_tempo_loja(sid, data_str)
 
-        # ── Comercial – Dia ───────────────────────────────────────────────────
-        if active_microvix_portal and active_store_cnpj:
-            r = db.query_one("""
-                SELECT COUNT(DISTINCT documento)          AS vendas,
-                       SUM(valor_liquido)                 AS faturamento,
-                       SUM(quantidade)                    AS total_itens
-                FROM   microvix.microvix_movimento
-                WHERE  portal                  = %s
-                  AND  cnpj_emp                = %s
-                  AND  DATE(data_documento)    = %s
-                  AND  cancelado              <> 'S'
-                  AND  excluido              <> 'S'
-                  AND  soma_relatorio          = 'S'
-                  AND  tipo_transacao          = 'V'
-                  AND  cod_natureza_operacao   = '10030'
-            """, (active_microvix_portal, active_store_cnpj, data_str))
-
-            if r and r['vendas']:
-                v = int(r['vendas'])
-                f = float(r['faturamento'] or 0)
-                t = float(r['total_itens'] or 0)
-                kpi_com['vendas']      = v
-                kpi_com['faturamento'] = round(f, 2)
-                kpi_com['ticket_medio'] = round(f / v, 2) if v else 0.0
-                kpi_com['itens_venda']  = round(t / v, 1) if v else 0.0
-            else:
-                kpi_com['vendas']       = 0
-                kpi_com['faturamento']  = 0.0
-                kpi_com['ticket_medio'] = 0.0
-                kpi_com['itens_venda']  = 0.0
-
         # ── Operacional – Semana ─────────────────────────────────────────────
         kpi_sem['recorrentes'] = _qtd_recorrentes(sid, semana_inicio_str, semana_fim_str) or 0
         kpi_sem['novos']       = _qtd_novos(sid, semana_inicio_str, semana_fim_str) or 0
         kpi_sem['visitantes']  = kpi_sem['recorrentes'] + kpi_sem['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            r = db.query_one("""
-                SELECT COUNT(DISTINCT documento) AS total
-                FROM   microvix.microvix_movimento
-                WHERE  portal                  = %s
-                  AND  cnpj_emp                = %s
-                  AND  DATE(data_documento)    BETWEEN %s AND %s
-                  AND  cancelado              <> 'S'
-                  AND  excluido              <> 'S'
-                  AND  soma_relatorio          = 'S'
-                  AND  tipo_transacao          = 'V'
-                  AND  cod_natureza_operacao   = '10030'
-            """, (active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str))
-            kpi_sem['vendas'] = r['total'] if r else 0
+            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str)
+            kpi_sem['vendas'] = _com['vendas']
+            kpi_com_sem.update(_com)
         else:
             kpi_sem['vendas'] = None
 
@@ -571,51 +520,15 @@ def dashboard():
 
         kpi_sem['tempo_loja'] = kpi_tempo_loja_range(sid, semana_inicio_str, semana_fim_str)
 
-        # ── Comercial – Semana ────────────────────────────────────────────────
-        if active_microvix_portal and active_store_cnpj:
-            r = db.query_one("""
-                SELECT COUNT(DISTINCT documento)          AS vendas,
-                       SUM(valor_liquido)                 AS faturamento,
-                       SUM(quantidade)                    AS total_itens
-                FROM   microvix.microvix_movimento
-                WHERE  portal                  = %s
-                  AND  cnpj_emp                = %s
-                  AND  DATE(data_documento)    BETWEEN %s AND %s
-                  AND  cancelado              <> 'S'
-                  AND  excluido              <> 'S'
-                  AND  soma_relatorio          = 'S'
-                  AND  tipo_transacao          = 'V'
-                  AND  cod_natureza_operacao   = '10030'
-            """, (active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str))
-            if r and r['vendas']:
-                v = int(r['vendas']); f = float(r['faturamento'] or 0); t = float(r['total_itens'] or 0)
-                kpi_com_sem['vendas']       = v
-                kpi_com_sem['faturamento']  = round(f, 2)
-                kpi_com_sem['ticket_medio'] = round(f / v, 2) if v else 0.0
-                kpi_com_sem['itens_venda']  = round(t / v, 1) if v else 0.0
-            else:
-                kpi_com_sem['vendas'] = 0; kpi_com_sem['faturamento'] = 0.0
-                kpi_com_sem['ticket_medio'] = 0.0; kpi_com_sem['itens_venda'] = 0.0
-
         # ── Operacional – Mês ─────────────────────────────────────────────────
         kpi_mes['recorrentes'] = _qtd_recorrentes(sid, mes_inicio_str, mes_fim_str) or 0
         kpi_mes['novos']       = _qtd_novos(sid, mes_inicio_str, mes_fim_str) or 0
         kpi_mes['visitantes']  = kpi_mes['recorrentes'] + kpi_mes['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            r = db.query_one("""
-                SELECT COUNT(DISTINCT documento) AS total
-                FROM   microvix.microvix_movimento
-                WHERE  portal                  = %s
-                  AND  cnpj_emp                = %s
-                  AND  DATE(data_documento)    BETWEEN %s AND %s
-                  AND  cancelado              <> 'S'
-                  AND  excluido              <> 'S'
-                  AND  soma_relatorio          = 'S'
-                  AND  tipo_transacao          = 'V'
-                  AND  cod_natureza_operacao   = '10030'
-            """, (active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str))
-            kpi_mes['vendas'] = r['total'] if r else 0
+            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str)
+            kpi_mes['vendas'] = _com['vendas']
+            kpi_com_mes.update(_com)
         else:
             kpi_mes['vendas'] = None
 
@@ -626,51 +539,15 @@ def dashboard():
 
         kpi_mes['tempo_loja'] = kpi_tempo_loja_range(sid, mes_inicio_str, mes_fim_str)
 
-        # ── Comercial – Mês ───────────────────────────────────────────────────
-        if active_microvix_portal and active_store_cnpj:
-            r = db.query_one("""
-                SELECT COUNT(DISTINCT documento)          AS vendas,
-                       SUM(valor_liquido)                 AS faturamento,
-                       SUM(quantidade)                    AS total_itens
-                FROM   microvix.microvix_movimento
-                WHERE  portal                  = %s
-                  AND  cnpj_emp                = %s
-                  AND  DATE(data_documento)    BETWEEN %s AND %s
-                  AND  cancelado              <> 'S'
-                  AND  excluido              <> 'S'
-                  AND  soma_relatorio          = 'S'
-                  AND  tipo_transacao          = 'V'
-                  AND  cod_natureza_operacao   = '10030'
-            """, (active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str))
-            if r and r['vendas']:
-                v = int(r['vendas']); f = float(r['faturamento'] or 0); t = float(r['total_itens'] or 0)
-                kpi_com_mes['vendas']       = v
-                kpi_com_mes['faturamento']  = round(f, 2)
-                kpi_com_mes['ticket_medio'] = round(f / v, 2) if v else 0.0
-                kpi_com_mes['itens_venda']  = round(t / v, 1) if v else 0.0
-            else:
-                kpi_com_mes['vendas'] = 0; kpi_com_mes['faturamento'] = 0.0
-                kpi_com_mes['ticket_medio'] = 0.0; kpi_com_mes['itens_venda'] = 0.0
-
         # ── Operacional – YTD ─────────────────────────────────────────────────
         kpi_ytd['recorrentes'] = _qtd_recorrentes(sid, ytd_inicio_str, ytd_fim_str) or 0
         kpi_ytd['novos']       = _qtd_novos(sid, ytd_inicio_str, ytd_fim_str) or 0
         kpi_ytd['visitantes']  = kpi_ytd['recorrentes'] + kpi_ytd['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            r = db.query_one("""
-                SELECT COUNT(DISTINCT documento) AS total
-                FROM   microvix.microvix_movimento
-                WHERE  portal                  = %s
-                  AND  cnpj_emp                = %s
-                  AND  DATE(data_documento)    BETWEEN %s AND %s
-                  AND  cancelado              <> 'S'
-                  AND  excluido              <> 'S'
-                  AND  soma_relatorio          = 'S'
-                  AND  tipo_transacao          = 'V'
-                  AND  cod_natureza_operacao   = '10030'
-            """, (active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str))
-            kpi_ytd['vendas'] = r['total'] if r else 0
+            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str)
+            kpi_ytd['vendas'] = _com['vendas']
+            kpi_com_ytd.update(_com)
         else:
             kpi_ytd['vendas'] = None
 
@@ -680,32 +557,6 @@ def dashboard():
             kpi_ytd['conversao'] = 0
 
         kpi_ytd['tempo_loja'] = kpi_tempo_loja_range(sid, ytd_inicio_str, ytd_fim_str)
-
-        # ── Comercial – YTD ───────────────────────────────────────────────────
-        if active_microvix_portal and active_store_cnpj:
-            r = db.query_one("""
-                SELECT COUNT(DISTINCT documento)          AS vendas,
-                       SUM(valor_liquido)                 AS faturamento,
-                       SUM(quantidade)                    AS total_itens
-                FROM   microvix.microvix_movimento
-                WHERE  portal                  = %s
-                  AND  cnpj_emp                = %s
-                  AND  DATE(data_documento)    BETWEEN %s AND %s
-                  AND  cancelado              <> 'S'
-                  AND  excluido              <> 'S'
-                  AND  soma_relatorio          = 'S'
-                  AND  tipo_transacao          = 'V'
-                  AND  cod_natureza_operacao   = '10030'
-            """, (active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str))
-            if r and r['vendas']:
-                v = int(r['vendas']); f = float(r['faturamento'] or 0); t = float(r['total_itens'] or 0)
-                kpi_com_ytd['vendas']       = v
-                kpi_com_ytd['faturamento']  = round(f, 2)
-                kpi_com_ytd['ticket_medio'] = round(f / v, 2) if v else 0.0
-                kpi_com_ytd['itens_venda']  = round(t / v, 1) if v else 0.0
-            else:
-                kpi_com_ytd['vendas'] = 0; kpi_com_ytd['faturamento'] = 0.0
-                kpi_com_ytd['ticket_medio'] = 0.0; kpi_com_ytd['itens_venda'] = 0.0
 
     # ── KPIs Estratégico – derivados dos KPIs já calculados ──────────────────
     kpi_est     = dict(novos=None, recorrentes=None, ticket_novo=None, ticket_rec=None, taxa_retorno=None, valor_medio=None)
@@ -772,6 +623,7 @@ def dashboard():
     # ── KPIs dia útil anterior (comparação) ──────────────────────────────────
     kpi_ant = dict(visitantes=None, recorrentes=None, novos=None,
                    vendas=None, conversao=None, tempo_loja=None, taxa_retorno=None, valor_medio=None)
+    kpi_ant_com = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
     if active_store:
         _prev = _prev_business_day(selected_date)
         _ps   = _prev.strftime('%Y-%m-%d')
@@ -782,14 +634,9 @@ def dashboard():
         kpi_ant['visitantes']  = kpi_ant['recorrentes'] + kpi_ant['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            r = db.query_one("""
-                SELECT COUNT(DISTINCT documento) AS total
-                FROM   microvix.microvix_movimento
-                WHERE  portal = %s AND cnpj_emp = %s AND DATE(data_documento) = %s
-                  AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
-                  AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
-            """, (active_microvix_portal, active_store_cnpj, _ps))
-            kpi_ant['vendas'] = r['total'] if r else 0
+            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, _ps, _ps)
+            kpi_ant['vendas'] = _com['vendas']
+            kpi_ant_com.update(_com)
 
         if kpi_ant['visitantes']:
             kpi_ant['conversao'] = int(round((kpi_ant['vendas'] or 0) / kpi_ant['visitantes'] * 100))
@@ -798,27 +645,6 @@ def dashboard():
 
         kpi_ant['tempo_loja'] = kpi_tempo_loja(sid, _ps)
 
-    kpi_ant_com = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
-    if active_store and active_microvix_portal and active_store_cnpj:
-        _ps_com = _prev_business_day(selected_date).strftime('%Y-%m-%d')
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT documento) AS vendas,
-                   SUM(valor_liquido)        AS faturamento,
-                   SUM(quantidade)           AS total_itens
-            FROM   microvix.microvix_movimento
-            WHERE  portal = %s AND cnpj_emp = %s AND DATE(data_documento) = %s
-              AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
-              AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
-        """, (active_microvix_portal, active_store_cnpj, _ps_com))
-        if r and r['vendas']:
-            v = int(r['vendas']); f = float(r['faturamento'] or 0); t = float(r['total_itens'] or 0)
-            kpi_ant_com['vendas']       = v
-            kpi_ant_com['faturamento']  = round(f, 2)
-            kpi_ant_com['ticket_medio'] = round(f / v, 2) if v else 0.0
-            kpi_ant_com['itens_venda']  = round(t / v, 1) if v else 0.0
-        else:
-            kpi_ant_com['vendas'] = 0; kpi_ant_com['faturamento'] = 0.0
-            kpi_ant_com['ticket_medio'] = 0.0; kpi_ant_com['itens_venda'] = 0.0
     if kpi_ant['novos'] is not None and kpi_ant['recorrentes'] is not None:
         _t_ant = (kpi_ant['novos'] or 0) + (kpi_ant['recorrentes'] or 0)
         kpi_ant['taxa_retorno'] = round((kpi_ant['recorrentes'] or 0) / _t_ant * 100) if _t_ant else 0
@@ -828,6 +654,7 @@ def dashboard():
     # ── KPIs semana anterior (comparação) ────────────────────────────────────
     kpi_ant_sem = dict(visitantes=None, recorrentes=None, novos=None,
                        vendas=None, conversao=None, tempo_loja=None, taxa_retorno=None, valor_medio=None)
+    kpi_ant_com_sem = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
     if active_store:
         sid = active_store['store_id']
         kpi_ant_sem['recorrentes'] = _qtd_recorrentes(sid, semana_ant_inicio_str, semana_ant_fim_str) or 0
@@ -835,15 +662,9 @@ def dashboard():
         kpi_ant_sem['visitantes']  = kpi_ant_sem['recorrentes'] + kpi_ant_sem['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            r = db.query_one("""
-                SELECT COUNT(DISTINCT documento) AS total
-                FROM   microvix.microvix_movimento
-                WHERE  portal = %s AND cnpj_emp = %s
-                  AND  DATE(data_documento) BETWEEN %s AND %s
-                  AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
-                  AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
-            """, (active_microvix_portal, active_store_cnpj, semana_ant_inicio_str, semana_ant_fim_str))
-            kpi_ant_sem['vendas'] = r['total'] if r else 0
+            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, semana_ant_inicio_str, semana_ant_fim_str)
+            kpi_ant_sem['vendas'] = _com['vendas']
+            kpi_ant_com_sem.update(_com)
 
         if kpi_ant_sem['visitantes']:
             kpi_ant_sem['conversao'] = int(round((kpi_ant_sem['vendas'] or 0) / kpi_ant_sem['visitantes'] * 100))
@@ -852,27 +673,6 @@ def dashboard():
 
         kpi_ant_sem['tempo_loja'] = kpi_tempo_loja_range(sid, semana_ant_inicio_str, semana_ant_fim_str)
 
-    kpi_ant_com_sem = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
-    if active_store and active_microvix_portal and active_store_cnpj:
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT documento) AS vendas,
-                   SUM(valor_liquido)        AS faturamento,
-                   SUM(quantidade)           AS total_itens
-            FROM   microvix.microvix_movimento
-            WHERE  portal = %s AND cnpj_emp = %s
-              AND  DATE(data_documento) BETWEEN %s AND %s
-              AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
-              AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
-        """, (active_microvix_portal, active_store_cnpj, semana_ant_inicio_str, semana_ant_fim_str))
-        if r and r['vendas']:
-            v = int(r['vendas']); f = float(r['faturamento'] or 0); t = float(r['total_itens'] or 0)
-            kpi_ant_com_sem['vendas']       = v
-            kpi_ant_com_sem['faturamento']  = round(f, 2)
-            kpi_ant_com_sem['ticket_medio'] = round(f / v, 2) if v else 0.0
-            kpi_ant_com_sem['itens_venda']  = round(t / v, 1) if v else 0.0
-        else:
-            kpi_ant_com_sem['vendas'] = 0; kpi_ant_com_sem['faturamento'] = 0.0
-            kpi_ant_com_sem['ticket_medio'] = 0.0; kpi_ant_com_sem['itens_venda'] = 0.0
     if kpi_ant_sem['novos'] is not None and kpi_ant_sem['recorrentes'] is not None:
         _t_ant = (kpi_ant_sem['novos'] or 0) + (kpi_ant_sem['recorrentes'] or 0)
         kpi_ant_sem['taxa_retorno'] = round((kpi_ant_sem['recorrentes'] or 0) / _t_ant * 100) if _t_ant else 0
@@ -882,6 +682,7 @@ def dashboard():
     # ── KPIs mês anterior (comparação) ───────────────────────────────────────
     kpi_ant_mes = dict(visitantes=None, recorrentes=None, novos=None,
                        vendas=None, conversao=None, tempo_loja=None, taxa_retorno=None, valor_medio=None)
+    kpi_ant_com_mes = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
     if active_store:
         sid = active_store['store_id']
         kpi_ant_mes['recorrentes'] = _qtd_recorrentes(sid, mes_ant_inicio_str, mes_ant_fim_str) or 0
@@ -889,15 +690,9 @@ def dashboard():
         kpi_ant_mes['visitantes']  = kpi_ant_mes['recorrentes'] + kpi_ant_mes['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            r = db.query_one("""
-                SELECT COUNT(DISTINCT documento) AS total
-                FROM   microvix.microvix_movimento
-                WHERE  portal = %s AND cnpj_emp = %s
-                  AND  DATE(data_documento) BETWEEN %s AND %s
-                  AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
-                  AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
-            """, (active_microvix_portal, active_store_cnpj, mes_ant_inicio_str, mes_ant_fim_str))
-            kpi_ant_mes['vendas'] = r['total'] if r else 0
+            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, mes_ant_inicio_str, mes_ant_fim_str)
+            kpi_ant_mes['vendas'] = _com['vendas']
+            kpi_ant_com_mes.update(_com)
 
         if kpi_ant_mes['visitantes']:
             kpi_ant_mes['conversao'] = int(round((kpi_ant_mes['vendas'] or 0) / kpi_ant_mes['visitantes'] * 100))
@@ -906,27 +701,6 @@ def dashboard():
 
         kpi_ant_mes['tempo_loja'] = kpi_tempo_loja_range(sid, mes_ant_inicio_str, mes_ant_fim_str)
 
-    kpi_ant_com_mes = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
-    if active_store and active_microvix_portal and active_store_cnpj:
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT documento) AS vendas,
-                   SUM(valor_liquido)        AS faturamento,
-                   SUM(quantidade)           AS total_itens
-            FROM   microvix.microvix_movimento
-            WHERE  portal = %s AND cnpj_emp = %s
-              AND  DATE(data_documento) BETWEEN %s AND %s
-              AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
-              AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
-        """, (active_microvix_portal, active_store_cnpj, mes_ant_inicio_str, mes_ant_fim_str))
-        if r and r['vendas']:
-            v = int(r['vendas']); f = float(r['faturamento'] or 0); t = float(r['total_itens'] or 0)
-            kpi_ant_com_mes['vendas']       = v
-            kpi_ant_com_mes['faturamento']  = round(f, 2)
-            kpi_ant_com_mes['ticket_medio'] = round(f / v, 2) if v else 0.0
-            kpi_ant_com_mes['itens_venda']  = round(t / v, 1) if v else 0.0
-        else:
-            kpi_ant_com_mes['vendas'] = 0; kpi_ant_com_mes['faturamento'] = 0.0
-            kpi_ant_com_mes['ticket_medio'] = 0.0; kpi_ant_com_mes['itens_venda'] = 0.0
     if kpi_ant_mes['novos'] is not None and kpi_ant_mes['recorrentes'] is not None:
         _t_ant = (kpi_ant_mes['novos'] or 0) + (kpi_ant_mes['recorrentes'] or 0)
         kpi_ant_mes['taxa_retorno'] = round((kpi_ant_mes['recorrentes'] or 0) / _t_ant * 100) if _t_ant else 0
@@ -936,6 +710,7 @@ def dashboard():
     # ── KPIs YTD anterior (comparação – mesmo período, ano fiscal anterior) ───
     kpi_ant_ytd = dict(visitantes=None, recorrentes=None, novos=None,
                        vendas=None, conversao=None, tempo_loja=None, taxa_retorno=None, valor_medio=None)
+    kpi_ant_com_ytd = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
     if active_store:
         sid = active_store['store_id']
         kpi_ant_ytd['recorrentes'] = _qtd_recorrentes(sid, ytd_ant_inicio_str, ytd_ant_fim_str) or 0
@@ -943,15 +718,9 @@ def dashboard():
         kpi_ant_ytd['visitantes']  = kpi_ant_ytd['recorrentes'] + kpi_ant_ytd['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            r = db.query_one("""
-                SELECT COUNT(DISTINCT documento) AS total
-                FROM   microvix.microvix_movimento
-                WHERE  portal = %s AND cnpj_emp = %s
-                  AND  DATE(data_documento) BETWEEN %s AND %s
-                  AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
-                  AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
-            """, (active_microvix_portal, active_store_cnpj, ytd_ant_inicio_str, ytd_ant_fim_str))
-            kpi_ant_ytd['vendas'] = r['total'] if r else 0
+            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, ytd_ant_inicio_str, ytd_ant_fim_str)
+            kpi_ant_ytd['vendas'] = _com['vendas']
+            kpi_ant_com_ytd.update(_com)
 
         if kpi_ant_ytd['visitantes']:
             kpi_ant_ytd['conversao'] = int(round((kpi_ant_ytd['vendas'] or 0) / kpi_ant_ytd['visitantes'] * 100))
@@ -960,27 +729,6 @@ def dashboard():
 
         kpi_ant_ytd['tempo_loja'] = kpi_tempo_loja_range(sid, ytd_ant_inicio_str, ytd_ant_fim_str)
 
-    kpi_ant_com_ytd = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
-    if active_store and active_microvix_portal and active_store_cnpj:
-        r = db.query_one("""
-            SELECT COUNT(DISTINCT documento) AS vendas,
-                   SUM(valor_liquido)        AS faturamento,
-                   SUM(quantidade)           AS total_itens
-            FROM   microvix.microvix_movimento
-            WHERE  portal = %s AND cnpj_emp = %s
-              AND  DATE(data_documento) BETWEEN %s AND %s
-              AND  cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
-              AND  tipo_transacao = 'V' AND cod_natureza_operacao = '10030'
-        """, (active_microvix_portal, active_store_cnpj, ytd_ant_inicio_str, ytd_ant_fim_str))
-        if r and r['vendas']:
-            v = int(r['vendas']); f = float(r['faturamento'] or 0); t = float(r['total_itens'] or 0)
-            kpi_ant_com_ytd['vendas']       = v
-            kpi_ant_com_ytd['faturamento']  = round(f, 2)
-            kpi_ant_com_ytd['ticket_medio'] = round(f / v, 2) if v else 0.0
-            kpi_ant_com_ytd['itens_venda']  = round(t / v, 1) if v else 0.0
-        else:
-            kpi_ant_com_ytd['vendas'] = 0; kpi_ant_com_ytd['faturamento'] = 0.0
-            kpi_ant_com_ytd['ticket_medio'] = 0.0; kpi_ant_com_ytd['itens_venda'] = 0.0
     if kpi_ant_ytd['novos'] is not None and kpi_ant_ytd['recorrentes'] is not None:
         _t_ant = (kpi_ant_ytd['novos'] or 0) + (kpi_ant_ytd['recorrentes'] or 0)
         kpi_ant_ytd['taxa_retorno'] = round((kpi_ant_ytd['recorrentes'] or 0) / _t_ant * 100) if _t_ant else 0
