@@ -4,7 +4,7 @@ import db
 def kpi_microvix(portal, cnpj, dia_i, dia_f):
     row = db.query_one("""
         SELECT COUNT(DISTINCT documento) AS vendas,
-               SUM(valor_liquido)        AS faturamento,
+               SUM(valor_total)        AS faturamento,
                SUM(quantidade)           AS total_itens
         FROM   microvix.microvix_movimento
         WHERE  portal                = %s
