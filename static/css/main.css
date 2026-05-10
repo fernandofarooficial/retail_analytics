@@ -962,3 +962,124 @@ dialog::backdrop {
     color: #0057A8;
     margin-left: 0.5rem;
 }
+
+/* ── METAS ───────────────────────────────────── */
+
+/* Calendar grid */
+.cal-grid {
+    background: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+    overflow: hidden;
+}
+
+.cal-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.cal-nav h2 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #0057A8;
+    color: #FFFFFF;
+}
+
+.cal-weekdays div {
+    padding: 0.5rem;
+    text-align: center;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.cal-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: #E5E7EB;
+}
+
+.cal-day {
+    background: #FFFFFF;
+    padding: 0.5rem;
+    min-height: 72px;
+    cursor: pointer;
+    transition: filter 0.1s;
+}
+
+.cal-day:hover { filter: brightness(0.96); }
+
+.cal-day.other-month {
+    background: #F9FAFB;
+    cursor: default;
+    min-height: 72px;
+}
+
+.cal-day.other-month:hover { filter: none; }
+
+.cal-day-num {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.25rem;
+}
+
+.cal-day-type {
+    display: inline-block;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+.cal-day-label {
+    font-size: 0.7rem;
+    color: #6B7280;
+    margin-top: 0.2rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cal-stats {
+    display: flex;
+    gap: 1.5rem;
+    padding: 0.875rem 1.5rem;
+    border-top: 1px solid #E5E7EB;
+    font-size: 0.875rem;
+    color: #374151;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.cal-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.cal-stat-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Day type color palette */
+.dtype-workday      { background: #D1FAE5; color: #065F46; }
+.dtype-saturday     { background: #DBEAFE; color: #1D4ED8; }
+.dtype-sunday       { background: #F3F4F6; color: #6B7280; }
+.dtype-holiday      { background: #FEE2E2; color: #991B1B; }
+.dtype-half_day     { background: #FEF3C7; color: #92400E; }
+.dtype-holiday_half { background: #FDDDE6; color: #9D174D; }

@@ -19,12 +19,14 @@ from routes.cadastros import cadastros_bp
 from routes.conta     import conta_bp
 from routes.usuarios  import usuarios_bp
 from routes.mobile    import mobile_bp
+from routes.metas     import metas_bp
 
 app.register_blueprint(auth_bp,      url_prefix='/retail_analytics')
 app.register_blueprint(cadastros_bp)
 app.register_blueprint(conta_bp)
 app.register_blueprint(usuarios_bp)
 app.register_blueprint(mobile_bp,    url_prefix='/retail_analytics/m')
+app.register_blueprint(metas_bp)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5003, debug=False)

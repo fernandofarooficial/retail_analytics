@@ -1,0 +1,42 @@
+{% extends 'base_web.html' %}
+{% block title %}Metas e Dias Úteis — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Metas e Dias Úteis</h1>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:1.25rem; max-width:820px;">
+
+    <a class="crud-card" href="{{ url_for('metas.objetivos') }}" style="align-items:flex-start; text-align:left;">
+        <div class="crud-card-icon" style="background:#0057A8;">OBJ</div>
+        <div>
+            <div class="crud-card-label" style="font-size:1rem;">Objetivos</div>
+            <div style="font-size:.8125rem; color:#6B7280; margin-top:.25rem; line-height:1.4;">
+                Catálogo de metas, alocações por loja/empresa/grupo e valores por período.
+            </div>
+        </div>
+    </a>
+
+    <a class="crud-card" href="{{ url_for('metas.calendario') }}" style="align-items:flex-start; text-align:left;">
+        <div class="crud-card-icon" style="background:#F47B20;">CAL</div>
+        <div>
+            <div class="crud-card-label" style="font-size:1rem;">Calendário Base</div>
+            <div style="font-size:.8125rem; color:#6B7280; margin-top:.25rem; line-height:1.4;">
+                Tipos de dia nacionais (dias úteis, feriados, sábados e domingos).
+            </div>
+        </div>
+    </a>
+
+    <a class="crud-card" href="{{ url_for('metas.excecoes') }}" style="align-items:flex-start; text-align:left;">
+        <div class="crud-card-icon" style="background:#F47B20;">EXC</div>
+        <div>
+            <div class="crud-card-label" style="font-size:1rem;">Exceções por Loja</div>
+            <div style="font-size:.8125rem; color:#6B7280; margin-top:.25rem; line-height:1.4;">
+                Sobrescreve o calendário base para lojas específicas (ex: shopping abre no feriado).
+            </div>
+        </div>
+    </a>
+
+</div>
+{% endblock %}

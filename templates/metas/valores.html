@@ -1,0 +1,156 @@
+{% extends 'base_web.html' %}
+{% block title %}Valores — {{ goal.goal_name }} — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <a class="back-link" href="{{ url_for('metas.index') }}">Metas</a>
+        <span class="breadcrumb-sep">/</span>
+        <a class="back-link" href="{{ url_for('metas.objetivos') }}">Objetivos</a>
+        <span class="breadcrumb-sep">/</span>
+        <a class="back-link" href="{{ url_for('metas.alocacoes', goal_id=goal.goal_id) }}">{{ goal.goal_name }}</a>
+        <span class="breadcrumb-sep">/</span>
+        <h1>{{ target._entity_name }}</h1>
+    </div>
+    <button class="btn-primary" style="width:auto; padding:.5rem 1.25rem;" onclick="abrirNovo()">+ Novo Valor</button>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:50px">ID</th>
+                <th style="width:140px">Período</th>
+                <th style="width:130px">Data Referência</th>
+                <th style="width:140px">Valor Alvo</th>
+                <th style="width:140px">Valor Real</th>
+                <th style="width:70px; text-align:center">Fechado</th>
+                <th style="width:80px; text-align:center">Filhos</th>
+                <th class="col-actions">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for v in values %}
+            <tr>
+                <td><span class="badge">{{ v.goal_value_id }}</span></td>
+                <td>
+                    {{ v.goal_period_name }}
+                    {% if v.num_parents > 0 %}
+                        <span title="Filho de desdobramento" style="color:#9CA3AF; font-size:.8rem;"> ↳</span>
+                    {% endif %}
+                </td>
+                <td>{{ v.reference_date.strftime('%d/%m/%Y') }}</td>
+                <td>
+                    {% if v.target_value is not none %}
+                        <strong>{{ '{:,.4f}'.format(v.target_value) }}</strong>
+                        <span style="color:#9CA3AF; font-size:.8rem;"> {{ goal.symbol }}</span>
+                    {% else %}—{% endif %}
+                </td>
+                <td>
+                    {% if v.actual_value is not none %}
+                        {{ '{:,.4f}'.format(v.actual_value) }}
+                        <span style="color:#9CA3AF; font-size:.8rem;"> {{ goal.symbol }}</span>
+                    {% else %}<span style="color:#9CA3AF">—</span>{% endif %}
+                </td>
+                <td style="text-align:center; font-size:1rem;">
+                    {{ '🔒' if v.is_closed else '' }}
+                </td>
+                <td style="text-align:center">
+                    {% if v.num_children > 0 %}
+                        <span class="badge">{{ v.num_children }}</span>
+                    {% else %}—{% endif %}
+                </td>
+                <td class="col-actions">
+                    {% if v.period_order > 1 %}
+                    <a href="{{ url_for('metas.desdobrar', value_id=v.goal_value_id) }}"
+                       class="btn-ver" style="border-color:#059669; color:#059669;"
+                       title="Criar desdobramento em períodos menores">Desdobrar</a>
+                    {% endif %}
+                    <button class="btn-edit"
+                        data-id="{{ v.goal_value_id }}"
+                        data-period="{{ v.goal_period_id }}"
+                        data-date="{{ v.reference_date.isoformat() }}"
+                        data-value="{{ v.target_value if v.target_value is not none else '' }}"
+                        onclick="abrirEditar(this)">Editar</button>
+                    <form method="POST" style="display:inline"
+                          onsubmit="return confirm('Confirma a exclusão deste valor? Os desdobramentos vinculados também serão removidos.')">
+                        <input type="hidden" name="_action" value="excluir">
+                        <input type="hidden" name="_id" value="{{ v.goal_value_id }}">
+                        <button type="submit" class="btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="table-empty">Nenhum valor de meta cadastrado para esta alocação.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<dialog id="modal">
+    <form method="POST">
+        <div class="modal-header">
+            <h2 id="modal-titulo">Novo Valor de Meta</h2>
+            <button type="button" class="modal-close" onclick="fecharModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="_action" id="form-action">
+            <input type="hidden" name="_id"     id="form-id">
+
+            <div class="form-group">
+                <label>Período <span style="color:#EF4444">*</span></label>
+                <select id="field-period" name="goal_period_id" required>
+                    <option value="">— Selecione —</option>
+                    {% for p in periods %}
+                    <option value="{{ p.goal_period_id }}">{{ p.goal_period_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Data de Referência <span style="color:#EF4444">*</span></label>
+                <input type="date" id="field-date" name="reference_date" required>
+                <small style="color:#6B7280; font-size:.8rem;">
+                    Use o 1º dia do período (ex: 01/01/2025 para anual, 01/01/2025 para jan/2025 mensal)
+                </small>
+            </div>
+            <div class="form-group">
+                <label>Valor Alvo ({{ goal.symbol }}) <small style="font-weight:400; color:#6B7280">(opcional)</small></label>
+                <input type="number" id="field-value" name="target_value" step="0.0001" min="0"
+                       placeholder="Ex: 150000.0000">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button type="submit" class="btn-primary" style="width:auto; padding:.6875rem 1.5rem;">Salvar</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+const modal = document.getElementById('modal');
+
+function abrirNovo() {
+    document.getElementById('modal-titulo').textContent = 'Novo Valor de Meta';
+    document.getElementById('form-action').value = 'criar';
+    document.getElementById('form-id').value     = '';
+    document.getElementById('field-period').value = '';
+    document.getElementById('field-date').value   = '';
+    document.getElementById('field-value').value  = '';
+    modal.showModal();
+}
+
+function abrirEditar(btn) {
+    const d = btn.dataset;
+    document.getElementById('modal-titulo').textContent = 'Editar Valor de Meta';
+    document.getElementById('form-action').value = 'editar';
+    document.getElementById('form-id').value     = d.id;
+    document.getElementById('field-period').value = d.period;
+    document.getElementById('field-date').value   = d.date;
+    document.getElementById('field-value').value  = d.value;
+    modal.showModal();
+}
+
+function fecharModal() { modal.close(); }
+modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
+</script>
+{% endblock %}

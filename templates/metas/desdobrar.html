@@ -1,0 +1,210 @@
+{% extends 'base_web.html' %}
+{% block title %}Desdobrar — {{ parent.goal_name }} — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <a class="back-link" href="{{ url_for('metas.index') }}">Metas</a>
+        <span class="breadcrumb-sep">/</span>
+        <a class="back-link" href="{{ url_for('metas.objetivos') }}">Objetivos</a>
+        <span class="breadcrumb-sep">/</span>
+        <a class="back-link" href="{{ url_for('metas.alocacoes', goal_id=parent.goal_id) }}">{{ parent.goal_name }}</a>
+        <span class="breadcrumb-sep">/</span>
+        <a class="back-link" href="{{ url_for('metas.valores', goal_id=parent.goal_id, target_id=parent.goal_target_id) }}">{{ parent._entity_name }}</a>
+        <span class="breadcrumb-sep">/</span>
+        <h1>Desdobrar</h1>
+    </div>
+</div>
+
+{% if num_children > 0 %}
+<div style="background:#FEF9C3; border:1px solid #FDE047; border-radius:10px; padding:.875rem 1.125rem; font-size:.875rem; color:#713F12; margin-bottom:1.25rem;">
+    Este valor já possui <strong>{{ num_children }}</strong> filho(s) de desdobramento.
+    Ao salvar, os valores existentes serão atualizados e novos vínculos poderão ser criados.
+</div>
+{% endif %}
+
+<div style="display:grid; grid-template-columns:320px 1fr; gap:1.5rem; align-items:start;">
+
+    <!-- Painel de info do pai -->
+    <div style="background:#FFFFFF; border-radius:12px; box-shadow:0 1px 6px rgba(0,0,0,.07); padding:1.5rem; display:flex; flex-direction:column; gap:.875rem;">
+        <div style="font-size:.8125rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6B7280;">Valor Pai</div>
+
+        <div>
+            <div style="font-size:.8rem; color:#9CA3AF;">Meta</div>
+            <div style="font-weight:600; color:#111827;">{{ parent.goal_name }}</div>
+        </div>
+        <div>
+            <div style="font-size:.8rem; color:#9CA3AF;">Entidade</div>
+            <div style="font-weight:500;">{{ parent._entity_name }}</div>
+        </div>
+        <div>
+            <div style="font-size:.8rem; color:#9CA3AF;">Período</div>
+            <div>{{ parent.goal_period_name }}</div>
+        </div>
+        <div>
+            <div style="font-size:.8rem; color:#9CA3AF;">Data Referência</div>
+            <div>{{ parent.reference_date.strftime('%d/%m/%Y') }}</div>
+        </div>
+        <div>
+            <div style="font-size:.8rem; color:#9CA3AF;">Valor Alvo</div>
+            <div style="font-size:1.375rem; font-weight:700; color:#0057A8;">
+                {{ '{:,.4f}'.format(parent.target_value) if parent.target_value is not none else '—' }}
+                <span style="font-size:.875rem; font-weight:400; color:#6B7280;">{{ parent.symbol }}</span>
+            </div>
+        </div>
+
+        {% if child_periods %}
+        <hr style="border:none; border-top:1px solid #E5E7EB; margin:.25rem 0;">
+        <div>
+            <div style="font-size:.8125rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6B7280; margin-bottom:.75rem;">Período Filho</div>
+            <select id="child-period-select"
+                    style="width:100%; padding:.6rem .875rem; border:1.5px solid #D1D5DB; border-radius:8px; font-size:.9rem; appearance:none; background:#FFFFFF;"
+                    onchange="carregarSugestao()">
+                <option value="">— Selecione —</option>
+                {% for p in child_periods %}
+                <option value="{{ p.goal_period_id }}">{{ p.goal_period_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="font-size:.8rem; color:#6B7280; line-height:1.5;">
+            O sistema distribui o valor automaticamente. Você pode ajustar cada parcela antes de salvar.
+        </div>
+        {% else %}
+        <div style="background:#FEF2F2; border:1px solid #FECACA; border-radius:8px; padding:.75rem; font-size:.875rem; color:#991B1B;">
+            Este período não pode ser desdobrado em períodos menores.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Painel da distribuição -->
+    <div>
+        <form method="POST" id="breakdown-form">
+            <input type="hidden" name="child_period_id" id="child-period-id">
+
+            <div id="breakdown-area" style="background:#FFFFFF; border-radius:12px; box-shadow:0 1px 6px rgba(0,0,0,.07); overflow:hidden;">
+                <div id="breakdown-placeholder" style="padding:3rem 2rem; text-align:center; color:#9CA3AF; font-style:italic;">
+                    Selecione um período filho para visualizar a distribuição sugerida.
+                </div>
+                <div id="breakdown-table-wrap" style="display:none;">
+                    <table class="data-table" id="breakdown-table">
+                        <thead>
+                            <tr>
+                                <th>Período / Label</th>
+                                <th style="width:140px">Data Referência</th>
+                                <th style="width:200px">Valor Alvo ({{ parent.symbol }})</th>
+                            </tr>
+                        </thead>
+                        <tbody id="breakdown-body"></tbody>
+                        <tfoot>
+                            <tr style="background:#F9FAFB; font-weight:700;">
+                                <td colspan="2" style="padding:.75rem 1rem;">Total</td>
+                                <td style="padding:.75rem 1rem;">
+                                    <span id="breakdown-total">0</span>
+                                    <span style="color:#9CA3AF; font-size:.8rem;"> {{ parent.symbol }}</span>
+                                    {% if parent.target_value is not none %}
+                                    <div id="breakdown-diff" style="font-size:.8rem; margin-top:.25rem;"></div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            {% if child_periods %}
+            <div style="margin-top:1.25rem; display:flex; justify-content:flex-end; gap:.75rem;">
+                <a href="{{ url_for('metas.valores', goal_id=parent.goal_id, target_id=parent.goal_target_id) }}"
+                   class="btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; padding:.6875rem 1.25rem;">Cancelar</a>
+                <button type="submit" id="btn-salvar" class="btn-primary" style="width:auto; padding:.6875rem 1.5rem;" disabled>
+                    Salvar Desdobramento
+                </button>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+</div>
+
+<script>
+const SUGESTAO_URL = "{{ url_for('metas.desdobrar_sugestao', value_id=value_id) }}";
+const PARENT_VALUE = {{ parent.target_value | float if parent.target_value is not none else 'null' }};
+const SYMBOL = {{ parent.symbol | tojson }};
+
+async function carregarSugestao() {
+    const period = document.getElementById('child-period-select').value;
+    const placeholder = document.getElementById('breakdown-placeholder');
+    const tableWrap   = document.getElementById('breakdown-table-wrap');
+    const btnSalvar   = document.getElementById('btn-salvar');
+
+    if (!period) {
+        placeholder.style.display = '';
+        tableWrap.style.display   = 'none';
+        btnSalvar.disabled = true;
+        return;
+    }
+
+    placeholder.textContent = 'Calculando distribuição…';
+    placeholder.style.display = '';
+    tableWrap.style.display   = 'none';
+
+    try {
+        const resp  = await fetch(SUGESTAO_URL + '?child_period_id=' + encodeURIComponent(period));
+        const slots = await resp.json();
+        if (!slots.length) {
+            placeholder.textContent = 'Nenhum período disponível para esta combinação.';
+            return;
+        }
+        renderizarTabela(slots);
+        document.getElementById('child-period-id').value = period;
+        placeholder.style.display = 'none';
+        tableWrap.style.display   = '';
+        btnSalvar.disabled = false;
+    } catch (err) {
+        placeholder.textContent = 'Erro ao carregar sugestão. Tente novamente.';
+    }
+}
+
+function renderizarTabela(slots) {
+    const tbody = document.getElementById('breakdown-body');
+    tbody.innerHTML = '';
+    slots.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${s.label}</td>
+            <td style="font-family:monospace; font-size:.875rem;">${s.ref_date}</td>
+            <td>
+                <input type="hidden" name="ref_date[]" value="${s.ref_date}">
+                <input type="number" name="target_value[]" value="${parseFloat(s.suggested_value).toFixed(4)}"
+                       step="0.0001" min="0" class="breakdown-input"
+                       style="width:100%; padding:.4rem .6rem; border:1.5px solid #D1D5DB; border-radius:6px; font-size:.9rem;"
+                       oninput="atualizarTotal()">
+            </td>`;
+        tbody.appendChild(tr);
+    });
+    atualizarTotal();
+}
+
+function atualizarTotal() {
+    let total = 0;
+    document.querySelectorAll('.breakdown-input').forEach(inp => {
+        total += parseFloat(inp.value) || 0;
+    });
+    document.getElementById('breakdown-total').textContent = total.toLocaleString('pt-BR', {minimumFractionDigits:4});
+
+    const diffEl = document.getElementById('breakdown-diff');
+    if (diffEl && PARENT_VALUE !== null) {
+        const diff = total - PARENT_VALUE;
+        if (Math.abs(diff) < 0.0001) {
+            diffEl.textContent = '✓ Igual ao pai';
+            diffEl.style.color = '#059669';
+        } else if (diff > 0) {
+            diffEl.textContent = `▲ Excede em ${diff.toLocaleString('pt-BR', {minimumFractionDigits:4})} ${SYMBOL}`;
+            diffEl.style.color = '#DC2626';
+        } else {
+            diffEl.textContent = `▼ Faltam ${Math.abs(diff).toLocaleString('pt-BR', {minimumFractionDigits:4})} ${SYMBOL}`;
+            diffEl.style.color = '#D97706';
+        }
+    }
+}
+</script>
+{% endblock %}

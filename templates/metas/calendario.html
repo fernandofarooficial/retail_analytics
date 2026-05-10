@@ -1,0 +1,190 @@
+{% extends 'base_web.html' %}
+{% block title %}Calendário {{ month_name }} {{ year }} — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <a class="back-link" href="{{ url_for('metas.index') }}">Metas</a>
+        <span class="breadcrumb-sep">/</span>
+        <h1>Calendário Base</h1>
+    </div>
+    <button class="btn-primary" style="width:auto; padding:.5rem 1.25rem;" onclick="abrirPopular()">Popular Calendário</button>
+</div>
+
+<!-- Navegação mês -->
+<div class="cal-grid" style="margin-bottom:1.5rem;">
+    <div class="cal-nav">
+        <a href="{{ url_for('metas.calendario', year=prev_year, month=prev_month) }}"
+           style="padding:.375rem .75rem; border-radius:6px; border:1.5px solid #D1D5DB; text-decoration:none; color:#374151; font-weight:500;">&#8592;</a>
+        <h2>{{ month_name }} {{ year }}</h2>
+        <a href="{{ url_for('metas.calendario', year=next_year, month=next_month) }}"
+           style="padding:.375rem .75rem; border-radius:6px; border:1.5px solid #D1D5DB; text-decoration:none; color:#374151; font-weight:500;">&#8594;</a>
+    </div>
+
+    <div class="cal-weekdays">
+        <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div>
+        <div>Qui</div><div>Sex</div><div>Sáb</div>
+    </div>
+
+    {% if cal_grid %}
+    <div class="cal-days">
+        {% for cell in cal_grid %}
+            {% if cell is none %}
+                <div class="cal-day other-month"></div>
+            {% else %}
+                <div class="cal-day dtype-{{ cell.day_type_id }}"
+                     data-date="{{ cell.calendar_date.isoformat() }}"
+                     data-type="{{ cell.day_type_id }}"
+                     data-name="{{ cell.holiday_name or '' }}"
+                     onclick="editarDia(this)"
+                     title="{{ cell.day_type_name }}{% if cell.holiday_name %}: {{ cell.holiday_name }}{% endif %}">
+                    <div class="cal-day-num">{{ cell.day }}</div>
+                    <div class="cal-day-type dtype-{{ cell.day_type_id }}" style="font-size:.65rem; padding:.1rem .3rem; border-radius:3px; font-weight:600; display:inline-block; margin-top:.15rem;">
+                        {{ cell.day_type_name }}
+                    </div>
+                    {% if cell.holiday_name %}
+                    <div class="cal-day-label">{{ cell.holiday_name }}</div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding:3rem 2rem; text-align:center; color:#9CA3AF;">
+        <div style="font-size:2rem; margin-bottom:.75rem;">📅</div>
+        <div style="font-weight:600; color:#374151; margin-bottom:.375rem;">Calendário não populado</div>
+        <div style="font-size:.875rem;">Clique em "Popular Calendário" para gerar os dias de {{ year }}.</div>
+    </div>
+    {% endif %}
+
+    {% if days %}
+    <div class="cal-stats">
+        {% if stats.get('workday') %}
+        <div class="cal-stat">
+            <div class="cal-stat-dot" style="background:#059669;"></div>
+            <span><strong>{{ stats.get('workday', 0) }}</strong> dias úteis</span>
+        </div>
+        {% endif %}
+        {% if stats.get('saturday') %}
+        <div class="cal-stat">
+            <div class="cal-stat-dot" style="background:#1D4ED8;"></div>
+            <span><strong>{{ stats.get('saturday', 0) }}</strong> sábados</span>
+        </div>
+        {% endif %}
+        {% if stats.get('sunday') %}
+        <div class="cal-stat">
+            <div class="cal-stat-dot" style="background:#9CA3AF;"></div>
+            <span><strong>{{ stats.get('sunday', 0) }}</strong> domingos</span>
+        </div>
+        {% endif %}
+        {% if stats.get('holiday') %}
+        <div class="cal-stat">
+            <div class="cal-stat-dot" style="background:#DC2626;"></div>
+            <span><strong>{{ stats.get('holiday', 0) }}</strong> feriados</span>
+        </div>
+        {% endif %}
+        {% if stats.get('half_day') or stats.get('holiday_half') %}
+        <div class="cal-stat">
+            <div class="cal-stat-dot" style="background:#D97706;"></div>
+            <span><strong>{{ (stats.get('half_day', 0) + stats.get('holiday_half', 0)) }}</strong> meio período</span>
+        </div>
+        {% endif %}
+        <div class="cal-stat" style="margin-left:auto; font-weight:600; color:#0057A8;">
+            {{ '{:.1f}'.format(working_weight) }} dias úteis ponderados
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Legenda -->
+<div style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
+    {% for dt in day_types %}
+    <div style="display:flex; align-items:center; gap:.375rem; font-size:.8125rem;">
+        <div class="cal-day-type dtype-{{ dt.day_type_id }}" style="font-size:.7rem; padding:.15rem .5rem; border-radius:4px; font-weight:600;">{{ dt.day_type_name }}</div>
+        <span style="color:#6B7280;">peso {{ dt.weight }}</span>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal: editar dia -->
+<dialog id="modal-dia">
+    <form method="POST">
+        <div class="modal-header">
+            <h2 id="modal-dia-titulo">Editar Dia</h2>
+            <button type="button" class="modal-close" onclick="fecharModalDia()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="_action" value="editar_dia">
+            <input type="hidden" name="calendar_date" id="edit-date">
+
+            <div class="form-group">
+                <label>Tipo de Dia</label>
+                <select id="edit-day-type" name="day_type_id">
+                    {% for dt in day_types %}
+                    <option value="{{ dt.day_type_id }}">{{ dt.day_type_name }} (peso {{ dt.weight }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Nome / Observação <small style="font-weight:400; color:#6B7280">(ex: Nome do feriado)</small></label>
+                <input type="text" id="edit-holiday-name" name="holiday_name" maxlength="100"
+                       placeholder="Ex: Natal, Carnaval, Inventário…">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="fecharModalDia()">Cancelar</button>
+            <button type="submit" class="btn-primary" style="width:auto; padding:.6875rem 1.5rem;">Salvar</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Modal: popular calendário -->
+<dialog id="modal-popular">
+    <form method="POST">
+        <div class="modal-header">
+            <h2>Popular Calendário</h2>
+            <button type="button" class="modal-close" onclick="fecharModalPopular()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="_action" value="popular">
+            <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:8px; padding:.75rem 1rem; font-size:.8125rem; color:#1E40AF; margin-bottom:.875rem;">
+                Sábados e domingos serão classificados automaticamente. Feriados devem ser ajustados manualmente após popular.
+            </div>
+            <div class="form-group">
+                <label>Ano <span style="color:#EF4444">*</span></label>
+                <input type="number" name="pop_year" id="pop-year" value="{{ year }}" min="2020" max="2035" required>
+            </div>
+            <div style="display:flex; align-items:center; gap:.5rem; margin-top:.25rem;">
+                <input type="checkbox" id="overwrite" name="overwrite" value="1" style="width:16px; height:16px;">
+                <label for="overwrite" style="font-size:.875rem; font-weight:500; color:#374151; cursor:pointer;">
+                    Sobrescrever dias já existentes
+                </label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="fecharModalPopular()">Cancelar</button>
+            <button type="submit" class="btn-primary" style="width:auto; padding:.6875rem 1.5rem;">Gerar</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+const modalDia     = document.getElementById('modal-dia');
+const modalPopular = document.getElementById('modal-popular');
+
+function editarDia(el) {
+    const d = el.dataset;
+    document.getElementById('modal-dia-titulo').textContent = 'Editar Dia — ' + d.date;
+    document.getElementById('edit-date').value         = d.date;
+    document.getElementById('edit-day-type').value     = d.type;
+    document.getElementById('edit-holiday-name').value = d.name;
+    modalDia.showModal();
+}
+function fecharModalDia()     { modalDia.close(); }
+function abrirPopular()       { modalPopular.showModal(); }
+function fecharModalPopular() { modalPopular.close(); }
+
+modalDia.addEventListener('click',     e => { if (e.target === modalDia)     fecharModalDia(); });
+modalPopular.addEventListener('click', e => { if (e.target === modalPopular) fecharModalPopular(); });
+</script>
+{% endblock %}

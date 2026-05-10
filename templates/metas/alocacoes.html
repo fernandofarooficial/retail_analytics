@@ -1,0 +1,153 @@
+{% extends 'base_web.html' %}
+{% block title %}Alocações — {{ goal.goal_name }} — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <a class="back-link" href="{{ url_for('metas.index') }}">Metas</a>
+        <span class="breadcrumb-sep">/</span>
+        <a class="back-link" href="{{ url_for('metas.objetivos') }}">Objetivos</a>
+        <span class="breadcrumb-sep">/</span>
+        <h1>{{ goal.goal_name }}</h1>
+    </div>
+    <button class="btn-primary" style="width:auto; padding:.5rem 1.25rem;" onclick="abrirNovo()">+ Nova Alocação</button>
+</div>
+
+<div class="info-card" style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:.875rem 1.125rem; font-size:.875rem; color:#1E40AF; margin-bottom:1.25rem;">
+    Uma alocação vincula esta meta a uma loja, empresa ou grupo empresarial específico,
+    permitindo definir valores-alvo independentes para cada entidade.
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:50px">ID</th>
+                <th style="width:130px">Tipo</th>
+                <th>Entidade</th>
+                <th style="width:90px; text-align:center">Valores</th>
+                <th style="width:70px; text-align:center">Ativo</th>
+                <th class="col-actions">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in targets %}
+            <tr>
+                <td><span class="badge">{{ t.goal_target_id }}</span></td>
+                <td>
+                    {% if t.entity_type == 'store' %}
+                        <span class="badge" style="background:#FEF3C7; color:#92400E;">Loja</span>
+                    {% elif t.entity_type == 'company' %}
+                        <span class="badge" style="background:#DBEAFE; color:#1D4ED8;">Empresa</span>
+                    {% else %}
+                        <span class="badge" style="background:#F3E8FF; color:#6B21A8;">Grupo</span>
+                    {% endif %}
+                </td>
+                <td style="font-weight:500">{{ t._entity_name }}</td>
+                <td style="text-align:center">
+                    {% if t.num_values > 0 %}
+                        <a href="{{ url_for('metas.valores', goal_id=goal.goal_id, target_id=t.goal_target_id) }}"
+                           class="badge" style="text-decoration:none;">{{ t.num_values }}</a>
+                    {% else %}
+                        <a href="{{ url_for('metas.valores', goal_id=goal.goal_id, target_id=t.goal_target_id) }}"
+                           style="font-size:.8rem; color:#9CA3AF; text-decoration:none;">nenhum</a>
+                    {% endif %}
+                </td>
+                <td style="text-align:center">
+                    <form method="POST" style="display:inline">
+                        <input type="hidden" name="_action" value="toggle_ativo">
+                        <input type="hidden" name="_id" value="{{ t.goal_target_id }}">
+                        <button type="submit" style="background:none; border:none; cursor:pointer; font-size:1.1rem;">
+                            {{ '✅' if t.is_active else '⬜' }}
+                        </button>
+                    </form>
+                </td>
+                <td class="col-actions">
+                    <a href="{{ url_for('metas.valores', goal_id=goal.goal_id, target_id=t.goal_target_id) }}"
+                       class="btn-ver">Valores</a>
+                    <form method="POST" style="display:inline"
+                          onsubmit="return confirm('Confirma a exclusão desta alocação? Os valores vinculados também serão removidos.')">
+                        <input type="hidden" name="_action" value="excluir">
+                        <input type="hidden" name="_id" value="{{ t.goal_target_id }}">
+                        <button type="submit" class="btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="table-empty">Nenhuma alocação cadastrada para esta meta.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<dialog id="modal">
+    <form method="POST">
+        <div class="modal-header">
+            <h2>Nova Alocação</h2>
+            <button type="button" class="modal-close" onclick="fecharModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="_action" value="criar">
+
+            <div class="form-group">
+                <label>Tipo de Entidade <span style="color:#EF4444">*</span></label>
+                <select id="field-entity-type" name="entity_type" required onchange="atualizarEntitySelect()">
+                    <option value="">— Selecione —</option>
+                    <option value="store">Loja</option>
+                    <option value="company">Empresa</option>
+                    <option value="company_group">Grupo Empresarial</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="grupo-store" style="display:none">
+                <label>Loja <span style="color:#EF4444">*</span></label>
+                <select id="field-store" name="store_id">
+                    <option value="">— Selecione —</option>
+                    {% for s in stores %}
+                    <option value="{{ s.store_id }}">{{ s.store_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group" id="grupo-company" style="display:none">
+                <label>Empresa <span style="color:#EF4444">*</span></label>
+                <select id="field-company" name="company_id">
+                    <option value="">— Selecione —</option>
+                    {% for c in companies %}
+                    <option value="{{ c.company_id }}">{{ c.company_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group" id="grupo-group" style="display:none">
+                <label>Grupo Empresarial <span style="color:#EF4444">*</span></label>
+                <select id="field-group" name="company_group_id">
+                    <option value="">— Selecione —</option>
+                    {% for g in groups %}
+                    <option value="{{ g.company_group_id }}">{{ g.company_group_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button type="submit" class="btn-primary" style="width:auto; padding:.6875rem 1.5rem;">Salvar</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+const modal = document.getElementById('modal');
+
+function abrirNovo() { modal.showModal(); }
+function fecharModal() { modal.close(); }
+modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
+
+function atualizarEntitySelect() {
+    const tipo = document.getElementById('field-entity-type').value;
+    document.getElementById('grupo-store').style.display   = tipo === 'store'         ? '' : 'none';
+    document.getElementById('grupo-company').style.display = tipo === 'company'       ? '' : 'none';
+    document.getElementById('grupo-group').style.display   = tipo === 'company_group' ? '' : 'none';
+}
+</script>
+{% endblock %}

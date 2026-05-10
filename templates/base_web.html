@@ -16,6 +16,8 @@
            href="{{ url_for('cadastros.index') }}">Cadastros</a>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('usuarios.') %}active{% endif %}"
            href="{{ url_for('usuarios.index') }}">Usuários</a>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('metas.') %}active{% endif %}"
+           href="{{ url_for('metas.index') }}">Metas</a>
         {% endif %}
         <a class="nav-link {% if request.endpoint == 'auth.dashboard' %}active{% endif %}"
            href="{{ url_for('auth.dashboard') }}">Dashboard</a>

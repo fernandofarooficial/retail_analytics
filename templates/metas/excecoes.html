@@ -1,0 +1,181 @@
+{% extends 'base_web.html' %}
+{% block title %}Exceções por Loja — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <a class="back-link" href="{{ url_for('metas.index') }}">Metas</a>
+        <span class="breadcrumb-sep">/</span>
+        <h1>Exceções por Loja</h1>
+    </div>
+    <button class="btn-primary" style="width:auto; padding:.5rem 1.25rem;" onclick="abrirNovo()">+ Nova Exceção</button>
+</div>
+
+<div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:.875rem 1.125rem; font-size:.875rem; color:#1E40AF; margin-bottom:1.25rem;">
+    Exceções sobrescrevem o calendário base para lojas específicas.
+    A data deve existir no calendário base — popule o calendário antes de cadastrar exceções.
+</div>
+
+<!-- Filtro por loja -->
+<form method="GET" style="display:flex; align-items:center; gap:.75rem; margin-bottom:1.25rem;">
+    <label style="font-size:.875rem; font-weight:600; color:#374151; white-space:nowrap;">Filtrar por loja:</label>
+    <select name="store_id" style="padding:.5rem .875rem; border:1.5px solid #D1D5DB; border-radius:8px; font-size:.9rem; min-width:240px;">
+        <option value="">— Todas as lojas —</option>
+        {% for s in stores %}
+        <option value="{{ s.store_id }}" {% if store_id == s.store_id|string %}selected{% endif %}>{{ s.store_name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn-secondary" style="padding:.5rem 1rem;">Filtrar</button>
+    {% if store_id %}
+    <a href="{{ url_for('metas.excecoes') }}" style="font-size:.875rem; color:#6B7280; text-decoration:none;">Limpar</a>
+    {% endif %}
+</form>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:50px">ID</th>
+                <th>Loja</th>
+                <th style="width:130px">Data</th>
+                <th style="width:160px">Tipo de Dia</th>
+                <th>Descrição</th>
+                <th class="col-actions">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in excecoes %}
+            <tr>
+                <td><span class="badge">{{ e.exception_id }}</span></td>
+                <td style="font-weight:500">{{ e.store_name }}</td>
+                <td style="font-family:monospace; font-size:.875rem;">{{ e.calendar_date.strftime('%d/%m/%Y') }}</td>
+                <td>
+                    <span class="cal-day-type dtype-{{ e.day_type_id }}" style="font-size:.75rem; padding:.15rem .5rem; border-radius:4px; font-weight:600; display:inline-block;">
+                        {{ e.day_type_name }}
+                    </span>
+                </td>
+                <td style="color:#6B7280;">{{ e.exception_name or '—' }}</td>
+                <td class="col-actions">
+                    <button class="btn-edit"
+                        data-id="{{ e.exception_id }}"
+                        data-type="{{ e.day_type_id }}"
+                        data-name="{{ e.exception_name or '' | e }}"
+                        onclick="abrirEditar(this)">Editar</button>
+                    <form method="POST" style="display:inline"
+                          onsubmit="return confirm('Confirma a exclusão desta exceção?')">
+                        <input type="hidden" name="_action" value="excluir">
+                        <input type="hidden" name="_id" value="{{ e.exception_id }}">
+                        <input type="hidden" name="store_filter" value="{{ store_id }}">
+                        <button type="submit" class="btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="table-empty">
+                {% if store_id %}Nenhuma exceção cadastrada para esta loja.
+                {% else %}Nenhuma exceção cadastrada.{% endif %}
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal criar -->
+<dialog id="modal-criar">
+    <form method="POST">
+        <div class="modal-header">
+            <h2>Nova Exceção de Calendário</h2>
+            <button type="button" class="modal-close" onclick="fecharModalCriar()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="_action" value="criar">
+            <input type="hidden" name="store_filter" value="{{ store_id }}">
+
+            <div class="form-group">
+                <label>Loja <span style="color:#EF4444">*</span></label>
+                <select id="new-store" name="store_id" required>
+                    <option value="">— Selecione —</option>
+                    {% for s in stores %}
+                    <option value="{{ s.store_id }}" {% if store_id == s.store_id|string %}selected{% endif %}>{{ s.store_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Data <span style="color:#EF4444">*</span></label>
+                <input type="date" name="calendar_date" required>
+                <small style="color:#6B7280; font-size:.8rem;">A data deve existir no calendário base.</small>
+            </div>
+            <div class="form-group">
+                <label>Tipo de Dia <span style="color:#EF4444">*</span></label>
+                <select name="day_type_id" required>
+                    <option value="">— Selecione —</option>
+                    {% for dt in day_types %}
+                    <option value="{{ dt.day_type_id }}">{{ dt.day_type_name }} (peso {{ dt.weight }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Descrição <small style="font-weight:400; color:#6B7280">(opcional)</small></label>
+                <input type="text" name="exception_name" maxlength="100"
+                       placeholder="Ex: Feriado municipal, Inventário, Loja no shopping">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="fecharModalCriar()">Cancelar</button>
+            <button type="submit" class="btn-primary" style="width:auto; padding:.6875rem 1.5rem;">Salvar</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Modal editar -->
+<dialog id="modal-editar">
+    <form method="POST">
+        <div class="modal-header">
+            <h2>Editar Exceção</h2>
+            <button type="button" class="modal-close" onclick="fecharModalEditar()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="_action" value="editar">
+            <input type="hidden" name="_id"     id="edit-id">
+            <input type="hidden" name="store_filter" value="{{ store_id }}">
+
+            <div class="form-group">
+                <label>Tipo de Dia <span style="color:#EF4444">*</span></label>
+                <select id="edit-type" name="day_type_id" required>
+                    {% for dt in day_types %}
+                    <option value="{{ dt.day_type_id }}">{{ dt.day_type_name }} (peso {{ dt.weight }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Descrição <small style="font-weight:400; color:#6B7280">(opcional)</small></label>
+                <input type="text" id="edit-name" name="exception_name" maxlength="100">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="fecharModalEditar()">Cancelar</button>
+            <button type="submit" class="btn-primary" style="width:auto; padding:.6875rem 1.5rem;">Salvar</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+const modalCriar  = document.getElementById('modal-criar');
+const modalEditar = document.getElementById('modal-editar');
+
+function abrirNovo()        { modalCriar.showModal(); }
+function fecharModalCriar() { modalCriar.close(); }
+
+function abrirEditar(btn) {
+    const d = btn.dataset;
+    document.getElementById('edit-id').value   = d.id;
+    document.getElementById('edit-type').value = d.type;
+    document.getElementById('edit-name').value = d.name;
+    modalEditar.showModal();
+}
+function fecharModalEditar() { modalEditar.close(); }
+
+modalCriar.addEventListener('click',  e => { if (e.target === modalCriar)  fecharModalCriar(); });
+modalEditar.addEventListener('click', e => { if (e.target === modalEditar) fecharModalEditar(); });
+</script>
+{% endblock %}
