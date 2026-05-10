@@ -14,6 +14,25 @@ def inject_now():
     return {'now': datetime.utcnow()}
 
 
+@app.template_filter('br_valor')
+def br_valor_filter(value, symbol=''):
+    """Formata número no padrão brasileiro com símbolo da unidade."""
+    if value is None:
+        return '—'
+    try:
+        v = float(value)
+        fmt = f'{v:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+        if symbol == 'R$':
+            return f'R$ {fmt}'
+        elif symbol == '%':
+            return f'{fmt}%'
+        elif symbol:
+            return f'{fmt} {symbol}'
+        return fmt
+    except (ValueError, TypeError):
+        return '—'
+
+
 from routes.auth      import auth_bp
 from routes.cadastros import cadastros_bp
 from routes.conta     import conta_bp

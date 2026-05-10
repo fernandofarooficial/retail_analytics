@@ -378,9 +378,11 @@ def desdobrar(value_id):
 @_admin_required
 def desdobrar_sugestao(value_id):
     parent = db.query_one("""
-        SELECT gv.*, gp.period_order, gp.goal_period_id AS parent_period_id
+        SELECT gv.*, gp.period_order, gp.goal_period_id AS parent_period_id,
+               gt.entity_type, gt.store_id
         FROM   faciais.goal_values gv
         JOIN   faciais.goal_periods gp ON gp.goal_period_id = gv.goal_period_id
+        JOIN   faciais.goal_targets gt ON gt.goal_target_id = gv.goal_target_id
         WHERE  gv.goal_value_id = %s
     """, (value_id,))
     if not parent:
@@ -453,18 +455,61 @@ def _suggest_breakdown(parent, child_period_id):
             })
 
     elif child_period_id == 'daily':
-        days = []
-        cur = start
-        while cur <= end:
-            days.append(cur)
-            cur += timedelta(days=1)
-        sug = round(target_val / len(days), 4) if days else 0
-        for d in days:
-            slots.append({
-                'ref_date': d.isoformat(),
-                'label': d.strftime('%d/%m/%Y'),
-                'suggested_value': str(sug),
-            })
+        # Distribui proporcionalmente ao peso do dia no calendário
+        entity_type = parent.get('entity_type')
+        store_id    = parent.get('store_id')
+
+        if entity_type == 'store' and store_id:
+            cal_days = db.query_all("""
+                SELECT calendar_date, day_weight, day_label
+                FROM   faciais.vw_store_calendar
+                WHERE  store_id = %s
+                  AND  calendar_date BETWEEN %s AND %s
+                  AND  day_weight > 0
+                ORDER  BY calendar_date
+            """, (store_id, start, end))
+        else:
+            cal_days = db.query_all("""
+                SELECT c.calendar_date,
+                       dt.weight AS day_weight,
+                       c.holiday_name AS day_label
+                FROM   faciais.calendar c
+                JOIN   faciais.day_types dt ON dt.day_type_id = c.day_type_id
+                WHERE  c.calendar_date BETWEEN %s AND %s
+                  AND  dt.weight > 0
+                ORDER  BY c.calendar_date
+            """, (start, end))
+
+        if not cal_days:
+            # Fallback: todos os dias igualmente (calendário não populado)
+            cur = start
+            all_days = []
+            while cur <= end:
+                all_days.append(cur)
+                cur += timedelta(days=1)
+            sug = round(target_val / len(all_days), 4) if all_days else 0
+            for d in all_days:
+                slots.append({
+                    'ref_date': d.isoformat(),
+                    'label': d.strftime('%d/%m/%Y') + ' ⚠ sem calendário',
+                    'suggested_value': str(sug),
+                })
+        else:
+            total_weight = sum(float(d['day_weight']) for d in cal_days)
+            for d in cal_days:
+                weight   = float(d['day_weight'])
+                sug      = round(target_val * weight / total_weight, 4) if total_weight else 0
+                cal_date = d['calendar_date']
+                label    = cal_date.strftime('%d/%m/%Y')
+                if d.get('day_label'):
+                    label += f' — {d["day_label"]}'
+                elif weight < 1.0:
+                    label += f' (peso {weight})'
+                slots.append({
+                    'ref_date': cal_date.isoformat(),
+                    'label': label,
+                    'suggested_value': str(sug),
+                })
 
     elif child_period_id == 'quarterly':
         seen, quarters = set(), []

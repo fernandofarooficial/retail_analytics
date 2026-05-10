@@ -42,14 +42,12 @@
                 <td>{{ v.reference_date.strftime('%d/%m/%Y') }}</td>
                 <td>
                     {% if v.target_value is not none %}
-                        <strong>{{ '{:,.4f}'.format(v.target_value) }}</strong>
-                        <span style="color:#9CA3AF; font-size:.8rem;"> {{ goal.symbol }}</span>
+                        <strong>{{ v.target_value | br_valor(goal.symbol) }}</strong>
                     {% else %}—{% endif %}
                 </td>
                 <td>
                     {% if v.actual_value is not none %}
-                        {{ '{:,.4f}'.format(v.actual_value) }}
-                        <span style="color:#9CA3AF; font-size:.8rem;"> {{ goal.symbol }}</span>
+                        {{ v.actual_value | br_valor(goal.symbol) }}
                     {% else %}<span style="color:#9CA3AF">—</span>{% endif %}
                 </td>
                 <td style="text-align:center; font-size:1rem;">
