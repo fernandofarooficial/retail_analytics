@@ -324,17 +324,22 @@ def lojas():
                 db.execute(
                     """INSERT INTO faciais.stores
                        (company_id, retailer_group_id, store_name, store_short_name,
-                        cnpj, cep, address_number, address_complement)
-                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+                        cnpj, cep, address_number, address_complement,
+                        uf, city, neighborhood, calendar_profile_id)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                     (
                         request.form.get('company_id') or None,
                         request.form.get('retailer_group_id') or None,
                         request.form['store_name'].strip(),
                         request.form.get('store_short_name', '').strip() or None,
                         request.form.get('cnpj') or None,
-                        request.form.get('cep') or None,
+                        request.form.get('cep', '').strip() or None,
                         request.form.get('address_number', '').strip() or None,
                         request.form.get('address_complement', '').strip() or None,
+                        request.form.get('uf', '').strip().upper() or None,
+                        request.form.get('city', '').strip() or None,
+                        request.form.get('neighborhood', '').strip() or None,
+                        request.form.get('calendar_profile_id') or None,
                     )
                 )
                 flash('Loja criada com sucesso.', 'success')
@@ -343,7 +348,8 @@ def lojas():
                 db.execute(
                     """UPDATE faciais.stores SET
                        company_id=%s, retailer_group_id=%s, store_name=%s, store_short_name=%s,
-                       cnpj=%s, cep=%s, address_number=%s, address_complement=%s
+                       cnpj=%s, cep=%s, address_number=%s, address_complement=%s,
+                       uf=%s, city=%s, neighborhood=%s, calendar_profile_id=%s
                        WHERE store_id=%s""",
                     (
                         request.form.get('company_id') or None,
@@ -351,9 +357,13 @@ def lojas():
                         request.form['store_name'].strip(),
                         request.form.get('store_short_name', '').strip() or None,
                         request.form.get('cnpj') or None,
-                        request.form.get('cep') or None,
+                        request.form.get('cep', '').strip() or None,
                         request.form.get('address_number', '').strip() or None,
                         request.form.get('address_complement', '').strip() or None,
+                        request.form.get('uf', '').strip().upper() or None,
+                        request.form.get('city', '').strip() or None,
+                        request.form.get('neighborhood', '').strip() or None,
+                        request.form.get('calendar_profile_id') or None,
                         request.form['_id'],
                     )
                 )
@@ -373,10 +383,11 @@ def lojas():
         return redirect(url_for('cadastros.lojas'))
 
     registros = db.query_all("""
-        SELECT s.*, c.company_name, rg.retailer_group_name
+        SELECT s.*, c.company_name, rg.retailer_group_name, bcp.profile_name
         FROM   faciais.stores s
-        LEFT JOIN faciais.companies       c  ON s.company_id        = c.company_id
-        LEFT JOIN faciais.retailer_groups rg ON s.retailer_group_id = rg.retailer_group_id
+        LEFT JOIN faciais.companies                  c   ON s.company_id         = c.company_id
+        LEFT JOIN faciais.retailer_groups            rg  ON s.retailer_group_id  = rg.retailer_group_id
+        LEFT JOIN faciais.business_calendar_profiles bcp ON bcp.profile_id       = s.calendar_profile_id
         ORDER BY s.store_name
     """)
     companies = db.query_all(
@@ -385,7 +396,12 @@ def lojas():
     lojistas = db.query_all(
         "SELECT retailer_group_id, retailer_group_name FROM faciais.retailer_groups ORDER BY retailer_group_name"
     )
-    return render_template('cadastros/stores.html', registros=registros, companies=companies, lojistas=lojistas)
+    perfis = db.query_all(
+        "SELECT profile_id, profile_name FROM faciais.business_calendar_profiles WHERE is_active = TRUE ORDER BY profile_name"
+    )
+    return render_template('cadastros/stores.html',
+                           registros=registros, companies=companies,
+                           lojistas=lojistas, perfis=perfis)
 
 
 # ── Câmeras ───────────────────────────────────────────────────────────────────

@@ -14,6 +14,15 @@ def inject_now():
     return {'now': datetime.utcnow()}
 
 
+@app.template_filter('fmt_cep')
+def fmt_cep_filter(cep):
+    """Formata CEP para o padrão 00000-000."""
+    if not cep:
+        return '—'
+    digits = str(cep).replace('-', '').replace('.', '').zfill(8)[:8]
+    return f'{digits[:5]}-{digits[5:]}'
+
+
 @app.template_filter('br_valor')
 def br_valor_filter(value, symbol=''):
     """Formata número no padrão brasileiro com símbolo da unidade."""

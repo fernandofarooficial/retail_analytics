@@ -38,5 +38,25 @@
         </div>
     </a>
 
+    <a class="crud-card" href="{{ url_for('metas.perfis_calendario') }}" style="align-items:flex-start; text-align:left;">
+        <div class="crud-card-icon" style="background:#7C3AED;">PRF</div>
+        <div>
+            <div class="crud-card-label" style="font-size:1rem;">Perfis de Calendário</div>
+            <div style="font-size:.8125rem; color:#6B7280; margin-top:.25rem; line-height:1.4;">
+                Define como sábados e domingos são tratados por perfil de loja (ex: shopping vs. rua).
+            </div>
+        </div>
+    </a>
+
+    <a class="crud-card" href="{{ url_for('metas.feriados_regionais') }}" style="align-items:flex-start; text-align:left;">
+        <div class="crud-card-icon" style="background:#059669;">FER</div>
+        <div>
+            <div class="crud-card-label" style="font-size:1rem;">Feriados Regionais</div>
+            <div style="font-size:.8125rem; color:#6B7280; margin-top:.25rem; line-height:1.4;">
+                Feriados estaduais e municipais usados pela view de calendário por loja.
+            </div>
+        </div>
+    </a>
+
 </div>
 {% endblock %}

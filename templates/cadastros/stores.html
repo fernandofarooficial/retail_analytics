@@ -19,9 +19,9 @@
                 <th>Nome</th>
                 <th>Nome Curto</th>
                 <th>Empresa</th>
-                <th>Lojista</th>
                 <th>CNPJ</th>
-                <th>CEP</th>
+                <th>Cidade / UF</th>
+                <th>Perfil Calendário</th>
                 <th class="col-actions">Ações</th>
             </tr>
         </thead>
@@ -32,9 +32,17 @@
                 <td>{{ r.store_name }}</td>
                 <td>{{ r.store_short_name or '—' }}</td>
                 <td>{{ r.company_name or '—' }}</td>
-                <td>{{ r.retailer_group_name or '—' }}</td>
                 <td>{{ r.cnpj or '—' }}</td>
-                <td>{{ r.cep or '—' }}</td>
+                <td>
+                    {% if r.city and r.uf %}
+                        {{ r.city }}/{{ r.uf }}
+                    {% elif r.city %}
+                        {{ r.city }}
+                    {% elif r.cep %}
+                        {{ r.cep | fmt_cep }}
+                    {% else %}—{% endif %}
+                </td>
+                <td>{{ r.profile_name or '—' }}</td>
                 <td class="col-actions">
                     <button class="btn-edit"
                         data-id="{{ r.store_id }}"
@@ -46,6 +54,10 @@
                         data-cep="{{ r.cep or '' }}"
                         data-number="{{ r.address_number or '' | e }}"
                         data-complement="{{ r.address_complement or '' | e }}"
+                        data-uf="{{ r.uf or '' }}"
+                        data-city="{{ r.city or '' | e }}"
+                        data-neighborhood="{{ r.neighborhood or '' | e }}"
+                        data-perfil="{{ r.calendar_profile_id or '' }}"
                         onclick="abrirEditar(this)">Editar</button>
                     <form method="POST" style="display:inline"
                           onsubmit="return confirm('Confirma a exclusão desta loja?')">
@@ -74,7 +86,7 @@
 
             <div class="form-row">
                 <div class="form-group" style="flex:2">
-                    <label>Nome da Loja</label>
+                    <label>Nome da Loja <span style="color:#EF4444">*</span></label>
                     <input type="text" id="f-name" name="store_name" required>
                 </div>
                 <div class="form-group">
@@ -82,6 +94,7 @@
                     <input type="text" id="f-short" name="store_short_name" maxlength="30">
                 </div>
             </div>
+
             <div class="form-row">
                 <div class="form-group">
                     <label>Empresa</label>
@@ -102,22 +115,64 @@
                     </select>
                 </div>
             </div>
+
             <div class="form-row">
                 <div class="form-group">
                     <label>CNPJ</label>
-                    <input type="number" id="f-cnpj" name="cnpj" placeholder="00000000000000">
+                    <input type="text" id="f-cnpj" name="cnpj" maxlength="14" placeholder="00000000000000">
                 </div>
                 <div class="form-group">
-                    <label>CEP</label>
-                    <input type="number" id="f-cep" name="cep" placeholder="00000000">
+                    <label>Perfil de Calendário</label>
+                    <select id="f-perfil" name="calendar_profile_id">
+                        <option value="">— Padrão —</option>
+                        {% for p in perfis %}
+                        <option value="{{ p.profile_id }}">{{ p.profile_name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
+
+            <hr style="border:none; border-top:1px solid #E5E7EB; margin:.75rem 0;">
+            <div style="font-size:.8125rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6B7280; margin-bottom:.75rem;">Endereço</div>
+
+            <div class="form-row" style="align-items:flex-end;">
+                <div class="form-group" style="flex:0 0 160px">
+                    <label>CEP</label>
+                    <input type="text" id="f-cep" name="cep" maxlength="9"
+                           placeholder="00000-000"
+                           oninput="mascararCep(this)"
+                           style="letter-spacing:.04em;">
+                </div>
+                <div class="form-group" style="flex:0 0 auto; padding-bottom:.125rem;">
+                    <button type="button" class="btn-secondary"
+                            style="padding:.5rem 1rem; font-size:.875rem;"
+                            onclick="buscarCep()">Buscar CEP</button>
+                </div>
+                <div id="cep-status" style="font-size:.8rem; color:#6B7280; align-self:flex-end; padding-bottom:.4rem;"></div>
+            </div>
+
             <div class="form-row">
+                <div class="form-group" style="flex:0 0 80px">
+                    <label>UF</label>
+                    <input type="text" id="f-uf" name="uf" maxlength="2"
+                           placeholder="SP" style="text-transform:uppercase; letter-spacing:.1em;">
+                </div>
                 <div class="form-group">
+                    <label>Cidade</label>
+                    <input type="text" id="f-city" name="city" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label>Bairro</label>
+                    <input type="text" id="f-neighborhood" name="neighborhood" maxlength="100">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex:0 0 120px">
                     <label>Número</label>
                     <input type="text" id="f-number" name="address_number" maxlength="10">
                 </div>
-                <div class="form-group" style="flex:2">
+                <div class="form-group">
                     <label>Complemento</label>
                     <input type="text" id="f-complement" name="address_complement" maxlength="30">
                 </div>
@@ -133,32 +188,79 @@
 <script>
 const modal = document.getElementById('modal');
 
+function mascararCep(input) {
+    let v = input.value.replace(/\D/g, '').slice(0, 8);
+    if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
+    input.value = v;
+}
+
+async function buscarCep() {
+    const raw = document.getElementById('f-cep').value.replace(/\D/g, '');
+    const status = document.getElementById('cep-status');
+    if (raw.length !== 8) {
+        status.textContent = 'CEP deve ter 8 dígitos.';
+        status.style.color = '#DC2626';
+        return;
+    }
+    status.textContent = 'Consultando…';
+    status.style.color = '#6B7280';
+    try {
+        const resp = await fetch(`https://viacep.com.br/ws/${raw}/json/`);
+        const data = await resp.json();
+        if (data.erro) {
+            status.textContent = 'CEP não encontrado.';
+            status.style.color = '#DC2626';
+            return;
+        }
+        document.getElementById('f-uf').value           = data.uf           || '';
+        document.getElementById('f-city').value         = data.localidade   || '';
+        document.getElementById('f-neighborhood').value = data.bairro       || '';
+        status.textContent = '✓ Endereço preenchido';
+        status.style.color = '#059669';
+    } catch {
+        status.textContent = 'Erro ao consultar ViaCEP.';
+        status.style.color = '#DC2626';
+    }
+}
+
+const CLEAR_FIELDS = ['f-name','f-short','f-cnpj','f-cep','f-uf','f-city','f-neighborhood','f-number','f-complement'];
+
 function abrirNovo() {
     document.getElementById('modal-titulo').textContent = 'Nova Loja';
     document.getElementById('form-action').value = 'criar';
     document.getElementById('form-id').value = '';
-    ['f-name','f-short','f-cnpj','f-cep','f-number','f-complement'].forEach(id => {
-        document.getElementById(id).value = '';
-    });
+    CLEAR_FIELDS.forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('f-company').value = '';
     document.getElementById('f-lojista').value = '';
+    document.getElementById('f-perfil').value  = '';
+    document.getElementById('cep-status').textContent = '';
     modal.showModal();
 }
 
 function abrirEditar(btn) {
     const d = btn.dataset;
     document.getElementById('modal-titulo').textContent = 'Editar Loja';
-    document.getElementById('form-action').value = 'editar';
-    document.getElementById('form-id').value     = d.id;
-    document.getElementById('f-name').value      = d.nome;
-    document.getElementById('f-short').value     = d.short;
-    document.getElementById('f-company').value   = d.company;
-    document.getElementById('f-lojista').value   = d.lojista;
-    document.getElementById('f-cnpj').value      = d.cnpj;
-    document.getElementById('f-cep').value       = d.cep;
-    document.getElementById('f-number').value    = d.number;
-    document.getElementById('f-complement').value= d.complement;
+    document.getElementById('form-action').value        = 'editar';
+    document.getElementById('form-id').value            = d.id;
+    document.getElementById('f-name').value             = d.nome;
+    document.getElementById('f-short').value            = d.short;
+    document.getElementById('f-company').value          = d.company;
+    document.getElementById('f-lojista').value          = d.lojista;
+    document.getElementById('f-cnpj').value             = d.cnpj;
+    document.getElementById('f-cep').value              = d.cep ? formatCep(d.cep) : '';
+    document.getElementById('f-uf').value               = d.uf;
+    document.getElementById('f-city').value             = d.city;
+    document.getElementById('f-neighborhood').value     = d.neighborhood;
+    document.getElementById('f-number').value           = d.number;
+    document.getElementById('f-complement').value       = d.complement;
+    document.getElementById('f-perfil').value           = d.perfil;
+    document.getElementById('cep-status').textContent   = '';
     modal.showModal();
+}
+
+function formatCep(v) {
+    const d = String(v).replace(/\D/g, '').padStart(8, '0').slice(0, 8);
+    return d.slice(0, 5) + '-' + d.slice(5);
 }
 
 function fecharModal() { modal.close(); }

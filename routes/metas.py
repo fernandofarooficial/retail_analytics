@@ -723,3 +723,188 @@ def excecoes():
                            stores=stores,
                            day_types=day_types,
                            store_id=store_id)
+
+
+# ── Perfis de Calendário ───────────────────────────────────────────────────────
+
+@metas_bp.route('/perfis-calendario', methods=['GET', 'POST'])
+@_admin_required
+def perfis_calendario():
+    day_types = db.query_all("SELECT * FROM faciais.day_types ORDER BY day_type_id")
+
+    if request.method == 'POST':
+        action = request.form.get('_action')
+        try:
+            if action == 'criar':
+                db.execute(
+                    """INSERT INTO faciais.business_calendar_profiles
+                       (profile_name, description, saturday_day_type, sunday_day_type)
+                       VALUES (%s, %s, %s, %s)""",
+                    (
+                        request.form['profile_name'].strip(),
+                        request.form.get('description', '').strip() or None,
+                        request.form['saturday_day_type'],
+                        request.form['sunday_day_type'],
+                    )
+                )
+                flash('Perfil criado com sucesso.', 'success')
+
+            elif action == 'editar':
+                db.execute(
+                    """UPDATE faciais.business_calendar_profiles SET
+                       profile_name=%s, description=%s,
+                       saturday_day_type=%s, sunday_day_type=%s
+                       WHERE profile_id=%s""",
+                    (
+                        request.form['profile_name'].strip(),
+                        request.form.get('description', '').strip() or None,
+                        request.form['saturday_day_type'],
+                        request.form['sunday_day_type'],
+                        request.form['_id'],
+                    )
+                )
+                flash('Perfil atualizado com sucesso.', 'success')
+
+            elif action == 'toggle_ativo':
+                db.execute(
+                    "UPDATE faciais.business_calendar_profiles SET is_active = NOT is_active WHERE profile_id=%s",
+                    (request.form['_id'],)
+                )
+                flash('Status do perfil atualizado.', 'success')
+
+            elif action == 'excluir':
+                db.execute(
+                    "DELETE FROM faciais.business_calendar_profiles WHERE profile_id=%s",
+                    (request.form['_id'],)
+                )
+                flash('Perfil excluído com sucesso.', 'success')
+
+        except Exception as e:
+            err = str(e).lower()
+            if 'foreign key' in err or 'violates' in err:
+                flash('Não é possível excluir: existem lojas vinculadas a este perfil.', 'error')
+            else:
+                flash(f'Erro: {e}', 'error')
+
+        return redirect(url_for('metas.perfis_calendario'))
+
+    perfis = db.query_all("""
+        SELECT bcp.*,
+               dts.day_type_name AS saturday_type_name,
+               dtd.day_type_name AS sunday_type_name,
+               COUNT(s.store_id) AS num_stores
+        FROM   faciais.business_calendar_profiles bcp
+        LEFT JOIN faciais.day_types dts ON dts.day_type_id = bcp.saturday_day_type
+        LEFT JOIN faciais.day_types dtd ON dtd.day_type_id = bcp.sunday_day_type
+        LEFT JOIN faciais.stores    s   ON s.calendar_profile_id = bcp.profile_id
+        GROUP BY bcp.profile_id, dts.day_type_name, dtd.day_type_name
+        ORDER BY bcp.profile_name
+    """)
+    return render_template('metas/perfis_calendario.html', perfis=perfis, day_types=day_types)
+
+
+# ── Feriados Regionais ─────────────────────────────────────────────────────────
+
+@metas_bp.route('/feriados-regionais', methods=['GET', 'POST'])
+@_admin_required
+def feriados_regionais():
+    day_types = db.query_all(
+        "SELECT * FROM faciais.day_types WHERE day_type_id != 'workday' ORDER BY day_type_id"
+    )
+
+    if request.method == 'POST':
+        action = request.form.get('_action')
+        year_filter = request.form.get('year_filter', '')
+        uf_filter   = request.form.get('uf_filter', '')
+        try:
+            if action == 'criar':
+                scope = request.form['scope']
+                city  = request.form.get('city', '').strip() or None
+                db.execute(
+                    """INSERT INTO faciais.geo_holidays
+                       (calendar_date, holiday_name, scope, uf, city, day_type_id)
+                       VALUES (%s, %s, %s, %s, %s, %s)""",
+                    (
+                        request.form['calendar_date'],
+                        request.form['holiday_name'].strip(),
+                        scope,
+                        request.form['uf'].strip().upper(),
+                        city if scope == 'city' else None,
+                        request.form['day_type_id'],
+                    )
+                )
+                flash('Feriado regional criado com sucesso.', 'success')
+
+            elif action == 'editar':
+                scope = request.form['scope']
+                city  = request.form.get('city', '').strip() or None
+                db.execute(
+                    """UPDATE faciais.geo_holidays SET
+                       holiday_name=%s, scope=%s, uf=%s, city=%s, day_type_id=%s
+                       WHERE geo_holiday_id=%s""",
+                    (
+                        request.form['holiday_name'].strip(),
+                        scope,
+                        request.form['uf'].strip().upper(),
+                        city if scope == 'city' else None,
+                        request.form['day_type_id'],
+                        request.form['_id'],
+                    )
+                )
+                flash('Feriado regional atualizado com sucesso.', 'success')
+
+            elif action == 'excluir':
+                db.execute(
+                    "DELETE FROM faciais.geo_holidays WHERE geo_holiday_id=%s",
+                    (request.form['_id'],)
+                )
+                flash('Feriado regional excluído com sucesso.', 'success')
+
+        except Exception as e:
+            err = str(e).lower()
+            if 'foreign key' in err or 'not present' in err:
+                flash('Data não encontrada no calendário base. Popule o calendário primeiro.', 'error')
+            elif 'unique' in err or 'duplicate' in err:
+                flash('Já existe um feriado regional para essa data e localidade.', 'error')
+            else:
+                flash(f'Erro: {e}', 'error')
+
+        qs = {}
+        if year_filter:
+            qs['year'] = year_filter
+        if uf_filter:
+            qs['uf'] = uf_filter
+        return redirect(url_for('metas.feriados_regionais', **qs))
+
+    year_filter = request.args.get('year', '')
+    uf_filter   = request.args.get('uf', '').upper()
+
+    query = """
+        SELECT gh.*, dt.day_type_name
+        FROM   faciais.geo_holidays gh
+        JOIN   faciais.day_types dt ON dt.day_type_id = gh.day_type_id
+        WHERE  1=1
+    """
+    params = []
+    if year_filter:
+        query += " AND EXTRACT(YEAR FROM gh.calendar_date) = %s"
+        params.append(int(year_filter))
+    if uf_filter:
+        query += " AND gh.uf = %s"
+        params.append(uf_filter)
+    query += " ORDER BY gh.calendar_date, gh.uf, gh.city"
+
+    feriados = db.query_all(query, params if params else None)
+
+    years = db.query_all("""
+        SELECT DISTINCT EXTRACT(YEAR FROM calendar_date)::int AS yr
+        FROM   faciais.geo_holidays
+        ORDER  BY yr DESC
+    """)
+
+    return render_template('metas/feriados_regionais.html',
+                           feriados=feriados,
+                           day_types=day_types,
+                           years=years,
+                           year_filter=year_filter,
+                           uf_filter=uf_filter)
