@@ -1,0 +1,179 @@
+{% extends 'base_web.html' %}
+{% block title %}Vigências — {{ target._entity_name }} — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <a class="back-link" href="{{ url_for('metas.index') }}">Metas</a>
+        <span class="breadcrumb-sep">/</span>
+        <a class="back-link" href="{{ url_for('metas.objetivos') }}">Objetivos</a>
+        <span class="breadcrumb-sep">/</span>
+        <a class="back-link" href="{{ url_for('metas.alocacoes', goal_id=goal.goal_id) }}">{{ goal.goal_name }}</a>
+        <span class="breadcrumb-sep">/</span>
+        <h1>Vigências — {{ target._entity_name }}</h1>
+    </div>
+    <button class="btn-primary" style="width:auto; padding:.5rem 1.25rem;" onclick="abrirNovo()">+ Nova Vigência</button>
+</div>
+
+<div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:.875rem 1.125rem; font-size:.875rem; color:#1E40AF; margin-bottom:1.25rem;">
+    Vigências definem o valor padrão recorrente da meta para um período.
+    Para exceções pontuais (ex: Black Friday), use a tela de <a href="{{ url_for('metas.valores', goal_id=goal.goal_id, target_id=target.goal_target_id) }}" style="color:#1D4ED8;">Valores</a>.
+    A precedência é: <strong>Valor pontual &gt; Vigência ativa &gt; Sem meta</strong>.
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:50px">ID</th>
+                <th style="width:120px">Período</th>
+                <th style="width:160px">Valor Alvo</th>
+                <th style="width:120px">Vigência De</th>
+                <th style="width:120px">Vigência Até</th>
+                <th>Notas</th>
+                <th style="width:90px; text-align:center">Status</th>
+                <th class="col-actions">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in templates %}
+            <tr>
+                <td><span class="badge">{{ t.template_id }}</span></td>
+                <td>{{ t.goal_period_name }}</td>
+                <td><strong>{{ t.target_value | br_valor(goal.symbol) }}</strong></td>
+                <td style="font-family:monospace; font-size:.875rem;">{{ t.date_from.strftime('%d/%m/%Y') }}</td>
+                <td style="font-family:monospace; font-size:.875rem;">
+                    {{ t.date_to.strftime('%d/%m/%Y') if t.date_to else '—' }}
+                </td>
+                <td style="color:#6B7280; font-size:.875rem;">{{ t.notes or '—' }}</td>
+                <td style="text-align:center">
+                    {% if t.status == 'ativo' %}
+                        <span style="font-size:.75rem; font-weight:600; padding:.2rem .5rem; border-radius:4px; background:#DCFCE7; color:#166534;">Ativo</span>
+                    {% elif t.status == 'futuro' %}
+                        <span style="font-size:.75rem; font-weight:600; padding:.2rem .5rem; border-radius:4px; background:#FEF9C3; color:#854D0E;">Futuro</span>
+                    {% else %}
+                        <span style="font-size:.75rem; font-weight:600; padding:.2rem .5rem; border-radius:4px; background:#F1F5F9; color:#94A3B8;">Expirado</span>
+                    {% endif %}
+                </td>
+                <td class="col-actions">
+                    <button class="btn-edit"
+                        data-id="{{ t.template_id }}"
+                        data-period="{{ t.goal_period_id }}"
+                        data-value="{{ t.target_value }}"
+                        data-from="{{ t.date_from.isoformat() }}"
+                        data-to="{{ t.date_to.isoformat() if t.date_to else '' }}"
+                        data-notes="{{ t.notes or '' | e }}"
+                        onclick="abrirEditar(this)">Editar</button>
+                    {% if t.status == 'ativo' %}
+                    <form method="POST" style="display:inline"
+                          onsubmit="return confirm('Encerrar esta vigência na véspera de hoje?')">
+                        <input type="hidden" name="_action" value="encerrar">
+                        <input type="hidden" name="_id" value="{{ t.template_id }}">
+                        <button type="submit" class="btn-secondary"
+                                style="border-color:#F59E0B; color:#B45309; padding:.35rem .75rem; font-size:.8rem;">
+                            Encerrar
+                        </button>
+                    </form>
+                    {% endif %}
+                    <form method="POST" style="display:inline"
+                          onsubmit="return confirm('Confirma a exclusão desta vigência?')">
+                        <input type="hidden" name="_action" value="excluir">
+                        <input type="hidden" name="_id" value="{{ t.template_id }}">
+                        <button type="submit" class="btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="table-empty">Nenhuma vigência cadastrada para esta alocação.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<dialog id="modal">
+    <form method="POST">
+        <div class="modal-header">
+            <h2 id="modal-titulo">Nova Vigência</h2>
+            <button type="button" class="modal-close" onclick="fecharModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="_action" id="form-action">
+            <input type="hidden" name="_id"     id="form-id">
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Período <span style="color:#EF4444">*</span></label>
+                    <select id="f-period" name="goal_period_id" required>
+                        <option value="">— Selecione —</option>
+                        {% for p in periods %}
+                        <option value="{{ p.goal_period_id }}">{{ p.goal_period_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Valor Alvo ({{ goal.symbol }}) <span style="color:#EF4444">*</span></label>
+                    <input type="number" id="f-value" name="target_value"
+                           step="0.0001" min="0" required placeholder="Ex: 1500.00">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Vigência De <span style="color:#EF4444">*</span></label>
+                    <input type="date" id="f-from" name="date_from" required>
+                </div>
+                <div class="form-group">
+                    <label>Vigência Até <small style="font-weight:400; color:#6B7280">(vazio = sem fim)</small></label>
+                    <input type="date" id="f-to" name="date_to">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Notas <small style="font-weight:400; color:#6B7280">(opcional)</small></label>
+                <input type="text" id="f-notes" name="notes" maxlength="255"
+                       placeholder="Ex: Reajuste anual Jan/2026">
+            </div>
+
+            <div style="font-size:.8rem; color:#6B7280; line-height:1.5; margin-top:.25rem;">
+                Para alterar o valor a partir de uma data, encerre a vigência atual e crie uma nova.
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button type="submit" class="btn-primary" style="width:auto; padding:.6875rem 1.5rem;">Salvar</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+const modal = document.getElementById('modal');
+
+function abrirNovo() {
+    document.getElementById('modal-titulo').textContent = 'Nova Vigência';
+    document.getElementById('form-action').value = 'criar';
+    document.getElementById('form-id').value   = '';
+    document.getElementById('f-period').value  = '';
+    document.getElementById('f-value').value   = '';
+    document.getElementById('f-from').value    = '';
+    document.getElementById('f-to').value      = '';
+    document.getElementById('f-notes').value   = '';
+    modal.showModal();
+}
+
+function abrirEditar(btn) {
+    const d = btn.dataset;
+    document.getElementById('modal-titulo').textContent = 'Editar Vigência';
+    document.getElementById('form-action').value = 'editar';
+    document.getElementById('form-id').value   = d.id;
+    document.getElementById('f-period').value  = d.period;
+    document.getElementById('f-value').value   = d.value;
+    document.getElementById('f-from').value    = d.from;
+    document.getElementById('f-to').value      = d.to;
+    document.getElementById('f-notes').value   = d.notes;
+    modal.showModal();
+}
+
+function fecharModal() { modal.close(); }
+modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
+</script>
+{% endblock %}

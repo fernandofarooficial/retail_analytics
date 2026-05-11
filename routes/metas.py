@@ -911,3 +911,117 @@ def feriados_regionais():
                            years=years,
                            year_filter=year_filter,
                            uf_filter=uf_filter)
+
+
+# ── Vigências (goal_value_templates) ──────────────────────────────────────────
+
+@metas_bp.route('/objetivos/<int:goal_id>/alocacoes/<int:target_id>/vigencias',
+                methods=['GET', 'POST'])
+@_admin_required
+def vigencias(goal_id, target_id):
+    goal = db.query_one(
+        """SELECT g.*, gu.symbol FROM faciais.goals g
+           JOIN faciais.goal_units gu ON gu.goal_unit_id = g.goal_unit_id
+           WHERE g.goal_id = %s""",
+        (goal_id,)
+    )
+    target = db.query_one(
+        """SELECT gt.*,
+                  s.store_name, c.company_name, cg.company_group_name
+           FROM   faciais.goal_targets gt
+           LEFT JOIN faciais.stores         s  ON s.store_id          = gt.store_id
+           LEFT JOIN faciais.companies      c  ON c.company_id        = gt.company_id
+           LEFT JOIN faciais.company_groups cg ON cg.company_group_id = gt.company_group_id
+           WHERE  gt.goal_target_id = %s AND gt.goal_id = %s""",
+        (target_id, goal_id)
+    )
+    if not goal or not target:
+        abort(404)
+
+    target['_entity_name'] = _entity_name(target)
+
+    if request.method == 'POST':
+        action = request.form.get('_action')
+        today  = date.today()
+        try:
+            if action == 'criar':
+                date_to = request.form.get('date_to', '').strip() or None
+                db.execute(
+                    """INSERT INTO faciais.goal_value_templates
+                       (goal_target_id, goal_period_id, target_value, date_from, date_to, notes)
+                       VALUES (%s, %s, %s, %s, %s, %s)""",
+                    (
+                        target_id,
+                        request.form['goal_period_id'],
+                        request.form['target_value'],
+                        request.form['date_from'],
+                        date_to,
+                        request.form.get('notes', '').strip() or None,
+                    )
+                )
+                flash('Vigência criada com sucesso.', 'success')
+
+            elif action == 'editar':
+                date_to = request.form.get('date_to', '').strip() or None
+                db.execute(
+                    """UPDATE faciais.goal_value_templates SET
+                       goal_period_id=%s, target_value=%s,
+                       date_from=%s, date_to=%s, notes=%s
+                       WHERE template_id=%s""",
+                    (
+                        request.form['goal_period_id'],
+                        request.form['target_value'],
+                        request.form['date_from'],
+                        date_to,
+                        request.form.get('notes', '').strip() or None,
+                        request.form['_id'],
+                    )
+                )
+                flash('Vigência atualizada com sucesso.', 'success')
+
+            elif action == 'encerrar':
+                # Encerra na véspera de hoje para não afetar o dia atual
+                db.execute(
+                    "UPDATE faciais.goal_value_templates SET date_to=%s WHERE template_id=%s",
+                    (today - timedelta(days=1), request.form['_id'])
+                )
+                flash('Vigência encerrada.', 'success')
+
+            elif action == 'excluir':
+                db.execute(
+                    "DELETE FROM faciais.goal_value_templates WHERE template_id=%s",
+                    (request.form['_id'],)
+                )
+                flash('Vigência excluída com sucesso.', 'success')
+
+        except Exception as e:
+            err = str(e).lower()
+            if 'unique' in err or 'duplicate' in err:
+                flash('Já existe uma vigência com essa data de início para este período.', 'error')
+            elif 'check' in err:
+                flash('A data de fim deve ser posterior à data de início.', 'error')
+            else:
+                flash(f'Erro: {e}', 'error')
+
+        return redirect(url_for('metas.vigencias', goal_id=goal_id, target_id=target_id))
+
+    today = date.today()
+    templates = db.query_all("""
+        SELECT gvt.*, gp.goal_period_name,
+               CASE
+                   WHEN gvt.date_to IS NOT NULL AND gvt.date_to < %s THEN 'expirado'
+                   WHEN gvt.date_from > %s                           THEN 'futuro'
+                   ELSE 'ativo'
+               END AS status
+        FROM   faciais.goal_value_templates gvt
+        JOIN   faciais.goal_periods gp ON gp.goal_period_id = gvt.goal_period_id
+        WHERE  gvt.goal_target_id = %s
+        ORDER  BY gvt.goal_period_id, gvt.date_from DESC
+    """, (today, today, target_id))
+
+    periods = db.query_all("SELECT * FROM faciais.goal_periods ORDER BY period_order")
+
+    return render_template('metas/vigencias.html',
+                           goal=goal, target=target,
+                           templates=templates, periods=periods,
+                           today=today)

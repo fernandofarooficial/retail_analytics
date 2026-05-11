@@ -65,6 +65,8 @@
                 <td class="col-actions">
                     <a href="{{ url_for('metas.valores', goal_id=goal.goal_id, target_id=t.goal_target_id) }}"
                        class="btn-ver">Valores</a>
+                    <a href="{{ url_for('metas.vigencias', goal_id=goal.goal_id, target_id=t.goal_target_id) }}"
+                       class="btn-ver" style="border-color:#7C3AED; color:#7C3AED;">Vigências</a>
                     <form method="POST" style="display:inline"
                           onsubmit="return confirm('Confirma a exclusão desta alocação? Os valores vinculados também serão removidos.')">
                         <input type="hidden" name="_action" value="excluir">
