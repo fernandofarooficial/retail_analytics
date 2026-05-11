@@ -109,11 +109,28 @@ def get_metas(store_id,
     if fat_dia == 0.0 and fat_semana == 0.0 and fat_mes == 0.0:
         return None
 
-    # Ticket médio: meta mensal do mês selecionado
+    # Ticket médio: valor por transação — busca qualquer template ativo na data,
+    # sem filtrar por período (ticket médio não depende da janela de tempo)
     ticket_medio = 0.0
     tkt_tid = _target_id(_GOAL_TICKET_MEDIO, store_id)
     if tkt_tid:
-        ticket_medio = _goal_value(tkt_tid, 'monthly', mes_inicio) or 0.0
+        row = db.query_one("""
+            SELECT COALESCE(gv.target_value, gvt.target_value) AS target_value
+            FROM (SELECT 1) _base
+            LEFT JOIN faciais.goal_values gv
+                ON  gv.goal_target_id = %s
+                AND gv.reference_date  = %s
+            LEFT JOIN LATERAL (
+                SELECT target_value FROM faciais.goal_value_templates
+                WHERE  goal_target_id = %s
+                  AND  date_from     <= %s
+                  AND  (date_to IS NULL OR date_to >= %s)
+                ORDER  BY date_from DESC
+                LIMIT  1
+            ) gvt ON TRUE
+        """, (tkt_tid, data_dia, tkt_tid, data_dia, data_dia))
+        if row and row['target_value'] is not None:
+            ticket_medio = float(row['target_value'])
 
     return {
         'faturamento_dia':    fat_dia,
