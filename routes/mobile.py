@@ -1221,10 +1221,10 @@ def dashboard():
 
     # ── Metas ────────────────────────────────────────────────────────────────
     metas = _get_metas(
-        theme_company_id,
+        selected_store_id,
         selected_date, semana_inicio, semana_fim,
         mes_inicio, mes_fim, ytd_inicio, ytd_fim,
-    ) if theme_company_id else None
+    ) if selected_store_id else None
 
     return render_template(
         'mobile/dashboard.html',
