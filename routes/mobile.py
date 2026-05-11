@@ -1770,7 +1770,8 @@ def mapa_calor():
                 for key in ('planta_heatmap', 'frame_camera_areas'):
                     if r.get('imagens', {}).get(key):
                         r['imagens'][key]['full_url'] = (
-                            HEATMAP_API_BASE + r['imagens'][key]['url']
+                            '/retail_analytics/m/heatmap-imagem?path='
+                            + r['imagens'][key]['url']
                         )
                 total = sum(a['quantidade'] for a in r.get('resumo_por_area', []))
                 for a in r.get('resumo_por_area', []):
@@ -1817,3 +1818,34 @@ def mapa_calor():
         hora_fim=hora_fim,
         theme=theme,
     )
+
+
+# ── Proxy de imagens do servidor de heatmap ───────────────────────────────────
+
+@mobile_bp.route('/heatmap-imagem')
+@_login_required
+def heatmap_imagem():
+    import requests as _requests
+    from flask import Response
+    from routes.utils import HEATMAP_API_BASE, HEATMAP_API_USER, HEATMAP_API_PASS
+
+    path = request.args.get('path', '')
+    allowed = ('/static/heatmaps/', '/static/cameras/')
+    if not any(path.startswith(p) for p in allowed):
+        from flask import abort
+        abort(400)
+
+    try:
+        resp = _requests.get(
+            HEATMAP_API_BASE + path,
+            auth=(HEATMAP_API_USER, HEATMAP_API_PASS),
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            from flask import abort
+            abort(resp.status_code)
+        content_type = resp.headers.get('Content-Type', 'image/png')
+        return Response(resp.content, content_type=content_type)
+    except Exception:
+        from flask import abort
+        abort(502)
