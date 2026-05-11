@@ -5,6 +5,11 @@ import db
 
 HEIMDALL_IMAGE_BASE = 'http://187.17.228.160:6500/api/facial/images'
 
+HEATMAP_API_URL  = 'http://201.71.234.84:5001/api/heatmap'
+HEATMAP_API_BASE = 'http://201.71.234.84:5001'
+HEATMAP_API_USER = 'admin'
+HEATMAP_API_PASS = 'Heat26@vision'
+
 
 def fmt_permanencia(segundos):
     if segundos is None or segundos <= 0:

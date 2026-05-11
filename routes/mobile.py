@@ -1617,3 +1617,200 @@ def visitacao():
         theme=theme,
         clientes=clientes,
     )
+
+
+# ── Mapa de Calor ─────────────────────────────────────────────────────────────
+
+@mobile_bp.route('/mapa-calor', methods=['GET', 'POST'])
+@_login_required
+def mapa_calor():
+    import requests as _requests
+    from routes.utils import (HEATMAP_API_URL, HEATMAP_API_BASE,
+                               HEATMAP_API_USER, HEATMAP_API_PASS)
+
+    user_id   = session['user_id']
+    user_type = session['user_type_id']
+
+    company_logo        = None
+    company_name        = None
+    companies           = []
+    selected_company_id = None
+    stores              = []
+    # store_id pode vir de GET (seleção) ou POST (hidden field no form)
+    selected_store_id = request.values.get('store_id', type=int)
+
+    if user_type == 'adm':
+        companies = db.query_all("""
+            SELECT c.company_id, c.company_name, ct.logo_url
+            FROM   faciais.companies c
+            JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
+            WHERE  ct.logo_url IS NOT NULL
+            ORDER  BY c.company_name
+        """)
+        selected_company_id = request.args.get('company_id', type=int)
+        if selected_company_id:
+            match = next((c for c in companies if c['company_id'] == selected_company_id), None)
+            if match:
+                company_logo = match['logo_url']
+                company_name = match['company_name']
+            stores = db.query_all("""
+                SELECT store_id, store_name, store_short_name
+                FROM   faciais.stores WHERE company_id = %s ORDER BY store_name
+            """, (selected_company_id,))
+
+    elif user_type == 'man':
+        companies = db.query_all("""
+            SELECT DISTINCT c.company_id, c.company_name, ct.logo_url
+            FROM   faciais.user_company_groups ucg
+            JOIN   faciais.companies c        ON c.company_group_id = ucg.company_group_id
+            LEFT   JOIN faciais.company_themes ct ON ct.company_id  = c.company_id
+            WHERE  ucg.user_id = %s ORDER BY c.company_name
+        """, (user_id,))
+        selected_company_id = request.args.get('company_id', type=int)
+        if selected_company_id:
+            match = next((c for c in companies if c['company_id'] == selected_company_id), None)
+            if match:
+                company_logo = match['logo_url']
+                company_name = match['company_name']
+            stores = db.query_all("""
+                SELECT store_id, store_name, store_short_name
+                FROM   faciais.stores WHERE company_id = %s ORDER BY store_name
+            """, (selected_company_id,))
+        else:
+            first = next((c for c in companies if c.get('logo_url')), None)
+            if first:
+                company_logo = first['logo_url']
+                company_name = first['company_name']
+
+    elif user_type == 'ret':
+        row = db.query_one("""
+            SELECT c.company_name, ct.logo_url
+            FROM   faciais.user_retailer_groups urg
+            JOIN   faciais.stores s          ON s.retailer_group_id = urg.retailer_group_id
+            JOIN   faciais.companies c       ON c.company_id = s.company_id
+            JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
+            WHERE  urg.user_id = %s AND ct.logo_url IS NOT NULL LIMIT 1
+        """, (user_id,))
+        if row:
+            company_logo = row['logo_url']
+            company_name = row['company_name']
+        stores = db.query_all("""
+            SELECT DISTINCT s.store_id, s.store_name, s.store_short_name
+            FROM   faciais.user_retailer_groups urg
+            JOIN   faciais.stores s ON s.retailer_group_id = urg.retailer_group_id
+            WHERE  urg.user_id = %s ORDER BY s.store_name
+        """, (user_id,))
+
+    elif user_type == 'emp':
+        row = db.query_one("""
+            SELECT c.company_name, ct.logo_url
+            FROM   faciais.user_stores us
+            JOIN   faciais.stores s          ON s.store_id = us.store_id
+            JOIN   faciais.companies c       ON c.company_id = s.company_id
+            JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
+            WHERE  us.user_id = %s AND ct.logo_url IS NOT NULL LIMIT 1
+        """, (user_id,))
+        if row:
+            company_logo = row['logo_url']
+            company_name = row['company_name']
+        stores = db.query_all("""
+            SELECT s.store_id, s.store_name, s.store_short_name
+            FROM   faciais.user_stores us
+            JOIN   faciais.stores s ON s.store_id = us.store_id
+            WHERE  us.user_id = %s ORDER BY s.store_name
+        """, (user_id,))
+
+    active_store = None
+    if stores:
+        if selected_store_id:
+            active_store = next((s for s in stores if s['store_id'] == selected_store_id), None)
+        if active_store is None and len(stores) == 1:
+            active_store      = stores[0]
+            selected_store_id = active_store['store_id']
+
+    cameras = []
+    if active_store:
+        cameras = db.query_all("""
+            SELECT camera_id, camera_name, heat_camera_id
+            FROM   faciais.cameras
+            WHERE  store_id = %s AND heat_camera_id IS NOT NULL
+            ORDER  BY camera_name
+        """, (active_store['store_id'],))
+
+    today    = date_type.today().strftime('%Y-%m-%d')
+    date_str = today
+    hora_ini = '08:00'
+    hora_fim = '18:00'
+    resultado = None
+    erro      = None
+
+    if request.method == 'POST' and active_store and cameras:
+        date_str = request.form.get('date', today)
+        hora_ini = request.form.get('hora_ini', '08:00')
+        hora_fim = request.form.get('hora_fim', '18:00')
+        heat_id  = request.form.get('heat_camera_id', type=int)
+        if not heat_id and len(cameras) == 1:
+            heat_id = cameras[0]['heat_camera_id']
+        try:
+            resp = _requests.post(
+                HEATMAP_API_URL,
+                json={
+                    'camera_id': heat_id,
+                    'data_ini':  f"{date_str} {hora_ini}:00",
+                    'data_fim':  f"{date_str} {hora_fim}:00",
+                },
+                auth=(HEATMAP_API_USER, HEATMAP_API_PASS),
+                timeout=30,
+            )
+            data = resp.json()
+            if data.get('ok'):
+                r = data['resultado']
+                for key in ('planta_heatmap', 'frame_camera_areas'):
+                    if r.get('imagens', {}).get(key):
+                        r['imagens'][key]['full_url'] = (
+                            HEATMAP_API_BASE + r['imagens'][key]['url']
+                        )
+                total = sum(a['quantidade'] for a in r.get('resumo_por_area', []))
+                for a in r.get('resumo_por_area', []):
+                    a['pct'] = round(a['quantidade'] / total * 100, 1) if total else 0
+                resultado = r
+            else:
+                erro = 'A API retornou erro.'
+        except Exception as e:
+            erro = f'Erro ao consultar API: {e}'
+
+    theme = dict(primary_color='#F47B20', secondary_color='#0057A8', accent_color='#FFFFFF')
+    theme_company_id = selected_company_id
+    if not theme_company_id and active_store:
+        row = db.query_one(
+            "SELECT company_id FROM faciais.stores WHERE store_id = %s",
+            (active_store['store_id'],)
+        )
+        if row:
+            theme_company_id = row['company_id']
+    if theme_company_id:
+        row = db.query_one(
+            "SELECT primary_color, secondary_color, accent_color "
+            "FROM   faciais.company_themes WHERE company_id = %s",
+            (theme_company_id,)
+        )
+        if row:
+            theme.update(row)
+
+    return render_template(
+        'mobile/heatmap.html',
+        cameras=cameras,
+        resultado=resultado,
+        erro=erro,
+        active_store=active_store,
+        stores=stores,
+        companies=companies,
+        company_logo=company_logo,
+        company_name=company_name,
+        selected_company_id=selected_company_id,
+        selected_store_id=selected_store_id,
+        date_str=date_str,
+        hora_ini=hora_ini,
+        hora_fim=hora_fim,
+        theme=theme,
+    )

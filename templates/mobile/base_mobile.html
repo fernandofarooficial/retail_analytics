@@ -27,9 +27,20 @@
   {% if _cid %}{% set _dash_url = _dash_url + '?company_id=' + _cid %}{% if _sid %}{% set _dash_url = _dash_url + '&store_id=' + _sid %}{% endif %}{% elif _sid %}{% set _dash_url = _dash_url + '?store_id=' + _sid %}{% endif %}
   {% set _vis_url = url_for('mobile.visitacao') %}
   {% if _cid %}{% set _vis_url = _vis_url + '?company_id=' + _cid %}{% if _sid %}{% set _vis_url = _vis_url + '&store_id=' + _sid %}{% endif %}{% elif _sid %}{% set _vis_url = _vis_url + '?store_id=' + _sid %}{% endif %}
+  {% set _heat_url = url_for('mobile.mapa_calor') %}
+  {% if _cid %}{% set _heat_url = _heat_url + '?company_id=' + _cid %}{% if _sid %}{% set _heat_url = _heat_url + '&store_id=' + _sid %}{% endif %}{% elif _sid %}{% set _heat_url = _heat_url + '?store_id=' + _sid %}{% endif %}
 
   <div class="m-more-backdrop" id="m-more-backdrop" onclick="fecharMais()"></div>
   <div class="m-more-menu" id="m-more-menu">
+    <a href="{{ _vis_url }}" class="m-more-link">
+      <svg class="m-more-link-icon" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/>
+        <rect x="13" y="13" width="8" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="15" y1="16" x2="19" y2="16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="15" y1="18.5" x2="19" y2="18.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      Visitas
+    </a>
     <a href="{{ url_for('mobile.trocar_senha') }}" class="m-more-link">
       <svg class="m-more-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -46,7 +57,7 @@
 
   <nav class="m-bottom-nav">
     <!-- Mais -->
-    <button class="m-bn-item {% if _ep == '' %}active{% endif %}" onclick="alternarMais()">
+    <button class="m-bn-item {% if _ep in ('', 'mobile.visitacao') %}active{% endif %}" onclick="alternarMais()">
       <svg class="m-bn-icon" viewBox="0 0 24 24" fill="currentColor">
         <circle cx="5" cy="12" r="2.2"/><circle cx="12" cy="12" r="2.2"/><circle cx="19" cy="12" r="2.2"/>
       </svg>
@@ -62,15 +73,15 @@
       </svg>
       <span class="m-bn-label">Dashboard</span>
     </a>
-    <!-- Visitas -->
-    <a href="{{ _vis_url }}" class="m-bn-item {% if _ep == 'mobile.visitacao' %}active{% endif %}">
+    <!-- Mapa de Calor -->
+    <a href="{{ _heat_url }}" class="m-bn-item {% if _ep == 'mobile.mapa_calor' %}active{% endif %}">
       <svg class="m-bn-icon" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/>
-        <rect x="13" y="13" width="8" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
-        <line x1="15" y1="16" x2="19" y2="16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-        <line x1="15" y1="18.5" x2="19" y2="18.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        <rect x="3"  y="3"  width="8" height="8" rx="1.5" opacity=".4"/>
+        <rect x="13" y="3"  width="8" height="8" rx="1.5" opacity="1"/>
+        <rect x="3"  y="13" width="8" height="8" rx="1.5" opacity=".22"/>
+        <rect x="13" y="13" width="8" height="8" rx="1.5" opacity=".7"/>
       </svg>
-      <span class="m-bn-label">Visitas</span>
+      <span class="m-bn-label">Mapa Calor</span>
     </a>
     <!-- Auditoria (a desenvolver) -->
     <span class="m-bn-item m-bn-disabled">

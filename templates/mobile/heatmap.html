@@ -1,0 +1,355 @@
+{% extends 'mobile/base_mobile.html' %}
+{% block title %}Mapa de Calor — Retail Analytics{% endblock %}
+
+{% block body %}
+<style>
+  :root {
+    --theme-primary: {{ theme.primary_color }};
+    --secondary:     {{ theme.secondary_color }};
+    --accent:        {{ theme.accent_color }};
+  }
+
+  /* ── Form card ── */
+  .m-heat-form-card {
+    background: #fff; border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: 1rem; margin-bottom: 0.75rem;
+  }
+  .m-heat-form-title {
+    font-size: 0.8rem; font-weight: 700; color: #374151;
+    margin-bottom: 0.75rem;
+  }
+  .m-heat-field { margin-bottom: 0.625rem; }
+  .m-heat-field label {
+    display: block; font-size: 0.72rem; font-weight: 600;
+    color: #6B7280; margin-bottom: 0.25rem;
+  }
+  .m-heat-field select,
+  .m-heat-field input[type="date"],
+  .m-heat-field input[type="time"] {
+    width: 100%; padding: 0.5rem 0.625rem;
+    border: 1px solid #D1D5DB; border-radius: 8px;
+    font-size: 0.875rem; color: #111827;
+    background: #F9FAFB; box-sizing: border-box;
+  }
+  .m-heat-row { display: flex; gap: 0.5rem; }
+  .m-heat-row .m-heat-field { flex: 1; }
+  .m-heat-submit {
+    width: 100%; margin-top: 0.75rem;
+    padding: 0.7rem; border: none; border-radius: 8px;
+    background: var(--theme-primary); color: #fff;
+    font-size: 0.875rem; font-weight: 700; cursor: pointer;
+  }
+
+  /* ── Erro ── */
+  .m-heat-erro {
+    background: #FEF2F2; border: 1px solid #FCA5A5;
+    border-radius: 8px; padding: 0.75rem 1rem;
+    color: #DC2626; font-size: 0.82rem;
+    margin-bottom: 0.75rem;
+  }
+
+  /* ── KPI Pessoas ── */
+  .m-heat-pessoas-card {
+    background: var(--theme-primary); border-radius: 10px;
+    padding: 1rem; margin-bottom: 0.75rem;
+    display: flex; flex-direction: column; align-items: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,.12);
+  }
+  .m-heat-pessoas-label {
+    font-size: 0.78rem; font-weight: 600;
+    color: rgba(255,255,255,.8); margin-bottom: 0.25rem;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .m-heat-pessoas-value {
+    font-size: 2.6rem; font-weight: 800; color: #fff; line-height: 1;
+  }
+  .m-heat-pessoas-sub {
+    font-size: 0.72rem; color: rgba(255,255,255,.7); margin-top: 0.25rem;
+  }
+
+  /* ── Áreas ── */
+  .m-heat-section-card {
+    background: #fff; border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: 0.875rem; margin-bottom: 0.75rem;
+  }
+  .m-heat-section-title {
+    font-size: 0.8rem; font-weight: 700; color: #374151;
+    margin-bottom: 0.625rem;
+  }
+  .m-heat-area-item { margin-bottom: 0.6rem; }
+  .m-heat-area-item:last-child { margin-bottom: 0; }
+  .m-heat-area-header {
+    display: flex; align-items: baseline;
+    justify-content: space-between; margin-bottom: 0.2rem; gap: 0.4rem;
+  }
+  .m-heat-area-nome {
+    flex: 1; font-size: 0.8rem; font-weight: 600; color: #111827;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .m-heat-area-tipo {
+    font-size: 0.68rem; font-weight: 600; padding: 0.1rem 0.4rem;
+    border-radius: 4px; white-space: nowrap; flex-shrink: 0;
+  }
+  .m-heat-tipo-area  { background: #EFF6FF; color: #1D4ED8; }
+  .m-heat-tipo-outro { background: #F0FDF4; color: #15803D; }
+  .m-heat-area-stats {
+    display: flex; gap: 0.5rem; align-items: baseline; flex-shrink: 0;
+  }
+  .m-heat-area-qtd {
+    font-size: 0.78rem; font-weight: 700; color: #374151;
+  }
+  .m-heat-area-pct {
+    font-size: 0.72rem; color: #6B7280; min-width: 3rem; text-align: right;
+  }
+  .m-heat-bar-bg {
+    height: 7px; background: #E5E7EB; border-radius: 4px; overflow: hidden;
+  }
+  .m-heat-bar {
+    height: 100%; border-radius: 4px;
+    background: var(--theme-primary); transition: width .3s ease;
+  }
+
+  /* ── Imagens ── */
+  .m-heat-img { width: 100%; border-radius: 8px; display: block; }
+  .m-heat-img-caption {
+    font-size: 0.7rem; color: #9CA3AF; text-align: center;
+    margin-top: 0.375rem;
+  }
+
+  /* ── Hint / sem câmera ── */
+  .m-heat-hint {
+    text-align: center; color: #9CA3AF;
+    font-size: 0.875rem; padding: 2rem 1rem;
+  }
+
+  /* ── Store sheet (same as visitacao) ── */
+  .m-sheet-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 300; }
+  .m-sheet-overlay.open { display: block; }
+  .m-store-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-radius: 16px 16px 0 0; padding: 1rem 1.25rem calc(1.25rem + var(--safe-bottom, 0px)); z-index: 301; transform: translateY(100%); transition: transform .25s ease; }
+  .m-store-sheet.open { transform: translateY(0); }
+  .m-sheet-handle { width: 36px; height: 4px; background: #D1D5DB; border-radius: 2px; margin: 0 auto 1rem; }
+  .m-sheet-title { font-size: 0.95rem; font-weight: 700; color: #111827; margin-bottom: 1rem; }
+  .m-sheet-row { display: flex; align-items: center; gap: 0.625rem; margin-bottom: 0.75rem; }
+  .m-sheet-close { width: 100%; margin-top: 0.5rem; padding: 0.75rem; background: #F3F4F6; border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 600; color: #374151; cursor: pointer; }
+</style>
+
+<div class="m-app">
+
+  <!-- ── Header ───────────────────────────────────────────────────────── -->
+  <header class="m-header">
+    <div class="m-hdr-left">
+      {% if company_logo %}
+      <img src="/retail_analytics/static/{{ company_logo }}"
+           alt="{{ company_name }}" class="m-header-company-logo">
+      {% endif %}
+    </div>
+
+    <img src="/retail_analytics/static/img/logo_retail_analytics_br_1.png"
+         alt="Retail Analytics" class="m-header-logo">
+
+    <div class="m-hdr-right">
+      <span class="m-hdr-sep"></span>
+      {% set _pode_trocar = (session.get('user_type_id') in ('adm', 'man') and companies) or (stores and stores|length > 1) %}
+      <div class="m-hdr-info" {% if _pode_trocar %}onclick="abrirSeletorLoja()"{% endif %}>
+        <div class="m-hdr-info-row">
+          <span class="m-hdr-info-lbl">Empresa:</span>
+          <span class="m-hdr-info-val">{{ company_name or '—' }}</span>
+        </div>
+        <div class="m-hdr-info-row">
+          <span class="m-hdr-info-lbl">Loja:</span>
+          <span class="m-hdr-info-val">
+            {% if active_store %}{{ active_store.store_short_name or active_store.store_name or '—' }}
+            {% else %}—{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Conteúdo ──────────────────────────────────────────────────────── -->
+  <main class="m-content">
+
+    {% if not active_store %}
+    <p class="m-heat-hint">Selecione uma loja para visualizar o mapa de calor.</p>
+
+    {% elif not cameras %}
+    <p class="m-heat-hint">Nenhuma câmera de mapa de calor configurada para esta loja.</p>
+
+    {% else %}
+
+    <!-- ── Formulário de consulta ───────────────────────────────────────── -->
+    <div class="m-heat-form-card">
+      <div class="m-heat-form-title">Consultar Mapa de Calor</div>
+      <form method="POST">
+        <input type="hidden" name="store_id" value="{{ active_store.store_id }}">
+
+        {% if cameras|length > 1 %}
+        <div class="m-heat-field">
+          <label>Câmera</label>
+          <select name="heat_camera_id">
+            {% for cam in cameras %}
+            <option value="{{ cam.heat_camera_id }}">{{ cam.camera_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% else %}
+        <input type="hidden" name="heat_camera_id" value="{{ cameras[0].heat_camera_id }}">
+        {% endif %}
+
+        <div class="m-heat-field">
+          <label>Data</label>
+          <input type="date" name="date" value="{{ date_str }}" max="{{ date_str }}">
+        </div>
+
+        <div class="m-heat-row">
+          <div class="m-heat-field">
+            <label>Hora inicial</label>
+            <input type="time" name="hora_ini" value="{{ hora_ini }}">
+          </div>
+          <div class="m-heat-field">
+            <label>Hora final</label>
+            <input type="time" name="hora_fim" value="{{ hora_fim }}">
+          </div>
+        </div>
+
+        <button type="submit" class="m-heat-submit">Consultar</button>
+      </form>
+    </div>
+
+    {% if erro %}
+    <div class="m-heat-erro">{{ erro }}</div>
+    {% endif %}
+
+    {% if resultado %}
+
+    <!-- 1. Pessoas ──────────────────────────────────────────────────────── -->
+    <div class="m-heat-pessoas-card">
+      <div class="m-heat-pessoas-label">Pessoas</div>
+      <div class="m-heat-pessoas-value">{{ resultado.resumo_entrada_saida.entrada }}</div>
+      <div class="m-heat-pessoas-sub">
+        {{ date_str }} &nbsp;·&nbsp; {{ hora_ini }} – {{ hora_fim }}
+      </div>
+    </div>
+
+    <!-- 2. Distribuição por área ────────────────────────────────────────── -->
+    {% if resultado.resumo_por_area %}
+    <div class="m-heat-section-card">
+      <div class="m-heat-section-title">Distribuição por Área</div>
+      {% for area in resultado.resumo_por_area %}
+      <div class="m-heat-area-item">
+        <div class="m-heat-area-header">
+          <span class="m-heat-area-nome">{{ area.area_nome }}</span>
+          <span class="m-heat-area-tipo {% if area.tipo_contagem == 'area' %}m-heat-tipo-area{% else %}m-heat-tipo-outro{% endif %}">
+            {{ area.tipo_contagem }}
+          </span>
+          <div class="m-heat-area-stats">
+            <span class="m-heat-area-qtd">{{ area.quantidade }}</span>
+            <span class="m-heat-area-pct">{{ area.pct }}%</span>
+          </div>
+        </div>
+        <div class="m-heat-bar-bg">
+          <div class="m-heat-bar" style="width:{{ area.pct }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 3. Planta — Mapa de Calor ───────────────────────────────────────── -->
+    {% if resultado.imagens.planta_heatmap %}
+    <div class="m-heat-section-card">
+      <div class="m-heat-section-title">Planta — Mapa de Calor</div>
+      <img class="m-heat-img"
+           src="{{ resultado.imagens.planta_heatmap.full_url }}"
+           alt="Planta Mapa de Calor">
+      <div class="m-heat-img-caption">
+        Gerado em {{ resultado.periodo.data_ini }} — {{ resultado.periodo.data_fim }}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 4. Frame com Áreas ──────────────────────────────────────────────── -->
+    {% if resultado.imagens.frame_camera_areas %}
+    <div class="m-heat-section-card">
+      <div class="m-heat-section-title">Frame com Áreas</div>
+      <img class="m-heat-img"
+           src="{{ resultado.imagens.frame_camera_areas.full_url }}"
+           alt="Frame com Áreas">
+    </div>
+    {% endif %}
+
+    {% endif %}{# resultado #}
+    {% endif %}{# active_store / cameras #}
+
+  </main>
+</div>
+
+<!-- ── Bottom-sheet: seletor de empresa/loja ──────────────────────── -->
+<div id="m-sheet-overlay" class="m-sheet-overlay" onclick="fecharSeletorLoja()"></div>
+<div id="m-store-sheet" class="m-store-sheet">
+  <div class="m-sheet-handle"></div>
+  <div class="m-sheet-title">Empresa / Loja</div>
+
+  {% if session.get('user_type_id') in ('adm', 'man') and companies %}
+  <div class="m-sheet-row">
+    <span class="m-select-label">Empresa</span>
+    <select class="m-select" onchange="selecionarEmpresa(this.value)">
+      <option value="">— Selecione —</option>
+      {% for c in companies %}
+      <option value="{{ c.company_id }}"
+          {% if c.company_id == selected_company_id %}selected{% endif %}>
+        {{ c.company_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  {% if stores %}
+  <div class="m-sheet-row">
+    <span class="m-select-label">Loja</span>
+    <select class="m-select" onchange="selecionarLoja(this.value)">
+      {% if stores|length > 1 %}
+      <option value="">— Selecione —</option>
+      {% endif %}
+      {% for s in stores %}
+      <option value="{{ s.store_id }}"
+          {% if s.store_id == selected_store_id %}selected{% endif %}>
+        {{ s.store_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <button class="m-sheet-close" onclick="fecharSeletorLoja()">Fechar</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function abrirSeletorLoja() {
+  document.getElementById('m-sheet-overlay').classList.add('open');
+  document.getElementById('m-store-sheet').classList.add('open');
+}
+function fecharSeletorLoja() {
+  document.getElementById('m-sheet-overlay').classList.remove('open');
+  document.getElementById('m-store-sheet').classList.remove('open');
+}
+function selecionarEmpresa(id) {
+  const url = new URL(window.location.href);
+  if (id) { url.searchParams.set('company_id', id); }
+  else    { url.searchParams.delete('company_id'); }
+  url.searchParams.delete('store_id');
+  window.location.href = url.toString();
+}
+function selecionarLoja(id) {
+  const url = new URL(window.location.href);
+  if (id) { url.searchParams.set('store_id', id); }
+  else    { url.searchParams.delete('store_id'); }
+  window.location.href = url.toString();
+}
+</script>
+{% endblock %}
