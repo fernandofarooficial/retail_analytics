@@ -2195,6 +2195,18 @@ setInterval(() => {
 const _mHorasLabels = Array.from({length: 24}, (_, i) => String(i).padStart(2,'0') + 'h').slice(8, 20);
 const _mThemeColor   = '{{ theme.primary_color }}';
 const _mGraphColor1  = '{{ theme.graph_color_1 }}';
+const _mGraphColor2  = '{{ theme.graph_color_2 }}';
+const _mGraphColor3  = '{{ theme.graph_color_3 }}';
+const _mGraphColor4  = '{{ theme.graph_color_4 }}';
+
+function _mHexAlpha(hex, alpha) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+}
 const _mFaixaDia    = {{ chart_faixa_dia | tojson }};
 const _mFaixaSem    = {{ chart_faixa_sem | tojson }};
 const _mFaixaMes    = {{ chart_faixa_mes | tojson }};
@@ -2212,8 +2224,8 @@ function _mCriarFaixaChart(canvasId, data) {
           type: 'bar',
           label: 'Valor Faturado',
           data: (data.faturamento || []).slice(8, 20),
-          backgroundColor: 'rgba(230,81,0,0.7)',
-          borderColor: '#E65100',
+          backgroundColor: _mHexAlpha(_mGraphColor3, 0.7),
+          borderColor: _mGraphColor3,
           borderWidth: 1,
           yAxisID: 'y2',
           order: 3,
@@ -2223,7 +2235,7 @@ function _mCriarFaixaChart(canvasId, data) {
           type: 'line',
           label: 'Clientes',
           data: data.clientes.slice(8, 20),
-          borderColor: _mThemeColor,
+          borderColor: _mGraphColor2,
           backgroundColor: 'transparent',
           borderWidth: 2,
           pointRadius: 2,
@@ -2235,7 +2247,7 @@ function _mCriarFaixaChart(canvasId, data) {
           type: 'line',
           label: 'Notas Emitidas',
           data: data.vendas.slice(8, 20),
-          borderColor: '#0057A8',
+          borderColor: _mGraphColor1,
           backgroundColor: 'transparent',
           borderWidth: 2,
           pointRadius: 2,
@@ -2349,15 +2361,15 @@ function _mCriarOcorrenciasChart(canvasId, data) {
         {
           label: 'Recorrentes',
           data: data.recorrentes.slice(8, 20),
-          backgroundColor: 'rgba(25,118,210,0.75)',
-          borderColor: '#1976D2',
+          backgroundColor: _mHexAlpha(_mGraphColor1, 0.75),
+          borderColor: _mGraphColor1,
           borderWidth: 1,
         },
         {
           label: 'Novos',
           data: data.novos.slice(8, 20),
-          backgroundColor: 'rgba(56,142,60,0.75)',
-          borderColor: '#388E3C',
+          backgroundColor: _mHexAlpha(_mGraphColor2, 0.75),
+          borderColor: _mGraphColor2,
           borderWidth: 1,
         }
       ]
@@ -2392,12 +2404,12 @@ function _mCriarConversaoChart(canvasId, faixaData) {
       datasets: [{
         label: 'Conversão (%)',
         data: convData,
-        borderColor: '#0057A8',
-        backgroundColor: 'rgba(0,87,168,0.08)',
+        borderColor: _mGraphColor1,
+        backgroundColor: _mHexAlpha(_mGraphColor1, 0.08),
         borderWidth: 2,
         pointRadius: 3,
         pointBackgroundColor: '#fff',
-        pointBorderColor: '#0057A8',
+        pointBorderColor: _mGraphColor1,
         pointBorderWidth: 2,
         tension: 0.3,
         spanGaps: true,
