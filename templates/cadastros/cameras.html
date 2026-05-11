@@ -20,6 +20,7 @@
                 <th>Tipo</th>
                 <th>Loja</th>
                 <th>URL RTSP</th>
+                <th style="width:90px">ID Heat Map</th>
                 <th class="col-actions">Ações</th>
             </tr>
         </thead>
@@ -31,6 +32,7 @@
                 <td>{{ r.camera_type_name or '—' }}</td>
                 <td>{{ r.store_name or '—' }}</td>
                 <td class="td-truncate">{{ r.rtsp_url or '—' }}</td>
+                <td>{{ r.heat_camera_id or '—' }}</td>
                 <td class="col-actions">
                     <button class="btn-ver"
                         data-id="{{ r.camera_id }}"
@@ -44,6 +46,7 @@
                         data-tipo="{{ r.camera_type_id or '' }}"
                         data-store="{{ r.store_id or '' }}"
                         data-rtsp="{{ r.rtsp_url or '' | e }}"
+                        data-heat="{{ r.heat_camera_id or '' }}"
                         onclick="abrirEditar(this)">Editar</button>
                     <form method="POST" style="display:inline"
                           onsubmit="return confirm('Confirma a exclusão desta câmera?')">
@@ -54,7 +57,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="6" class="table-empty">Nenhuma câmera cadastrada.</td></tr>
+            <tr><td colspan="7" class="table-empty">Nenhuma câmera cadastrada.</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -102,6 +105,10 @@
             <div class="form-group">
                 <label>URL RTSP <small>(opcional)</small></label>
                 <input type="text" id="f-rtsp" name="rtsp_url" placeholder="rtsp://...">
+            </div>
+            <div class="form-group">
+                <label>ID Heat Map <small>(opcional)</small></label>
+                <input type="number" id="f-heat" name="heat_camera_id" min="1" placeholder="ID da câmera no sistema de mapa de calor">
             </div>
         </div>
         <div class="modal-footer">
@@ -154,6 +161,7 @@ function abrirNovo() {
     document.getElementById('f-type').value  = '';
     document.getElementById('f-store').value = '';
     document.getElementById('f-rtsp').value  = '';
+    document.getElementById('f-heat').value  = '';
     modal.showModal();
 }
 
@@ -169,6 +177,7 @@ function abrirEditar(btn) {
     document.getElementById('f-type').value  = d.tipo;
     document.getElementById('f-store').value = d.store;
     document.getElementById('f-rtsp').value  = d.rtsp;
+    document.getElementById('f-heat').value  = d.heat;
     modal.showModal();
 }
 

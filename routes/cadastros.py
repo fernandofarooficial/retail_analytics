@@ -415,14 +415,15 @@ def cameras():
         try:
             if action == 'criar':
                 db.execute(
-                    """INSERT INTO faciais.cameras (camera_id, camera_type_id, store_id, camera_name, rtsp_url)
-                       VALUES (%s,%s,%s,%s,%s)""",
+                    """INSERT INTO faciais.cameras (camera_id, camera_type_id, store_id, camera_name, rtsp_url, heat_camera_id)
+                       VALUES (%s,%s,%s,%s,%s,%s)""",
                     (
                         request.form['camera_id'],
                         request.form.get('camera_type_id') or None,
                         request.form.get('store_id') or None,
                         request.form['camera_name'].strip(),
                         request.form.get('rtsp_url', '').strip() or None,
+                        request.form.get('heat_camera_id') or None,
                     )
                 )
                 flash('Câmera criada com sucesso.', 'success')
@@ -430,13 +431,14 @@ def cameras():
             elif action == 'editar':
                 db.execute(
                     """UPDATE faciais.cameras SET
-                       camera_type_id=%s, store_id=%s, camera_name=%s, rtsp_url=%s
+                       camera_type_id=%s, store_id=%s, camera_name=%s, rtsp_url=%s, heat_camera_id=%s
                        WHERE camera_id=%s""",
                     (
                         request.form.get('camera_type_id') or None,
                         request.form.get('store_id') or None,
                         request.form['camera_name'].strip(),
                         request.form.get('rtsp_url', '').strip() or None,
+                        request.form.get('heat_camera_id') or None,
                         request.form['_id'],
                     )
                 )
