@@ -94,12 +94,6 @@
   }
   .m-heat-tipo-area  { background: #EFF6FF; color: #1D4ED8; }
   .m-heat-tipo-outro { background: #F0FDF4; color: #15803D; }
-  .m-heat-area-stats {
-    display: flex; gap: 0.5rem; align-items: baseline; flex-shrink: 0;
-  }
-  .m-heat-area-qtd {
-    font-size: 0.78rem; font-weight: 700; color: #374151;
-  }
   .m-heat-area-pct {
     font-size: 0.72rem; color: #6B7280; min-width: 3rem; text-align: right;
   }
@@ -198,15 +192,21 @@
         <input type="hidden" name="heat_camera_id" value="{{ cameras[0].heat_camera_id }}">
         {% endif %}
 
-        <div class="m-heat-field">
-          <label>Data</label>
-          <input type="date" name="date" value="{{ date_str }}" max="{{ date_str }}">
+        <div class="m-heat-row">
+          <div class="m-heat-field">
+            <label>Data inicial</label>
+            <input type="date" name="date_ini" value="{{ date_ini }}">
+          </div>
+          <div class="m-heat-field">
+            <label>Hora inicial</label>
+            <input type="time" name="hora_ini" value="{{ hora_ini }}">
+          </div>
         </div>
 
         <div class="m-heat-row">
           <div class="m-heat-field">
-            <label>Hora inicial</label>
-            <input type="time" name="hora_ini" value="{{ hora_ini }}">
+            <label>Data final</label>
+            <input type="date" name="date_fim" value="{{ date_fim }}">
           </div>
           <div class="m-heat-field">
             <label>Hora final</label>
@@ -229,7 +229,7 @@
       <div class="m-heat-pessoas-label">Pessoas</div>
       <div class="m-heat-pessoas-value">{{ resultado.resumo_entrada_saida.entrada }}</div>
       <div class="m-heat-pessoas-sub">
-        {{ date_str }} &nbsp;·&nbsp; {{ hora_ini }} – {{ hora_fim }}
+        {{ date_ini }} – {{ date_fim }} &nbsp;·&nbsp; {{ hora_ini }} – {{ hora_fim }}
       </div>
     </div>
 
@@ -244,10 +244,7 @@
           <span class="m-heat-area-tipo {% if area.tipo_contagem == 'area' %}m-heat-tipo-area{% else %}m-heat-tipo-outro{% endif %}">
             {{ area.tipo_contagem }}
           </span>
-          <div class="m-heat-area-stats">
-            <span class="m-heat-area-qtd">{{ area.quantidade }}</span>
-            <span class="m-heat-area-pct">{{ area.pct }}%</span>
-          </div>
+          <span class="m-heat-area-pct">{{ area.pct }}%</span>
         </div>
         <div class="m-heat-bar-bg">
           <div class="m-heat-bar" style="width:{{ area.pct }}%"></div>

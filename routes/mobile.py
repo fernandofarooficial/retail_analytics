@@ -1738,14 +1738,16 @@ def mapa_calor():
         """, (active_store['store_id'],))
 
     today    = date_type.today().strftime('%Y-%m-%d')
-    date_str = today
+    date_ini = today
+    date_fim = today
     hora_ini = '08:00'
     hora_fim = '18:00'
     resultado = None
     erro      = None
 
     if request.method == 'POST' and active_store and cameras:
-        date_str = request.form.get('date', today)
+        date_ini = request.form.get('date_ini', today)
+        date_fim = request.form.get('date_fim', today)
         hora_ini = request.form.get('hora_ini', '08:00')
         hora_fim = request.form.get('hora_fim', '18:00')
         heat_id  = request.form.get('heat_camera_id', type=int)
@@ -1756,8 +1758,8 @@ def mapa_calor():
                 HEATMAP_API_URL,
                 json={
                     'camera_id': heat_id,
-                    'data_ini':  f"{date_str} {hora_ini}:00",
-                    'data_fim':  f"{date_str} {hora_fim}:00",
+                    'data_ini':  f"{date_ini} {hora_ini}:00",
+                    'data_fim':  f"{date_fim} {hora_fim}:00",
                 },
                 auth=(HEATMAP_API_USER, HEATMAP_API_PASS),
                 timeout=30,
@@ -1809,7 +1811,8 @@ def mapa_calor():
         company_name=company_name,
         selected_company_id=selected_company_id,
         selected_store_id=selected_store_id,
-        date_str=date_str,
+        date_ini=date_ini,
+        date_fim=date_fim,
         hora_ini=hora_ini,
         hora_fim=hora_fim,
         theme=theme,
