@@ -2465,7 +2465,7 @@ function _mCriarEstFatChart(canvasId, faixaData) {
   let acum = 0;
   const acumData = fat.map(v => { acum += (v || 0); return acum; });
   const lastIdx = fat.reduce((best, v, i) => (v > 0 ? i : best), -1);
-  const barColors = fat.map((_, i) => i === lastIdx ? '#1D4ED8' : '#93C5FD');
+  const barColors = fat.map((_, i) => i === lastIdx ? _mGraphColor1 : _mHexAlpha(_mGraphColor1, 0.4));
   new Chart(el, {
     plugins: [ChartDataLabels],
     data: {
@@ -2478,20 +2478,20 @@ function _mCriarEstFatChart(canvasId, faixaData) {
             display: (ctx) => ctx.dataIndex === lastIdx,
             anchor: 'end', align: 'end',
             formatter: v => _mFmtR(v),
-            color: '#1D4ED8', font: {size: 8, weight: 'bold'}, clamp: true
+            color: _mGraphColor1, font: {size: 8, weight: 'bold'}, clamp: true
           }
         },
         {
           type: 'line', label: 'Acumulado', data: acumData,
-          borderColor: '#16A34A', backgroundColor: 'transparent',
+          borderColor: _mGraphColor2, backgroundColor: 'transparent',
           pointRadius: (ctx) => ctx.dataIndex === lastIdx ? 4 : 0,
-          pointBackgroundColor: '#16A34A', tension: 0.3,
+          pointBackgroundColor: _mGraphColor2, tension: 0.3,
           yAxisID: 'yLine', order: 1,
           datalabels: {
             display: (ctx) => ctx.dataIndex === lastIdx,
             anchor: 'end', align: 'top',
             formatter: v => _mFmtR(v),
-            color: '#16A34A', font: {size: 8, weight: 'bold'}, clamp: true
+            color: _mGraphColor2, font: {size: 8, weight: 'bold'}, clamp: true
           }
         }
       ]
@@ -2523,15 +2523,15 @@ function _mCriarEstTicketChart(canvasId, faixaData) {
       labels,
       datasets: [{
         type: 'line', label: 'Ticket Médio', data: ticket,
-        borderColor: '#F97316', backgroundColor: 'rgba(249,115,22,0.08)', fill: true,
+        borderColor: _mGraphColor1, backgroundColor: _mHexAlpha(_mGraphColor1, 0.08), fill: true,
         pointRadius: (ctx) => ctx.dataIndex === lastIdx ? 5 : 2,
-        pointBackgroundColor: (ctx) => ctx.dataIndex === lastIdx ? '#EA580C' : '#F97316',
+        pointBackgroundColor: _mGraphColor1,
         tension: 0.3,
         datalabels: {
           display: (ctx) => ctx.dataIndex === lastIdx,
           anchor: 'end', align: 'top',
           formatter: v => _mFmtR(v),
-          color: '#EA580C', font: {size: 8, weight: 'bold'}, clamp: true
+          color: _mGraphColor1, font: {size: 8, weight: 'bold'}, clamp: true
         }
       }]
     },

@@ -2518,7 +2518,7 @@ function _criarEstFatChart(canvasId, faixaData) {
     let acum = 0;
     const acumData = fat.map(v => { acum += (v || 0); return acum; });
     const lastIdx = fat.reduce((best, v, i) => (v > 0 ? i : best), -1);
-    const barColors = fat.map((_, i) => i === lastIdx ? '#1D4ED8' : '#93C5FD');
+    const barColors = fat.map((_, i) => i === lastIdx ? _graphColor1 : _hexAlpha(_graphColor1, 0.4));
     new Chart(el, {
         plugins: [ChartDataLabels],
         data: {
@@ -2535,7 +2535,7 @@ function _criarEstFatChart(canvasId, faixaData) {
                         display: (ctx) => ctx.dataIndex === lastIdx,
                         anchor: 'end', align: 'end',
                         formatter: v => _fmtR(v),
-                        color: '#1D4ED8', font: {size: 9, weight: 'bold'},
+                        color: _graphColor1, font: {size: 9, weight: 'bold'},
                         clamp: true
                     }
                 },
@@ -2543,10 +2543,10 @@ function _criarEstFatChart(canvasId, faixaData) {
                     type: 'line',
                     label: 'Acumulado',
                     data: acumData,
-                    borderColor: '#16A34A',
+                    borderColor: _graphColor2,
                     backgroundColor: 'transparent',
                     pointRadius: (ctx) => ctx.dataIndex === lastIdx ? 5 : 0,
-                    pointBackgroundColor: '#16A34A',
+                    pointBackgroundColor: _graphColor2,
                     tension: 0.3,
                     yAxisID: 'yLine',
                     order: 1,
@@ -2554,7 +2554,7 @@ function _criarEstFatChart(canvasId, faixaData) {
                         display: (ctx) => ctx.dataIndex === lastIdx,
                         anchor: 'end', align: 'top',
                         formatter: v => _fmtR(v),
-                        color: '#16A34A', font: {size: 9, weight: 'bold'},
+                        color: _graphColor2, font: {size: 9, weight: 'bold'},
                         clamp: true
                     }
                 }
@@ -2589,17 +2589,17 @@ function _criarEstTicketChart(canvasId, faixaData) {
                 type: 'line',
                 label: 'Ticket Médio',
                 data: ticket,
-                borderColor: '#F97316',
-                backgroundColor: 'rgba(249,115,22,0.08)',
+                borderColor: _graphColor1,
+                backgroundColor: _hexAlpha(_graphColor1, 0.08),
                 fill: true,
                 pointRadius: (ctx) => ctx.dataIndex === lastIdx ? 6 : 2,
-                pointBackgroundColor: (ctx) => ctx.dataIndex === lastIdx ? '#EA580C' : '#F97316',
+                pointBackgroundColor: _graphColor1,
                 tension: 0.3,
                 datalabels: {
                     display: (ctx) => ctx.dataIndex === lastIdx,
                     anchor: 'end', align: 'top',
                     formatter: v => _fmtR(v),
-                    color: '#EA580C', font: {size: 9, weight: 'bold'},
+                    color: _graphColor1, font: {size: 9, weight: 'bold'},
                     clamp: true
                 }
             }]
