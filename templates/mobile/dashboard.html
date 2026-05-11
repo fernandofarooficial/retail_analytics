@@ -2678,8 +2678,8 @@ function _mCriarTicketChart(canvasId, data) {
       labels: ['Novo', 'Recorrente'],
       datasets: [{
         data: [vNovo, vRec],
-        backgroundColor: [_mThemeColor + 'bb', '#0057A8bb'],
-        borderColor:     [_mThemeColor,        '#0057A8'],
+        backgroundColor: [_mHexAlpha(_mGraphColor2, 0.73), _mHexAlpha(_mGraphColor1, 0.73)],
+        borderColor:     [_mGraphColor2, _mGraphColor1],
         borderWidth: 1,
         borderRadius: 4,
       }]
@@ -2801,8 +2801,8 @@ window.addEventListener('load', () => {
   _mCriarTicketChart('m-chart-ticket-sem', _mTicketSem);
   _mCriarTicketChart('m-chart-ticket-mes', _mTicketMes);
   _mCriarTicketChart('m-chart-ticket-ytd', _mTicketYtd);
-  const _mCoresNovos = ['#1D4ED8','#2563EB','#3B82F6','#60A5FA','#93C5FD'];
-  const _mCoresRec   = ['#166534','#16A34A','#22C55E','#4ADE80','#86EFAC'];
+  const _mCoresNovos = [1.0, 0.82, 0.65, 0.48, 0.32].map(a => _mHexAlpha(_mGraphColor2, a));
+  const _mCoresRec   = [1.0, 0.82, 0.65, 0.48, 0.32].map(a => _mHexAlpha(_mGraphColor1, a));
   _mCriarTop5TipoChart('m-chart-top5-novos-dia', _mTop5TipoDia.novos,       _mCoresNovos);
   _mCriarTop5TipoChart('m-chart-top5-rec-dia',   _mTop5TipoDia.recorrentes, _mCoresRec);
   _mCriarTop5TipoChart('m-chart-top5-novos-sem', _mTop5TipoSem.novos,       _mCoresNovos);

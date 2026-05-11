@@ -2414,8 +2414,8 @@ function _criarTicketTipoChart(canvasId, data, titulo) {
             datasets: [{
                 label: titulo,
                 data: [vNovo, vRec],
-                backgroundColor: [_themeColor + 'bb', '#0057A8bb'],
-                borderColor: [_themeColor, '#0057A8'],
+                backgroundColor: [_hexAlpha(_graphColor2, 0.73), _hexAlpha(_graphColor1, 0.73)],
+                borderColor: [_graphColor2, _graphColor1],
                 borderWidth: 1,
             }]
         },
@@ -2678,20 +2678,20 @@ window.addEventListener('load', () => {
     _criarConversaoChart('chart-conversao-sem', _faixaSem);
     _criarConversaoChart('chart-conversao-mes', _faixaMes);
     _criarConversaoChart('chart-conversao-ytd', _faixaYtd);
-    _criarTopProdChart('chart-top-qtde-dia', _topQtdeDia, 'Top 5 Produtos — Quantidade', _themeColor);
-    _criarTopProdChart('chart-top-fat-dia',  _topFatDia,  'Top 5 Produtos — Faturamento', '#0057A8');
-    _criarTopProdChart('chart-top-qtde-sem', _topQtdeSem, 'Top 5 Produtos — Quantidade', _themeColor);
-    _criarTopProdChart('chart-top-fat-sem',  _topFatSem,  'Top 5 Produtos — Faturamento', '#0057A8');
-    _criarTopProdChart('chart-top-qtde-mes', _topQtdeMes, 'Top 5 Produtos — Quantidade', _themeColor);
-    _criarTopProdChart('chart-top-fat-mes',  _topFatMes,  'Top 5 Produtos — Faturamento', '#0057A8');
-    _criarTopProdChart('chart-top-qtde-ytd', _topQtdeYtd, 'Top 5 Produtos — Quantidade', _themeColor);
-    _criarTopProdChart('chart-top-fat-ytd',  _topFatYtd,  'Top 5 Produtos — Faturamento', '#0057A8');
+    _criarTopProdChart('chart-top-qtde-dia', _topQtdeDia, 'Top 5 Produtos — Quantidade',   _graphColor1);
+    _criarTopProdChart('chart-top-fat-dia',  _topFatDia,  'Top 5 Produtos — Faturamento',  _graphColor1);
+    _criarTopProdChart('chart-top-qtde-sem', _topQtdeSem, 'Top 5 Produtos — Quantidade',   _graphColor1);
+    _criarTopProdChart('chart-top-fat-sem',  _topFatSem,  'Top 5 Produtos — Faturamento',  _graphColor1);
+    _criarTopProdChart('chart-top-qtde-mes', _topQtdeMes, 'Top 5 Produtos — Quantidade',   _graphColor1);
+    _criarTopProdChart('chart-top-fat-mes',  _topFatMes,  'Top 5 Produtos — Faturamento',  _graphColor1);
+    _criarTopProdChart('chart-top-qtde-ytd', _topQtdeYtd, 'Top 5 Produtos — Quantidade',   _graphColor1);
+    _criarTopProdChart('chart-top-fat-ytd',  _topFatYtd,  'Top 5 Produtos — Faturamento',  _graphColor1);
     _criarTicketTipoChart('chart-ticket-tipo-dia', _ticketDia, 'Ticket Médio por Tipo de Cliente');
     _criarTicketTipoChart('chart-ticket-tipo-sem', _ticketSem, 'Ticket Médio por Tipo de Cliente');
     _criarTicketTipoChart('chart-ticket-tipo-mes', _ticketMes, 'Ticket Médio por Tipo de Cliente');
     _criarTicketTipoChart('chart-ticket-tipo-ytd', _ticketYtd, 'Ticket Médio por Tipo de Cliente');
-    const _coresNovos = ['#1D4ED8','#2563EB','#3B82F6','#60A5FA','#93C5FD'];
-    const _coresRec   = ['#166534','#16A34A','#22C55E','#4ADE80','#86EFAC'];
+    const _coresNovos = [1.0, 0.82, 0.65, 0.48, 0.32].map(a => _hexAlpha(_graphColor2, a));
+    const _coresRec   = [1.0, 0.82, 0.65, 0.48, 0.32].map(a => _hexAlpha(_graphColor1, a));
     _criarTop5TipoChart('chart-top5-novos-dia', _top5TipoDia.novos,        'Top 5 Produtos — Clientes Novos',        _coresNovos);
     _criarTop5TipoChart('chart-top5-rec-dia',   _top5TipoDia.recorrentes,  'Top 5 Produtos — Clientes Recorrentes',  _coresRec);
     _criarTop5TipoChart('chart-top5-novos-sem', _top5TipoSem.novos,        'Top 5 Produtos — Clientes Novos',        _coresNovos);
