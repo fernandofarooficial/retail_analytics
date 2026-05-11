@@ -56,7 +56,7 @@
             <tr>
                 <td><span class="badge">{{ f.geo_holiday_id }}</span></td>
                 <td style="font-family:monospace; font-size:.875rem;">
-                    {{ f.calendar_date.strftime('%d/%m/%Y') }}
+                    {{ f.holiday_date.strftime('%d/%m/%Y') }}
                 </td>
                 <td><strong>{{ f.holiday_name }}</strong></td>
                 <td style="text-align:center">
@@ -72,7 +72,7 @@
                 <td class="col-actions">
                     <button class="btn-edit"
                         data-id="{{ f.geo_holiday_id }}"
-                        data-date="{{ f.calendar_date.isoformat() }}"
+                        data-date="{{ f.holiday_date.isoformat() }}"
                         data-name="{{ f.holiday_name | e }}"
                         data-scope="{{ f.scope }}"
                         data-uf="{{ f.uf }}"
@@ -111,7 +111,7 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>Data <span style="color:#EF4444">*</span></label>
-                    <input type="date" id="f-date" name="calendar_date" required>
+                    <input type="date" id="f-date" name="holiday_date" required>
                     <small style="color:#6B7280; font-size:.8rem;">
                         A data deve existir no calendário base.
                     </small>

@@ -825,10 +825,10 @@ def feriados_regionais():
                 city  = request.form.get('city', '').strip() or None
                 db.execute(
                     """INSERT INTO faciais.geo_holidays
-                       (calendar_date, holiday_name, scope, uf, city, day_type_id)
+                       (holiday_date, holiday_name, scope, uf, city, day_type_id)
                        VALUES (%s, %s, %s, %s, %s, %s)""",
                     (
-                        request.form['calendar_date'],
+                        request.form['holiday_date'],
                         request.form['holiday_name'].strip(),
                         scope,
                         request.form['uf'].strip().upper(),
@@ -890,17 +890,17 @@ def feriados_regionais():
     """
     params = []
     if year_filter:
-        query += " AND EXTRACT(YEAR FROM gh.calendar_date) = %s"
+        query += " AND EXTRACT(YEAR FROM gh.holiday_date) = %s"
         params.append(int(year_filter))
     if uf_filter:
         query += " AND gh.uf = %s"
         params.append(uf_filter)
-    query += " ORDER BY gh.calendar_date, gh.uf, gh.city"
+    query += " ORDER BY gh.holiday_date, gh.uf, gh.city"
 
     feriados = db.query_all(query, params if params else None)
 
     years = db.query_all("""
-        SELECT DISTINCT EXTRACT(YEAR FROM calendar_date)::int AS yr
+        SELECT DISTINCT EXTRACT(YEAR FROM holiday_date)::int AS yr
         FROM   faciais.geo_holidays
         ORDER  BY yr DESC
     """)
