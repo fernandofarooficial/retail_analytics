@@ -738,7 +738,7 @@ def perfis_calendario():
             if action == 'criar':
                 db.execute(
                     """INSERT INTO faciais.business_calendar_profiles
-                       (profile_name, description, saturday_day_type, sunday_day_type)
+                       (profile_name, profile_description, saturday_day_type, sunday_day_type)
                        VALUES (%s, %s, %s, %s)""",
                     (
                         request.form['profile_name'].strip(),
@@ -752,7 +752,7 @@ def perfis_calendario():
             elif action == 'editar':
                 db.execute(
                     """UPDATE faciais.business_calendar_profiles SET
-                       profile_name=%s, description=%s,
+                       profile_name=%s, profile_description=%s,
                        saturday_day_type=%s, sunday_day_type=%s
                        WHERE profile_id=%s""",
                     (
@@ -789,7 +789,8 @@ def perfis_calendario():
         return redirect(url_for('metas.perfis_calendario'))
 
     perfis = db.query_all("""
-        SELECT bcp.*,
+        SELECT bcp.profile_id, bcp.profile_name, bcp.profile_description AS description,
+               bcp.saturday_day_type, bcp.sunday_day_type, bcp.is_active,
                dts.day_type_name AS saturday_type_name,
                dtd.day_type_name AS sunday_type_name,
                COUNT(s.store_id) AS num_stores
@@ -797,7 +798,9 @@ def perfis_calendario():
         LEFT JOIN faciais.day_types dts ON dts.day_type_id = bcp.saturday_day_type
         LEFT JOIN faciais.day_types dtd ON dtd.day_type_id = bcp.sunday_day_type
         LEFT JOIN faciais.stores    s   ON s.calendar_profile_id = bcp.profile_id
-        GROUP BY bcp.profile_id, dts.day_type_name, dtd.day_type_name
+        GROUP BY bcp.profile_id, bcp.profile_name, bcp.profile_description,
+                 bcp.saturday_day_type, bcp.sunday_day_type, bcp.is_active,
+                 dts.day_type_name, dtd.day_type_name
         ORDER BY bcp.profile_name
     """)
     return render_template('metas/perfis_calendario.html', perfis=perfis, day_types=day_types)
