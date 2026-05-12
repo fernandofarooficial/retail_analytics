@@ -9,7 +9,16 @@
     --accent:        {{ theme.accent_color }};
     --bg:            {{ theme.background_color }};
   }
-  .m-header { background: var(--bg); border-bottom: 1px solid var(--border); }
+  .m-header { background: var(--bg); border-bottom: 1px solid var(--border); justify-content: flex-start; }
+  .m-hdr-left { display: flex; align-items: center; flex: 34 0 0; min-width: 0; overflow: hidden; }
+  .m-hdr-left .m-header-company-logo { height: 64px; width: 100%; max-width: 100%; object-fit: contain; object-position: left center; }
+  .m-header-logo { flex: 32 0 0; min-width: 0; height: 40px; width: 100%; object-fit: contain; }
+  .m-hdr-right { display: flex; align-items: center; gap: 0.2rem; flex: 34 0 0; min-width: 0; position: relative; }
+  .m-hdr-sep { width: 1px; height: 28px; background: #D1D5DB; flex-shrink: 0; margin: 0; }
+  .m-hdr-info { display: flex; flex-direction: column; gap: 0; cursor: pointer; padding: 0.15rem 0.3rem; border-radius: 5px; }
+  .m-hdr-info-row { display: flex; align-items: baseline; gap: 0.2rem; line-height: 1.45; }
+  .m-hdr-info-lbl { font-size: 0.6rem; color: var(--accent); white-space: nowrap; }
+  .m-hdr-info-val { font-size: 0.68rem; font-weight: 700; color: var(--secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
 
   .m-vis-card {
     background: #fff;
