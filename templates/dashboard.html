@@ -2,7 +2,7 @@
 {% block title %}Dashboard — Retail Analytics{% endblock %}
 
 {% block head %}
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -2624,30 +2624,31 @@ function _criarGauge(divId, actual, meta) {
     if (!el || actual == null || !meta) return;
     const pct = Math.max(0, Math.min(Math.round(actual / meta * 100), 150));
     const color = pct >= 85 ? '#22C55E' : pct >= 65 ? '#F59E0B' : '#EF4444';
-    new ApexCharts(el, {
-        series: [pct],
-        chart: { type: 'radialBar', height: 150, sparkline: { enabled: true } },
-        plotOptions: {
-            radialBar: {
-                startAngle: -135,
-                endAngle: 135,
-                hollow: { size: '60%' },
-                track: { background: '#E5E7EB', strokeWidth: '100%' },
-                dataLabels: {
-                    name: { show: false },
-                    value: {
-                        offsetY: -8,
-                        fontSize: '1rem',
-                        fontWeight: 700,
-                        color: color,
-                        formatter: val => val + '%'
-                    }
+    echarts.init(el).setOption({
+        series: [{
+            type: 'gauge',
+            startAngle: 225, endAngle: -45,
+            min: 0, max: 150,
+            radius: '88%',
+            axisLine: {
+                lineStyle: {
+                    width: 10,
+                    color: [[0.433, '#EF4444'], [0.567, '#F59E0B'], [1, '#22C55E']]
                 }
-            }
-        },
-        fill: { colors: [color] },
-        stroke: { lineCap: 'round' }
-    }).render();
+            },
+            pointer: { length: '65%', width: 4, itemStyle: { color: '#111827' } },
+            axisTick: { show: false },
+            splitLine: { show: false },
+            axisLabel: { show: false },
+            detail: {
+                valueAnimation: true,
+                formatter: val => Math.round(val) + '%',
+                color: color, fontSize: 16, fontWeight: 'bold',
+                offsetCenter: [0, '55%']
+            },
+            data: [{ value: pct }]
+        }]
+    });
 }
 
 window.addEventListener('load', () => {
