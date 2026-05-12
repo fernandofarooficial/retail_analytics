@@ -43,13 +43,20 @@
     font-size: 0.875rem; color: #111827;
     background: #F9FAFB; box-sizing: border-box;
   }
-  .m-heat-period-group { margin-bottom: 0.5rem; }
+  .m-heat-period-group { margin-bottom: 0.625rem; }
   .m-heat-period-label {
     font-size: 0.65rem; font-weight: 700; color: #9CA3AF;
     text-transform: uppercase; letter-spacing: .05em;
     margin-bottom: 0.3rem;
   }
-  .m-heat-field input[type="time"] { max-width: 140px; }
+  .m-heat-row { display: flex; gap: 0.5rem; }
+  .m-heat-row .m-heat-field { min-width: 0; margin-bottom: 0; }
+  .m-heat-row .m-heat-field:first-child { flex: 1; }
+  .m-heat-row .m-heat-field:last-child  { flex: 0 0 36%; }
+  .m-heat-field input[type="date"],
+  .m-heat-field input[type="time"] {
+    -webkit-appearance: none; appearance: none; min-width: 0;
+  }
   .m-heat-submit {
     width: 100%; margin-top: 0.75rem;
     padding: 0.7rem; border: none; border-radius: 8px;
@@ -210,25 +217,29 @@
 
         <div class="m-heat-period-group">
           <div class="m-heat-period-label">Início</div>
-          <div class="m-heat-field">
-            <label>Data inicial</label>
-            <input type="date" name="date_ini" value="{{ date_ini }}">
-          </div>
-          <div class="m-heat-field">
-            <label>Hora inicial</label>
-            <input type="time" name="hora_ini" value="{{ hora_ini }}">
+          <div class="m-heat-row">
+            <div class="m-heat-field">
+              <label>Data</label>
+              <input type="date" name="date_ini" value="{{ date_ini }}">
+            </div>
+            <div class="m-heat-field">
+              <label>Hora</label>
+              <input type="time" name="hora_ini" value="{{ hora_ini }}">
+            </div>
           </div>
         </div>
 
         <div class="m-heat-period-group">
           <div class="m-heat-period-label">Fim</div>
-          <div class="m-heat-field">
-            <label>Data final</label>
-            <input type="date" name="date_fim" value="{{ date_fim }}">
-          </div>
-          <div class="m-heat-field">
-            <label>Hora final</label>
-            <input type="time" name="hora_fim" value="{{ hora_fim }}">
+          <div class="m-heat-row">
+            <div class="m-heat-field">
+              <label>Data</label>
+              <input type="date" name="date_fim" value="{{ date_fim }}">
+            </div>
+            <div class="m-heat-field">
+              <label>Hora</label>
+              <input type="time" name="hora_fim" value="{{ hora_fim }}">
+            </div>
           </div>
         </div>
 
