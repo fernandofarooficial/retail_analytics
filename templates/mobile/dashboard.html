@@ -209,6 +209,7 @@
     margin-bottom: 0.15rem;
   }
   .m-gauge-canvas-wrap { position: relative; height: 110px; max-width: 220px; margin: 0 auto; }
+  .m-funnel-wrap { width: 100%; height: 180px; margin-bottom: 0.75rem; }
   .m-gauge-footer {
     text-align: center; font-size: 0.72rem; color: #374151; font-weight: 600;
     margin-top: 0.35rem; line-height: 1.6;
@@ -473,6 +474,7 @@
 
       </div>
 
+      <div class="m-funnel-wrap" id="m-chart-funil-dia"></div>
       <div class="m-chart-faixa-wrap">
         <canvas id="m-chart-faixa-dia"></canvas>
       </div>
@@ -771,6 +773,7 @@
 
       </div>
 
+      <div class="m-funnel-wrap" id="m-chart-funil-sem"></div>
       <div class="m-chart-faixa-wrap">
         <canvas id="m-chart-faixa-sem"></canvas>
       </div>
@@ -904,6 +907,7 @@
 
       </div>
 
+      <div class="m-funnel-wrap" id="m-chart-funil-mes"></div>
       <div class="m-chart-faixa-wrap">
         <canvas id="m-chart-faixa-mes"></canvas>
       </div>
@@ -1775,6 +1779,7 @@
 
       </div>
 
+      <div class="m-funnel-wrap" id="m-chart-funil-ytd"></div>
       <div class="m-chart-faixa-wrap">
         <canvas id="m-chart-faixa-ytd"></canvas>
       </div>
@@ -2162,6 +2167,7 @@ function atualizarPainel() {
     p.classList.toggle('active', p.dataset.panel === chave);
   });
   if (l1Ativo === 'estrategico') setTimeout(() => _mGaugeInsts.forEach(c => c.resize()), 0);
+  if (l1Ativo === 'operacional') setTimeout(() => _mFunilInsts.forEach(c => c.resize()), 0);
 }
 
 function mudarData(valor) {
@@ -2722,6 +2728,30 @@ function _mCriarTicketChart(canvasId, data) {
   });
 }
 
+const _mFunilInsts = [];
+function _mCriarFunil(divId, novos, recorrentes) {
+  const el = document.getElementById(divId);
+  if (!el) return;
+  if (novos == null || recorrentes == null) { el.style.display = 'none'; return; }
+  const total = (novos || 0) + (recorrentes || 0);
+  if (total === 0) { el.style.display = 'none'; return; }
+  const inst = echarts.init(el);
+  inst.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c}' },
+    series: [{
+      type: 'funnel',
+      left: '5%', width: '90%', top: 16, bottom: 8,
+      min: 0, max: total, sort: 'none', gap: 3,
+      label: { show: true, position: 'inside', formatter: '{b}: {c}', fontSize: 11, color: '#fff', fontWeight: 'bold' },
+      data: [
+        { value: total,       name: 'Total',       itemStyle: { color: '#3B82F6' } },
+        { value: novos,       name: 'Novos',       itemStyle: { color: '#22C55E' } },
+        { value: recorrentes, name: 'Recorrentes', itemStyle: { color: '#F59E0B' } }
+      ]
+    }]
+  });
+  _mFunilInsts.push(inst);
+}
 const _mGaugeInsts = [];
 function _mCriarGauge(divId, actual, meta) {
   const el = document.getElementById(divId);
@@ -2804,6 +2834,10 @@ window.addEventListener('load', () => {
   _mCriarTop5TipoChart('m-chart-top5-rec-mes',   _mTop5TipoMes.recorrentes, _mCoresRec);
   _mCriarTop5TipoChart('m-chart-top5-novos-ytd', _mTop5TipoYtd.novos,       _mCoresNovos);
   _mCriarTop5TipoChart('m-chart-top5-rec-ytd',   _mTop5TipoYtd.recorrentes, _mCoresRec);
+  _mCriarFunil('m-chart-funil-dia', {{ kpi_est.novos | tojson }}, {{ kpi.recorrentes | tojson }});
+  _mCriarFunil('m-chart-funil-sem', {{ kpi_est_sem.novos | tojson }}, {{ kpi_sem.recorrentes | tojson }});
+  _mCriarFunil('m-chart-funil-mes', {{ kpi_est_mes.novos | tojson }}, {{ kpi_mes.recorrentes | tojson }});
+  _mCriarFunil('m-chart-funil-ytd', {{ kpi_est_ytd.novos | tojson }}, {{ kpi_ytd.recorrentes | tojson }});
 });
 </script>
 {% endblock %}

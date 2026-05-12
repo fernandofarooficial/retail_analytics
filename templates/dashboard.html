@@ -174,6 +174,7 @@
   .gauge-title { font-size: 0.875rem; font-weight: 700; color: #374151; }
   .gauge-valor { font-size: 0.875rem; font-weight: 700; color: #1D4ED8; }
   .gauge-canvas-wrap { position: relative; height: 150px; max-width: 320px; margin: 0 auto; }
+  .funnel-wrap { width: 100%; height: 200px; margin-bottom: 1rem; }
   .gauge-footer {
     text-align: center; font-size: 0.78rem; color: #374151; font-weight: 600;
     margin-top: 0.4rem; line-height: 1.6;
@@ -372,6 +373,7 @@
 
         </div>
 
+        <div class="funnel-wrap" id="chart-funil-dia"></div>
         <div class="charts-row">
             <div class="chart-faixa-wrap"><canvas id="chart-faixa-dia"></canvas></div>
             <div class="chart-faixa-wrap"><canvas id="chart-genero-dia"></canvas></div>
@@ -648,6 +650,7 @@
 
         </div>
 
+        <div class="funnel-wrap" id="chart-funil-sem"></div>
         <div class="charts-row">
             <div class="chart-faixa-wrap"><canvas id="chart-faixa-sem"></canvas></div>
             <div class="chart-faixa-wrap"><canvas id="chart-ocorrencias-sem"></canvas></div>
@@ -789,6 +792,7 @@
 
         </div>
 
+        <div class="funnel-wrap" id="chart-funil-mes"></div>
         <div class="charts-row">
             <div class="chart-faixa-wrap"><canvas id="chart-faixa-mes"></canvas></div>
             <div class="chart-faixa-wrap"><canvas id="chart-ocorrencias-mes"></canvas></div>
@@ -1684,6 +1688,7 @@
 
         </div>
 
+        <div class="funnel-wrap" id="chart-funil-ytd"></div>
         <div class="charts-row">
             <div class="chart-faixa-wrap"><canvas id="chart-faixa-ytd"></canvas></div>
             <div class="chart-faixa-wrap"><canvas id="chart-ocorrencias-ytd"></canvas></div>
@@ -2013,6 +2018,7 @@ function atualizarPainel() {
         p.classList.toggle('active', p.dataset.panel === chave);
     });
     if (l1Ativo === 'estrategico') setTimeout(() => _gaugeInsts.forEach(c => c.resize()), 0);
+    if (l1Ativo === 'operacional') setTimeout(() => _funilInsts.forEach(c => c.resize()), 0);
 }
 
 function mudarData(valor) {
@@ -2620,6 +2626,30 @@ function _criarEstTicketChart(canvasId, faixaData) {
     });
 }
 
+const _funilInsts = [];
+function _criarFunil(divId, novos, recorrentes) {
+    const el = document.getElementById(divId);
+    if (!el) return;
+    if (novos == null || recorrentes == null) { el.style.display = 'none'; return; }
+    const total = (novos || 0) + (recorrentes || 0);
+    if (total === 0) { el.style.display = 'none'; return; }
+    const inst = echarts.init(el);
+    inst.setOption({
+        tooltip: { trigger: 'item', formatter: '{b}: {c}' },
+        series: [{
+            type: 'funnel',
+            left: '5%', width: '90%', top: 20, bottom: 10,
+            min: 0, max: total, sort: 'none', gap: 4,
+            label: { show: true, position: 'inside', formatter: '{b}: {c}', fontSize: 12, color: '#fff', fontWeight: 'bold' },
+            data: [
+                { value: total,       name: 'Total',       itemStyle: { color: '#3B82F6' } },
+                { value: novos,       name: 'Novos',       itemStyle: { color: '#22C55E' } },
+                { value: recorrentes, name: 'Recorrentes', itemStyle: { color: '#F59E0B' } }
+            ]
+        }]
+    });
+    _funilInsts.push(inst);
+}
 const _gaugeInsts = [];
 function _criarGauge(divId, actual, meta) {
     const el = document.getElementById(divId);
@@ -2710,6 +2740,10 @@ window.addEventListener('load', () => {
     _criarGauge('chart-gauge-ticket-mes', {{ kpi_com_mes.ticket_medio| tojson }}, {{ (metas.ticket_medio        if metas else none) | tojson }});
     _criarGauge('chart-gauge-fat-ytd',    {{ kpi_com_ytd.faturamento | tojson }}, {{ (metas.faturamento_ytd     if metas else none) | tojson }});
     _criarGauge('chart-gauge-ticket-ytd', {{ kpi_com_ytd.ticket_medio| tojson }}, {{ (metas.ticket_medio        if metas else none) | tojson }});
+    _criarFunil('chart-funil-dia', {{ kpi_est.novos | tojson }}, {{ kpi.recorrentes | tojson }});
+    _criarFunil('chart-funil-sem', {{ kpi_est_sem.novos | tojson }}, {{ kpi_sem.recorrentes | tojson }});
+    _criarFunil('chart-funil-mes', {{ kpi_est_mes.novos | tojson }}, {{ kpi_mes.recorrentes | tojson }});
+    _criarFunil('chart-funil-ytd', {{ kpi_est_ytd.novos | tojson }}, {{ kpi_ytd.recorrentes | tojson }});
 });
 </script>
 {% endblock %}
