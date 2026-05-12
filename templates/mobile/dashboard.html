@@ -480,20 +480,18 @@
       {% set _fn = kpi_est.novos|int %}{% set _fr = kpi.recorrentes|int %}{% set _ft = _fn + _fr %}
       {% if _ft > 0 %}
       {% set _fnp = (_fn / _ft * 100)|round|int %}{% set _frp = (_fr / _ft * 100)|round|int %}
-      {% set _l2w = [280 * _fnp // 100, 40]|max %}{% set _l2x = (300 - _l2w) // 2 %}
-      {% set _l3w = [280 * _frp // 100, 40]|max %}{% set _l3x = (300 - _l3w) // 2 %}
       <div class="funil-card">
         <div class="funil-title">Funil de Vendas</div>
-        <svg class="funil-svg" viewBox="0 0 300 159" xmlns="http://www.w3.org/2000/svg">
-          <polygon points="10,0 290,0 284,50 16,50" fill="#3B82F6"/>
-          <text x="150" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Total</text>
-          <text x="150" y="38" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_ft).replace(',','.') }}</text>
-          <polygon points="{{ _l2x }},53 {{ _l2x+_l2w }},53 {{ _l2x+_l2w-6 }},103 {{ _l2x+6 }},103" fill="#22C55E"/>
-          <text x="150" y="72" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Novos · {{ _fnp }}%</text>
-          <text x="150" y="91" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fn).replace(',','.') }}</text>
-          <polygon points="{{ _l3x }},106 {{ _l3x+_l3w }},106 {{ _l3x+_l3w-6 }},156 {{ _l3x+6 }},156" fill="#F59E0B"/>
-          <text x="150" y="125" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Recorrentes · {{ _frp }}%</text>
-          <text x="150" y="144" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fr).replace(',','.') }}</text>
+        <svg class="funil-svg" viewBox="0 0 310 170" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="2,5 182,5 153,55 31,55" fill="{{ theme.graph_color_3 }}"/>
+          <polygon points="33,58 151,58 123,108 61,108" fill="{{ theme.graph_color_1 }}"/>
+          <polygon points="63,111 121,111 92,161" fill="{{ theme.graph_color_2 }}"/>
+          <text x="192" y="22" font-size="10" fill="#6B7280" font-family="system-ui,sans-serif">Total</text>
+          <text x="192" y="40" font-size="14" font-weight="bold" fill="#111827" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_ft).replace(',','.') }}<tspan font-size="10" fill="#6B7280" font-weight="normal">  100%</tspan></text>
+          <text x="192" y="75" font-size="10" fill="#6B7280" font-family="system-ui,sans-serif">Recorrentes</text>
+          <text x="192" y="93" font-size="14" font-weight="bold" fill="#111827" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fr).replace(',','.') }}<tspan font-size="10" fill="#6B7280" font-weight="normal">  {{ _frp }}%</tspan></text>
+          <text x="192" y="128" font-size="10" fill="#6B7280" font-family="system-ui,sans-serif">Novos</text>
+          <text x="192" y="146" font-size="14" font-weight="bold" fill="#111827" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fn).replace(',','.') }}<tspan font-size="10" fill="#6B7280" font-weight="normal">  {{ _fnp }}%</tspan></text>
         </svg>
       </div>
       {% endif %}{% endif %}
@@ -799,20 +797,18 @@
       {% set _fn = kpi_est_sem.novos|int %}{% set _fr = kpi_sem.recorrentes|int %}{% set _ft = _fn + _fr %}
       {% if _ft > 0 %}
       {% set _fnp = (_fn / _ft * 100)|round|int %}{% set _frp = (_fr / _ft * 100)|round|int %}
-      {% set _l2w = [280 * _fnp // 100, 40]|max %}{% set _l2x = (300 - _l2w) // 2 %}
-      {% set _l3w = [280 * _frp // 100, 40]|max %}{% set _l3x = (300 - _l3w) // 2 %}
       <div class="funil-card">
         <div class="funil-title">Funil de Vendas</div>
-        <svg class="funil-svg" viewBox="0 0 300 159" xmlns="http://www.w3.org/2000/svg">
-          <polygon points="10,0 290,0 284,50 16,50" fill="#3B82F6"/>
-          <text x="150" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Total</text>
-          <text x="150" y="38" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_ft).replace(',','.') }}</text>
-          <polygon points="{{ _l2x }},53 {{ _l2x+_l2w }},53 {{ _l2x+_l2w-6 }},103 {{ _l2x+6 }},103" fill="#22C55E"/>
-          <text x="150" y="72" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Novos · {{ _fnp }}%</text>
-          <text x="150" y="91" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fn).replace(',','.') }}</text>
-          <polygon points="{{ _l3x }},106 {{ _l3x+_l3w }},106 {{ _l3x+_l3w-6 }},156 {{ _l3x+6 }},156" fill="#F59E0B"/>
-          <text x="150" y="125" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Recorrentes · {{ _frp }}%</text>
-          <text x="150" y="144" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fr).replace(',','.') }}</text>
+        <svg class="funil-svg" viewBox="0 0 310 170" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="2,5 182,5 153,55 31,55" fill="{{ theme.graph_color_3 }}"/>
+          <polygon points="33,58 151,58 123,108 61,108" fill="{{ theme.graph_color_1 }}"/>
+          <polygon points="63,111 121,111 92,161" fill="{{ theme.graph_color_2 }}"/>
+          <text x="192" y="22" font-size="10" fill="#6B7280" font-family="system-ui,sans-serif">Total</text>
+          <text x="192" y="40" font-size="14" font-weight="bold" fill="#111827" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_ft).replace(',','.') }}<tspan font-size="10" fill="#6B7280" font-weight="normal">  100%</tspan></text>
+          <text x="192" y="75" font-size="10" fill="#6B7280" font-family="system-ui,sans-serif">Recorrentes</text>
+          <text x="192" y="93" font-size="14" font-weight="bold" fill="#111827" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fr).replace(',','.') }}<tspan font-size="10" fill="#6B7280" font-weight="normal">  {{ _frp }}%</tspan></text>
+          <text x="192" y="128" font-size="10" fill="#6B7280" font-family="system-ui,sans-serif">Novos</text>
+          <text x="192" y="146" font-size="14" font-weight="bold" fill="#111827" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fn).replace(',','.') }}<tspan font-size="10" fill="#6B7280" font-weight="normal">  {{ _fnp }}%</tspan></text>
         </svg>
       </div>
       {% endif %}{% endif %}
@@ -953,20 +949,18 @@
       {% set _fn = kpi_est_mes.novos|int %}{% set _fr = kpi_mes.recorrentes|int %}{% set _ft = _fn + _fr %}
       {% if _ft > 0 %}
       {% set _fnp = (_fn / _ft * 100)|round|int %}{% set _frp = (_fr / _ft * 100)|round|int %}
-      {% set _l2w = [280 * _fnp // 100, 40]|max %}{% set _l2x = (300 - _l2w) // 2 %}
-      {% set _l3w = [280 * _frp // 100, 40]|max %}{% set _l3x = (300 - _l3w) // 2 %}
       <div class="funil-card">
         <div class="funil-title">Funil de Vendas</div>
-        <svg class="funil-svg" viewBox="0 0 300 159" xmlns="http://www.w3.org/2000/svg">
-          <polygon points="10,0 290,0 284,50 16,50" fill="#3B82F6"/>
-          <text x="150" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Total</text>
-          <text x="150" y="38" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_ft).replace(',','.') }}</text>
-          <polygon points="{{ _l2x }},53 {{ _l2x+_l2w }},53 {{ _l2x+_l2w-6 }},103 {{ _l2x+6 }},103" fill="#22C55E"/>
-          <text x="150" y="72" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Novos · {{ _fnp }}%</text>
-          <text x="150" y="91" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fn).replace(',','.') }}</text>
-          <polygon points="{{ _l3x }},106 {{ _l3x+_l3w }},106 {{ _l3x+_l3w-6 }},156 {{ _l3x+6 }},156" fill="#F59E0B"/>
-          <text x="150" y="125" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Recorrentes · {{ _frp }}%</text>
-          <text x="150" y="144" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fr).replace(',','.') }}</text>
+        <svg class="funil-svg" viewBox="0 0 310 170" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="2,5 182,5 153,55 31,55" fill="{{ theme.graph_color_3 }}"/>
+          <polygon points="33,58 151,58 123,108 61,108" fill="{{ theme.graph_color_1 }}"/>
+          <polygon points="63,111 121,111 92,161" fill="{{ theme.graph_color_2 }}"/>
+          <text x="192" y="22" font-size="10" fill="#6B7280" font-family="system-ui,sans-serif">Total</text>
+          <text x="192" y="40" font-size="14" font-weight="bold" fill="#111827" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_ft).replace(',','.') }}<tspan font-size="10" fill="#6B7280" font-weight="normal">  100%</tspan></text>
+          <text x="192" y="75" font-size="10" fill="#6B7280" font-family="system-ui,sans-serif">Recorrentes</text>
+          <text x="192" y="93" font-size="14" font-weight="bold" fill="#111827" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fr).replace(',','.') }}<tspan font-size="10" fill="#6B7280" font-weight="normal">  {{ _frp }}%</tspan></text>
+          <text x="192" y="128" font-size="10" fill="#6B7280" font-family="system-ui,sans-serif">Novos</text>
+          <text x="192" y="146" font-size="14" font-weight="bold" fill="#111827" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fn).replace(',','.') }}<tspan font-size="10" fill="#6B7280" font-weight="normal">  {{ _fnp }}%</tspan></text>
         </svg>
       </div>
       {% endif %}{% endif %}
@@ -1845,20 +1839,18 @@
       {% set _fn = kpi_est_ytd.novos|int %}{% set _fr = kpi_ytd.recorrentes|int %}{% set _ft = _fn + _fr %}
       {% if _ft > 0 %}
       {% set _fnp = (_fn / _ft * 100)|round|int %}{% set _frp = (_fr / _ft * 100)|round|int %}
-      {% set _l2w = [280 * _fnp // 100, 40]|max %}{% set _l2x = (300 - _l2w) // 2 %}
-      {% set _l3w = [280 * _frp // 100, 40]|max %}{% set _l3x = (300 - _l3w) // 2 %}
       <div class="funil-card">
         <div class="funil-title">Funil de Vendas</div>
-        <svg class="funil-svg" viewBox="0 0 300 159" xmlns="http://www.w3.org/2000/svg">
-          <polygon points="10,0 290,0 284,50 16,50" fill="#3B82F6"/>
-          <text x="150" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Total</text>
-          <text x="150" y="38" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_ft).replace(',','.') }}</text>
-          <polygon points="{{ _l2x }},53 {{ _l2x+_l2w }},53 {{ _l2x+_l2w-6 }},103 {{ _l2x+6 }},103" fill="#22C55E"/>
-          <text x="150" y="72" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Novos · {{ _fnp }}%</text>
-          <text x="150" y="91" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fn).replace(',','.') }}</text>
-          <polygon points="{{ _l3x }},106 {{ _l3x+_l3w }},106 {{ _l3x+_l3w-6 }},156 {{ _l3x+6 }},156" fill="#F59E0B"/>
-          <text x="150" y="125" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Recorrentes · {{ _frp }}%</text>
-          <text x="150" y="144" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fr).replace(',','.') }}</text>
+        <svg class="funil-svg" viewBox="0 0 310 170" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="2,5 182,5 153,55 31,55" fill="{{ theme.graph_color_3 }}"/>
+          <polygon points="33,58 151,58 123,108 61,108" fill="{{ theme.graph_color_1 }}"/>
+          <polygon points="63,111 121,111 92,161" fill="{{ theme.graph_color_2 }}"/>
+          <text x="192" y="22" font-size="10" fill="#6B7280" font-family="system-ui,sans-serif">Total</text>
+          <text x="192" y="40" font-size="14" font-weight="bold" fill="#111827" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_ft).replace(',','.') }}<tspan font-size="10" fill="#6B7280" font-weight="normal">  100%</tspan></text>
+          <text x="192" y="75" font-size="10" fill="#6B7280" font-family="system-ui,sans-serif">Recorrentes</text>
+          <text x="192" y="93" font-size="14" font-weight="bold" fill="#111827" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fr).replace(',','.') }}<tspan font-size="10" fill="#6B7280" font-weight="normal">  {{ _frp }}%</tspan></text>
+          <text x="192" y="128" font-size="10" fill="#6B7280" font-family="system-ui,sans-serif">Novos</text>
+          <text x="192" y="146" font-size="14" font-weight="bold" fill="#111827" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fn).replace(',','.') }}<tspan font-size="10" fill="#6B7280" font-weight="normal">  {{ _fnp }}%</tspan></text>
         </svg>
       </div>
       {% endif %}{% endif %}
