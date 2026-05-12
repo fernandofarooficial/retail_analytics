@@ -174,7 +174,9 @@
   .gauge-title { font-size: 0.875rem; font-weight: 700; color: #374151; }
   .gauge-valor { font-size: 0.875rem; font-weight: 700; color: #1D4ED8; }
   .gauge-canvas-wrap { position: relative; height: 150px; max-width: 320px; margin: 0 auto; }
-  .funnel-wrap { width: 100%; height: 200px; margin-bottom: 1rem; }
+  .funil-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.09); padding: 1.25rem; margin-bottom: 1.25rem; }
+  .funil-title { font-size: 0.875rem; font-weight: 700; color: #374151; margin-bottom: 0.75rem; }
+  .funil-svg { width: 100%; height: auto; display: block; }
   .gauge-footer {
     text-align: center; font-size: 0.78rem; color: #374151; font-weight: 600;
     margin-top: 0.4rem; line-height: 1.6;
@@ -373,7 +375,27 @@
 
         </div>
 
-        <div class="funnel-wrap" id="chart-funil-dia"></div>
+        {% if kpi_est.novos is not none and kpi.recorrentes is not none %}
+        {% set _fn = kpi_est.novos|int %}{% set _fr = kpi.recorrentes|int %}{% set _ft = _fn + _fr %}
+        {% if _ft > 0 %}
+        {% set _fnp = (_fn / _ft * 100)|round|int %}{% set _frp = (_fr / _ft * 100)|round|int %}
+        {% set _l2w = [280 * _fnp // 100, 40]|max %}{% set _l2x = (300 - _l2w) // 2 %}
+        {% set _l3w = [280 * _frp // 100, 40]|max %}{% set _l3x = (300 - _l3w) // 2 %}
+        <div class="funil-card">
+          <div class="funil-title">Funil de Vendas</div>
+          <svg class="funil-svg" viewBox="0 0 300 159" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="10,0 290,0 284,50 16,50" fill="#3B82F6"/>
+            <text x="150" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Total</text>
+            <text x="150" y="38" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_ft).replace(',','.') }}</text>
+            <polygon points="{{ _l2x }},53 {{ _l2x+_l2w }},53 {{ _l2x+_l2w-6 }},103 {{ _l2x+6 }},103" fill="#22C55E"/>
+            <text x="150" y="72" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Novos · {{ _fnp }}%</text>
+            <text x="150" y="91" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fn).replace(',','.') }}</text>
+            <polygon points="{{ _l3x }},106 {{ _l3x+_l3w }},106 {{ _l3x+_l3w-6 }},156 {{ _l3x+6 }},156" fill="#F59E0B"/>
+            <text x="150" y="125" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Recorrentes · {{ _frp }}%</text>
+            <text x="150" y="144" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fr).replace(',','.') }}</text>
+          </svg>
+        </div>
+        {% endif %}{% endif %}
         <div class="charts-row">
             <div class="chart-faixa-wrap"><canvas id="chart-faixa-dia"></canvas></div>
             <div class="chart-faixa-wrap"><canvas id="chart-genero-dia"></canvas></div>
@@ -650,7 +672,27 @@
 
         </div>
 
-        <div class="funnel-wrap" id="chart-funil-sem"></div>
+        {% if kpi_est_sem.novos is not none and kpi_sem.recorrentes is not none %}
+        {% set _fn = kpi_est_sem.novos|int %}{% set _fr = kpi_sem.recorrentes|int %}{% set _ft = _fn + _fr %}
+        {% if _ft > 0 %}
+        {% set _fnp = (_fn / _ft * 100)|round|int %}{% set _frp = (_fr / _ft * 100)|round|int %}
+        {% set _l2w = [280 * _fnp // 100, 40]|max %}{% set _l2x = (300 - _l2w) // 2 %}
+        {% set _l3w = [280 * _frp // 100, 40]|max %}{% set _l3x = (300 - _l3w) // 2 %}
+        <div class="funil-card">
+          <div class="funil-title">Funil de Vendas</div>
+          <svg class="funil-svg" viewBox="0 0 300 159" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="10,0 290,0 284,50 16,50" fill="#3B82F6"/>
+            <text x="150" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Total</text>
+            <text x="150" y="38" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_ft).replace(',','.') }}</text>
+            <polygon points="{{ _l2x }},53 {{ _l2x+_l2w }},53 {{ _l2x+_l2w-6 }},103 {{ _l2x+6 }},103" fill="#22C55E"/>
+            <text x="150" y="72" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Novos · {{ _fnp }}%</text>
+            <text x="150" y="91" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fn).replace(',','.') }}</text>
+            <polygon points="{{ _l3x }},106 {{ _l3x+_l3w }},106 {{ _l3x+_l3w-6 }},156 {{ _l3x+6 }},156" fill="#F59E0B"/>
+            <text x="150" y="125" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Recorrentes · {{ _frp }}%</text>
+            <text x="150" y="144" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fr).replace(',','.') }}</text>
+          </svg>
+        </div>
+        {% endif %}{% endif %}
         <div class="charts-row">
             <div class="chart-faixa-wrap"><canvas id="chart-faixa-sem"></canvas></div>
             <div class="chart-faixa-wrap"><canvas id="chart-ocorrencias-sem"></canvas></div>
@@ -792,7 +834,27 @@
 
         </div>
 
-        <div class="funnel-wrap" id="chart-funil-mes"></div>
+        {% if kpi_est_mes.novos is not none and kpi_mes.recorrentes is not none %}
+        {% set _fn = kpi_est_mes.novos|int %}{% set _fr = kpi_mes.recorrentes|int %}{% set _ft = _fn + _fr %}
+        {% if _ft > 0 %}
+        {% set _fnp = (_fn / _ft * 100)|round|int %}{% set _frp = (_fr / _ft * 100)|round|int %}
+        {% set _l2w = [280 * _fnp // 100, 40]|max %}{% set _l2x = (300 - _l2w) // 2 %}
+        {% set _l3w = [280 * _frp // 100, 40]|max %}{% set _l3x = (300 - _l3w) // 2 %}
+        <div class="funil-card">
+          <div class="funil-title">Funil de Vendas</div>
+          <svg class="funil-svg" viewBox="0 0 300 159" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="10,0 290,0 284,50 16,50" fill="#3B82F6"/>
+            <text x="150" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Total</text>
+            <text x="150" y="38" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_ft).replace(',','.') }}</text>
+            <polygon points="{{ _l2x }},53 {{ _l2x+_l2w }},53 {{ _l2x+_l2w-6 }},103 {{ _l2x+6 }},103" fill="#22C55E"/>
+            <text x="150" y="72" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Novos · {{ _fnp }}%</text>
+            <text x="150" y="91" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fn).replace(',','.') }}</text>
+            <polygon points="{{ _l3x }},106 {{ _l3x+_l3w }},106 {{ _l3x+_l3w-6 }},156 {{ _l3x+6 }},156" fill="#F59E0B"/>
+            <text x="150" y="125" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Recorrentes · {{ _frp }}%</text>
+            <text x="150" y="144" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fr).replace(',','.') }}</text>
+          </svg>
+        </div>
+        {% endif %}{% endif %}
         <div class="charts-row">
             <div class="chart-faixa-wrap"><canvas id="chart-faixa-mes"></canvas></div>
             <div class="chart-faixa-wrap"><canvas id="chart-ocorrencias-mes"></canvas></div>
@@ -1688,7 +1750,27 @@
 
         </div>
 
-        <div class="funnel-wrap" id="chart-funil-ytd"></div>
+        {% if kpi_est_ytd.novos is not none and kpi_ytd.recorrentes is not none %}
+        {% set _fn = kpi_est_ytd.novos|int %}{% set _fr = kpi_ytd.recorrentes|int %}{% set _ft = _fn + _fr %}
+        {% if _ft > 0 %}
+        {% set _fnp = (_fn / _ft * 100)|round|int %}{% set _frp = (_fr / _ft * 100)|round|int %}
+        {% set _l2w = [280 * _fnp // 100, 40]|max %}{% set _l2x = (300 - _l2w) // 2 %}
+        {% set _l3w = [280 * _frp // 100, 40]|max %}{% set _l3x = (300 - _l3w) // 2 %}
+        <div class="funil-card">
+          <div class="funil-title">Funil de Vendas</div>
+          <svg class="funil-svg" viewBox="0 0 300 159" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="10,0 290,0 284,50 16,50" fill="#3B82F6"/>
+            <text x="150" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Total</text>
+            <text x="150" y="38" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_ft).replace(',','.') }}</text>
+            <polygon points="{{ _l2x }},53 {{ _l2x+_l2w }},53 {{ _l2x+_l2w-6 }},103 {{ _l2x+6 }},103" fill="#22C55E"/>
+            <text x="150" y="72" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Novos · {{ _fnp }}%</text>
+            <text x="150" y="91" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fn).replace(',','.') }}</text>
+            <polygon points="{{ _l3x }},106 {{ _l3x+_l3w }},106 {{ _l3x+_l3w-6 }},156 {{ _l3x+6 }},156" fill="#F59E0B"/>
+            <text x="150" y="125" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="system-ui,sans-serif">Recorrentes · {{ _frp }}%</text>
+            <text x="150" y="144" text-anchor="middle" fill="rgba(255,255,255,.95)" font-size="15" font-weight="bold" font-family="system-ui,sans-serif">{{ '{:,.0f}'.format(_fr).replace(',','.') }}</text>
+          </svg>
+        </div>
+        {% endif %}{% endif %}
         <div class="charts-row">
             <div class="chart-faixa-wrap"><canvas id="chart-faixa-ytd"></canvas></div>
             <div class="chart-faixa-wrap"><canvas id="chart-ocorrencias-ytd"></canvas></div>
@@ -2018,7 +2100,6 @@ function atualizarPainel() {
         p.classList.toggle('active', p.dataset.panel === chave);
     });
     if (l1Ativo === 'estrategico') setTimeout(() => _gaugeInsts.forEach(c => c.resize()), 0);
-    if (l1Ativo === 'operacional') setTimeout(() => _funilInsts.forEach(c => c.resize()), 0);
 }
 
 function mudarData(valor) {
@@ -2626,30 +2707,6 @@ function _criarEstTicketChart(canvasId, faixaData) {
     });
 }
 
-const _funilInsts = [];
-function _criarFunil(divId, novos, recorrentes) {
-    const el = document.getElementById(divId);
-    if (!el) return;
-    if (novos == null || recorrentes == null) { el.style.display = 'none'; return; }
-    const total = (novos || 0) + (recorrentes || 0);
-    if (total === 0) { el.style.display = 'none'; return; }
-    const inst = echarts.init(el);
-    inst.setOption({
-        tooltip: { trigger: 'item', formatter: '{b}: {c}' },
-        series: [{
-            type: 'funnel',
-            left: '5%', width: '90%', top: 20, bottom: 10,
-            min: 0, max: total, sort: 'none', gap: 4,
-            label: { show: true, position: 'inside', formatter: '{b}: {c}', fontSize: 12, color: '#fff', fontWeight: 'bold' },
-            data: [
-                { value: total,       name: 'Total',       itemStyle: { color: '#3B82F6' } },
-                { value: novos,       name: 'Novos',       itemStyle: { color: '#22C55E' } },
-                { value: recorrentes, name: 'Recorrentes', itemStyle: { color: '#F59E0B' } }
-            ]
-        }]
-    });
-    _funilInsts.push(inst);
-}
 const _gaugeInsts = [];
 function _criarGauge(divId, actual, meta) {
     const el = document.getElementById(divId);
@@ -2740,10 +2797,6 @@ window.addEventListener('load', () => {
     _criarGauge('chart-gauge-ticket-mes', {{ kpi_com_mes.ticket_medio| tojson }}, {{ (metas.ticket_medio        if metas else none) | tojson }});
     _criarGauge('chart-gauge-fat-ytd',    {{ kpi_com_ytd.faturamento | tojson }}, {{ (metas.faturamento_ytd     if metas else none) | tojson }});
     _criarGauge('chart-gauge-ticket-ytd', {{ kpi_com_ytd.ticket_medio| tojson }}, {{ (metas.ticket_medio        if metas else none) | tojson }});
-    _criarFunil('chart-funil-dia', {{ kpi_est.novos | tojson }}, {{ kpi.recorrentes | tojson }});
-    _criarFunil('chart-funil-sem', {{ kpi_est_sem.novos | tojson }}, {{ kpi_sem.recorrentes | tojson }});
-    _criarFunil('chart-funil-mes', {{ kpi_est_mes.novos | tojson }}, {{ kpi_mes.recorrentes | tojson }});
-    _criarFunil('chart-funil-ytd', {{ kpi_est_ytd.novos | tojson }}, {{ kpi_ytd.recorrentes | tojson }});
 });
 </script>
 {% endblock %}
