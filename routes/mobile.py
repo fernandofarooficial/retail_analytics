@@ -1586,7 +1586,8 @@ def visitacao():
             })
 
     # ── Tema da empresa ───────────────────────────────────────────────────────
-    theme = dict(primary_color='#F47B20', secondary_color='#0057A8', accent_color='#FFFFFF')
+    theme = dict(primary_color='#F47B20', secondary_color='#0057A8', accent_color='#FFFFFF',
+                 text_color='#111827', background_color='#F5F5F5')
     theme_company_id = selected_company_id
     if not theme_company_id and active_store:
         row = db.query_one(
@@ -1597,12 +1598,12 @@ def visitacao():
             theme_company_id = row['company_id']
     if theme_company_id:
         row = db.query_one(
-            "SELECT primary_color, secondary_color, accent_color "
+            "SELECT primary_color, secondary_color, accent_color, text_color, background_color "
             "FROM faciais.company_themes WHERE company_id = %s",
             (theme_company_id,)
         )
         if row:
-            theme.update(row)
+            theme.update({k: v for k, v in row.items() if v})
 
     return render_template(
         'mobile/visitacao.html',
@@ -1782,7 +1783,8 @@ def mapa_calor():
         except Exception as e:
             erro = f'Erro ao consultar API: {e}'
 
-    theme = dict(primary_color='#F47B20', secondary_color='#0057A8', accent_color='#FFFFFF')
+    theme = dict(primary_color='#F47B20', secondary_color='#0057A8', accent_color='#FFFFFF',
+                 text_color='#111827', background_color='#F5F5F5')
     theme_company_id = selected_company_id
     if not theme_company_id and active_store:
         row = db.query_one(
@@ -1793,12 +1795,12 @@ def mapa_calor():
             theme_company_id = row['company_id']
     if theme_company_id:
         row = db.query_one(
-            "SELECT primary_color, secondary_color, accent_color "
+            "SELECT primary_color, secondary_color, accent_color, text_color, background_color "
             "FROM   faciais.company_themes WHERE company_id = %s",
             (theme_company_id,)
         )
         if row:
-            theme.update(row)
+            theme.update({k: v for k, v in row.items() if v})
 
     return render_template(
         'mobile/heatmap.html',
