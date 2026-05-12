@@ -2806,7 +2806,7 @@ function _mCriarGauge(divId, actual, meta) {
   const el = document.getElementById(divId);
   if (!el || actual == null || !meta) return;
   const pct = Math.max(0, Math.min(Math.round(actual / meta * 100), 150));
-  const color = pct >= 85 ? '#22C55E' : pct >= 65 ? '#F59E0B' : '#EF4444';
+  const color = pct >= 95 ? '#22C55E' : pct >= 80 ? '#F59E0B' : '#EF4444';
   const inst = echarts.init(el);
   inst.setOption({
     series: [{
@@ -2817,7 +2817,7 @@ function _mCriarGauge(divId, actual, meta) {
       axisLine: {
         lineStyle: {
           width: 8,
-          color: [[0.433, '#EF4444'], [0.567, '#F59E0B'], [1, '#22C55E']]
+          color: [[0.5333, '#EF4444'], [0.6333, '#F59E0B'], [1, '#22C55E']]
         }
       },
       pointer: { length: '65%', width: 3, itemStyle: { color: '#111827' } },
