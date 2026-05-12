@@ -2012,6 +2012,7 @@ function atualizarPainel() {
     document.querySelectorAll('.tab-panel').forEach(p => {
         p.classList.toggle('active', p.dataset.panel === chave);
     });
+    if (l1Ativo === 'estrategico') setTimeout(() => _gaugeInsts.forEach(c => c.resize()), 0);
 }
 
 function mudarData(valor) {
@@ -2619,12 +2620,14 @@ function _criarEstTicketChart(canvasId, faixaData) {
     });
 }
 
+const _gaugeInsts = [];
 function _criarGauge(divId, actual, meta) {
     const el = document.getElementById(divId);
     if (!el || actual == null || !meta) return;
     const pct = Math.max(0, Math.min(Math.round(actual / meta * 100), 150));
     const color = pct >= 85 ? '#22C55E' : pct >= 65 ? '#F59E0B' : '#EF4444';
-    echarts.init(el).setOption({
+    const inst = echarts.init(el);
+    inst.setOption({
         series: [{
             type: 'gauge',
             startAngle: 225, endAngle: -45,
@@ -2649,6 +2652,7 @@ function _criarGauge(divId, actual, meta) {
             data: [{ value: pct }]
         }]
     });
+    _gaugeInsts.push(inst);
 }
 
 window.addEventListener('load', () => {
