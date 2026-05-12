@@ -7,7 +7,9 @@
     --theme-primary: {{ theme.primary_color }};
     --secondary:     {{ theme.secondary_color }};
     --accent:        {{ theme.accent_color }};
+    --bg:            {{ theme.background_color }};
   }
+  .m-header { background: var(--bg); border-bottom: 1px solid var(--border); }
 
   /* ── Form card ── */
   .m-heat-form-card {

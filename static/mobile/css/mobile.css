@@ -615,11 +615,11 @@ html, body {
   bottom: 0; left: 0; right: 0;
   height: calc(64px + var(--safe-bottom, 0px));
   padding-bottom: var(--safe-bottom, 0px);
-  background: #1E3A5F;
+  background: var(--bg);
   display: flex;
   align-items: stretch;
   z-index: 200;
-  box-shadow: 0 -2px 10px rgba(0,0,0,.25);
+  box-shadow: 0 -1px 0 var(--border);
 }
 
 .m-bn-item {
@@ -630,7 +630,7 @@ html, body {
   justify-content: center;
   gap: 4px;
   cursor: pointer;
-  color: rgba(255,255,255,.55);
+  color: var(--muted);
   text-decoration: none;
   border: none;
   background: none;
@@ -640,7 +640,7 @@ html, body {
 }
 
 .m-bn-item.active { color: #F47B20; }
-.m-bn-item:active  { color: rgba(255,255,255,.9); }
+.m-bn-item:active  { color: var(--text); }
 
 .m-bn-item.m-bn-disabled {
   cursor: default;
