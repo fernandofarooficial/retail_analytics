@@ -72,34 +72,39 @@ def logout():
 def _ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
     """Ticket médio por nota, separado em novo/recorrente, via faciais.person_purchases."""
     rows = db.query_all("""
-        WITH base AS (
-            SELECT 
-                pp.person_id AS clientes,
-                MIN(mm.data_documento)::DATE AS data_nota_fiscal,
-                COUNT(DISTINCT pp.bill) AS notas,
-                SUM(mm.valor_total) AS total_valor,
-                MIN(vpac.first_record)::DATE AS estreia
-            FROM faciais.person_purchases pp
-            JOIN microvix.microvix_movimento mm 
-                ON pp.bill = mm.documento
-            LEFT JOIN faciais.vw_primeira_aparicao_clientes vpac 
-                ON pp.person_id = vpac.person_id 
-            WHERE mm.data_documento::date BETWEEN '2026-05-01' AND '2026-05-13'
-                AND pp.store_id = 1
-                AND mm.portal = 18922
-                AND mm.cnpj_emp = '49104467000170'
-                AND mm.cod_natureza_operacao = '10030' 
-                AND mm.cancelado = 'N' 
-                AND mm.excluido = 'N'
-                AND mm.tipo_transacao = 'V'
-            GROUP BY pp.person_id
+        WITH bills AS (
+            SELECT pp.person_id,
+                   pp.bill,
+                   EXISTS (
+                       SELECT 1 FROM faciais.detection_records dr
+                       WHERE  dr.person_id = pp.person_id AND dr.store_id = %s
+                         AND  DATE(dr.created_at) < DATE(pp.created_at)
+                   ) AS is_rec
+            FROM   faciais.person_purchases pp
+            WHERE  pp.store_id              = %s
+              AND  DATE(pp.created_at) BETWEEN %s AND %s
+              AND  (pp.is_cancelled IS NOT TRUE)
+        ),
+        fat_bills AS (
+            SELECT mm.documento,
+                   SUM(mm.valor_liquido) AS valor_nota
+            FROM   microvix.microvix_movimento mm
+            WHERE  mm.portal                = %s
+              AND  mm.cnpj_emp              = %s
+              AND  DATE(mm.data_documento)  BETWEEN %s AND %s
+              AND  mm.cancelado            <> 'S'
+              AND  mm.excluido             <> 'S'
+              AND  mm.soma_relatorio        = 'S'
+              AND  mm.tipo_transacao        = 'V'
+              AND  mm.cod_natureza_operacao = '10030'
+            GROUP  BY mm.documento
         )
-        SELECT 
-            (estreia IS NOT NULL AND estreia < data_nota_fiscal) AS is_rec,
-            SUM(notas) AS num_bills,
-            SUM(total_valor) AS faturamento
-        FROM base
-        GROUP BY (estreia IS NOT NULL AND estreia < data_nota_fiscal);
+        SELECT  b.is_rec,
+                COUNT(DISTINCT b.bill)          AS num_bills,
+                COALESCE(SUM(fb.valor_nota), 0) AS faturamento
+        FROM    bills b
+        JOIN    fat_bills fb ON fb.documento = b.bill
+        GROUP   BY b.is_rec
     """, (sid, sid, data_inicio, data_fim,
           portal, cnpj, data_inicio, data_fim))
     result = {'ticket_novo': None, 'ticket_rec': None}
