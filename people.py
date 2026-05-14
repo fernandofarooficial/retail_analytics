@@ -91,6 +91,7 @@ def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
             LEFT JOIN faciais.vw_primeira_aparicao_clientes vpac
                 ON pp.person_id = vpac.person_id
             WHERE mm.data_documento::date BETWEEN %s AND %s
+              AND pp.is_cancelled IS NOT TRUE
               AND pp.store_id              = %s
               AND mm.portal                = %s
               AND mm.cnpj_emp              = %s
@@ -99,6 +100,7 @@ def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
               AND mm.excluido             <> 'S'
               AND mm.soma_relatorio        = 'S'
               AND mm.tipo_transacao        = 'V'
+              AND mm.soma_relatorio        = 'S'
             GROUP BY pp.person_id
         )
         SELECT
