@@ -178,7 +178,7 @@ def vendas_mensal_por_vendedor(portal, cnpj, ano):
           AND  mm.soma_relatorio        = 'S'
           AND  mm.tipo_transacao        = 'V'
           AND  mm.cod_natureza_operacao = '10030'
-          AND  mm.cod_vendedor IS NOT NULL AND mm.cod_vendedor <> ''
+          AND  mm.cod_vendedor IS NOT NULL
         GROUP  BY mes, vendedor
         ORDER  BY mes, vendedor
     """, (portal, cnpj, ano))
