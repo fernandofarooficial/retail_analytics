@@ -29,6 +29,8 @@
   {% if _cid %}{% set _vis_url = _vis_url + '?company_id=' + _cid %}{% if _sid %}{% set _vis_url = _vis_url + '&store_id=' + _sid %}{% endif %}{% elif _sid %}{% set _vis_url = _vis_url + '?store_id=' + _sid %}{% endif %}
   {% set _heat_url = url_for('mobile.mapa_calor') %}
   {% if _cid %}{% set _heat_url = _heat_url + '?company_id=' + _cid %}{% if _sid %}{% set _heat_url = _heat_url + '&store_id=' + _sid %}{% endif %}{% elif _sid %}{% set _heat_url = _heat_url + '?store_id=' + _sid %}{% endif %}
+  {% set _gest_url = url_for('mobile.gestao_faturamento') %}
+  {% if _cid %}{% set _gest_url = _gest_url + '?company_id=' + _cid %}{% if _sid %}{% set _gest_url = _gest_url + '&store_id=' + _sid %}{% endif %}{% elif _sid %}{% set _gest_url = _gest_url + '?store_id=' + _sid %}{% endif %}
 
   <div class="m-more-backdrop" id="m-more-backdrop" onclick="fecharMais()"></div>
   <div class="m-more-menu" id="m-more-menu">
@@ -91,14 +93,14 @@
       </svg>
       <span class="m-bn-label">Auditoria</span>
     </span>
-    <!-- Gestão (a desenvolver) -->
-    <span class="m-bn-item m-bn-disabled">
+    <!-- Gestão -->
+    <a href="{{ _gest_url }}" class="m-bn-item {% if 'gestao' in _ep %}active{% endif %}">
       <svg class="m-bn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"/>
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
       </svg>
       <span class="m-bn-label">Gestão</span>
-    </span>
+    </a>
   </nav>
   {% endif %}
 

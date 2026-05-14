@@ -1,0 +1,372 @@
+{% extends 'mobile/base_mobile.html' %}
+{% block title %}Gestão — Faturamento — Retail Analytics{% endblock %}
+
+{% block body %}
+<style>
+  :root {
+    --theme-primary: {{ theme.primary_color }};
+    --secondary:     {{ theme.secondary_color }};
+    --accent:        {{ theme.accent_color }};
+    --bg:            {{ theme.background_color }};
+  }
+  .m-header { background: var(--bg); border-bottom: 1px solid var(--border, #E5E7EB); }
+  .m-hdr-left { display: flex; align-items: center; flex: 34 0 0; min-width: 0; overflow: hidden; }
+  .m-hdr-left .m-header-company-logo { height: 64px; width: 100%; max-width: 100%; object-fit: contain; object-position: left center; }
+  .m-header-logo { flex: 32 0 0; min-width: 0; height: 40px; width: 100%; object-fit: contain; }
+  .m-hdr-right { display: flex; align-items: center; gap: 0.2rem; flex: 34 0 0; min-width: 0; position: relative; }
+  .m-hdr-sep { width: 1px; height: 28px; background: #D1D5DB; flex-shrink: 0; margin: 0; }
+  .m-hdr-info { display: flex; flex-direction: column; gap: 0; cursor: pointer; padding: 0.15rem 0.3rem; border-radius: 5px; transition: background .15s; }
+  .m-hdr-info:active { background: rgba(0,0,0,.06); }
+  .m-hdr-info-row { display: flex; align-items: baseline; gap: 0.2rem; line-height: 1.45; }
+  .m-hdr-info-lbl { font-size: 0.6rem; color: var(--accent); white-space: nowrap; }
+  .m-hdr-info-val { font-size: 0.68rem; font-weight: 700; color: var(--secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+
+  /* ── Sub-tabs ── */
+  .m-gestao-tabs {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.6rem 1rem 0;
+    background: var(--bg);
+    border-bottom: 1px solid #E5E7EB;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .m-gtab {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.3rem 0.85rem;
+    border-radius: 20px;
+    border: 1.5px solid transparent;
+    text-decoration: none;
+    cursor: pointer;
+    color: #6B7280;
+    background: #F3F4F6;
+    transition: background .15s, color .15s;
+  }
+  .m-gtab-active {
+    background: var(--theme-primary);
+    color: #fff;
+    border-color: var(--theme-primary);
+  }
+  .m-gtab-disabled {
+    opacity: 0.45;
+    cursor: default;
+    pointer-events: none;
+  }
+
+  /* ── Seletor de ano ── */
+  .m-ano-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.8rem 1rem 0.2rem;
+  }
+  .m-ano-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid #D1D5DB;
+    background: #fff;
+    font-size: 1rem;
+    color: #374151;
+    cursor: pointer;
+    line-height: 1;
+    transition: background .15s;
+  }
+  .m-ano-btn:active { background: #F3F4F6; }
+  .m-ano-btn:disabled { opacity: 0.35; cursor: default; }
+  .m-ano-val {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #111827;
+    min-width: 60px;
+    text-align: center;
+  }
+
+  /* ── Gráfico ── */
+  .m-chart-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    margin: 0.75rem 0 0.5rem;
+    padding: 1rem 0.5rem 0.75rem;
+  }
+  .m-chart-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #374151;
+    text-align: center;
+    margin-bottom: 0.5rem;
+  }
+  .m-chart-wrap { position: relative; height: 240px; }
+
+  /* ── Legenda personalizada ── */
+  .m-chart-legend {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.6rem;
+  }
+  .m-leg-item { display: flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; color: #374151; }
+  .m-leg-dot { width: 10px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+  .m-leg-dot-dashed { background: repeating-linear-gradient(90deg, var(--c) 0, var(--c) 4px, transparent 4px, transparent 7px); }
+
+  /* ── Bottom-sheet seletor ── */
+  .m-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; display: none; }
+  .m-sheet-overlay.open { display: block; }
+  .m-store-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-radius: 16px 16px 0 0; padding: 1rem 1.25rem calc(1.25rem + var(--safe-bottom, 0px)); z-index: 301; transform: translateY(100%); transition: transform .25s ease; }
+  .m-store-sheet.open { transform: translateY(0); }
+  .m-sheet-handle { width: 36px; height: 4px; background: #D1D5DB; border-radius: 2px; margin: 0 auto 1rem; }
+  .m-sheet-title { font-size: 0.95rem; font-weight: 700; color: #111827; margin-bottom: 1rem; }
+  .m-sheet-row { display: flex; align-items: center; gap: 0.625rem; margin-bottom: 0.75rem; }
+  .m-sheet-close { width: 100%; margin-top: 0.5rem; padding: 0.75rem; background: #F3F4F6; border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 600; color: #374151; cursor: pointer; }
+</style>
+
+<div class="m-app">
+
+  <!-- ── Header ───────────────────────────────────────────────────────── -->
+  <header class="m-header">
+    <div class="m-hdr-left">
+      {% if company_logo %}
+      <img src="/retail_analytics/static/{{ company_logo }}"
+           alt="{{ company_name }}" class="m-header-company-logo">
+      {% endif %}
+    </div>
+
+    <img src="/retail_analytics/static/img/logo_retail_analytics_br_1.png"
+         alt="Retail Analytics" class="m-header-logo">
+
+    <div class="m-hdr-right">
+      <span class="m-hdr-sep"></span>
+      {% set _pode_trocar = (session.get('user_type_id') in ('adm', 'man') and companies) or (stores and stores|length > 1) %}
+      <div class="m-hdr-info" {% if _pode_trocar %}onclick="abrirSeletorLoja()"{% endif %}>
+        <div class="m-hdr-info-row">
+          <span class="m-hdr-info-lbl">Empresa:</span>
+          <span class="m-hdr-info-val">{{ company_name or '—' }}</span>
+        </div>
+        <div class="m-hdr-info-row">
+          <span class="m-hdr-info-lbl">Loja:</span>
+          <span class="m-hdr-info-val">
+            {% if active_store %}{{ active_store.store_short_name or active_store.store_name or '—' }}
+            {% else %}—{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Sub-tabs ─────────────────────────────────────────────────────── -->
+  <div class="m-gestao-tabs">
+    <a href="{{ request.path }}{% if request.query_string %}?{{ request.query_string | replace('ano=' ~ ano, '') | replace('&&','&') | trim('&') }}{% endif %}" class="m-gtab m-gtab-active">Faturamento</a>
+    <span class="m-gtab m-gtab-disabled">Vendas</span>
+    <span class="m-gtab m-gtab-disabled">Estoque</span>
+  </div>
+
+  <!-- ── Conteúdo ──────────────────────────────────────────────────────── -->
+  <main class="m-content" style="padding-top: 0.25rem;">
+
+    {% if not active_store %}
+    <p class="m-hint" style="padding: 2rem 1rem; text-align:center; color:#9CA3AF; font-size:0.875rem;">
+      Selecione uma loja para visualizar o faturamento.
+    </p>
+    {% else %}
+
+    <!-- Seletor de ano -->
+    <div class="m-ano-row">
+      <button class="m-ano-btn" onclick="mudarAno({{ ano - 1 }})">&#8592;</button>
+      <span class="m-ano-val">{{ ano }}</span>
+      <button class="m-ano-btn" onclick="mudarAno({{ ano + 1 }})"
+              {% if ano >= ano_atual %}disabled{% endif %}>&#8594;</button>
+    </div>
+
+    <!-- Gráfico -->
+    <div class="m-chart-card">
+      <div class="m-chart-title">Faturamento Mensal {{ ano }}</div>
+      <div class="m-chart-wrap">
+        <canvas id="chart-fat-mensal"></canvas>
+      </div>
+      <div class="m-chart-legend">
+        <span class="m-leg-item">
+          <span class="m-leg-dot" style="background:{{ theme.graph_color_1 }};"></span>Total
+        </span>
+        <span class="m-leg-item">
+          <span class="m-leg-dot" style="background:{{ theme.graph_color_2 }};"></span>Loja
+        </span>
+        <span class="m-leg-item">
+          <span class="m-leg-dot m-leg-dot-dashed" style="--c:{{ theme.graph_color_3 }}; width:14px; height:3px;"></span>Pedidos
+        </span>
+      </div>
+    </div>
+
+    {% endif %}
+  </main>
+</div>
+
+<!-- ── Bottom-sheet: seletor de empresa/loja ──────────────────────── -->
+<div id="m-sheet-overlay" class="m-sheet-overlay" onclick="fecharSeletorLoja()"></div>
+<div id="m-store-sheet" class="m-store-sheet">
+  <div class="m-sheet-handle"></div>
+  <div class="m-sheet-title">Empresa / Loja</div>
+
+  {% if session.get('user_type_id') in ('adm', 'man') and companies %}
+  <div class="m-sheet-row">
+    <span class="m-select-label">Empresa</span>
+    <select class="m-select" onchange="selecionarEmpresa(this.value)">
+      <option value="">— Selecione —</option>
+      {% for c in companies %}
+      <option value="{{ c.company_id }}"
+          {% if c.company_id == selected_company_id %}selected{% endif %}>
+        {{ c.company_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  {% if stores %}
+  <div class="m-sheet-row">
+    <span class="m-select-label">Loja</span>
+    <select class="m-select" onchange="selecionarLoja(this.value)">
+      {% if stores|length > 1 %}
+      <option value="">— Selecione —</option>
+      {% endif %}
+      {% for s in stores %}
+      <option value="{{ s.store_id }}"
+          {% if s.store_id == selected_store_id %}selected{% endif %}>
+        {{ s.store_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <button class="m-sheet-close" onclick="fecharSeletorLoja()">Fechar</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% if active_store and fat_mensal %}
+const _meses  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const _loja    = {{ fat_mensal | map(attribute='loja')    | list | tojson }};
+const _pedidos = {{ fat_mensal | map(attribute='pedidos') | list | tojson }};
+const _total   = {{ fat_mensal | map(attribute='total')   | list | tojson }};
+
+function fmtReais(v) {
+  if (v >= 1e6)  return 'R$ ' + (v / 1e6).toFixed(1).replace('.', ',') + 'M';
+  if (v >= 1e3)  return 'R$ ' + (v / 1e3).toFixed(0) + 'K';
+  return 'R$ ' + v.toFixed(0);
+}
+function fmtReaisTooltip(v) {
+  return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+const _c1 = '{{ theme.graph_color_1 }}';
+const _c2 = '{{ theme.graph_color_2 }}';
+const _c3 = '{{ theme.graph_color_3 }}';
+
+new Chart(document.getElementById('chart-fat-mensal'), {
+  type: 'line',
+  plugins: [ChartDataLabels],
+  data: {
+    labels: _meses,
+    datasets: [
+      {
+        label: 'Total',
+        data: _total,
+        borderColor: _c1,
+        backgroundColor: 'transparent',
+        borderWidth: 2.5,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        tension: 0.3,
+        datalabels: { display: false },
+      },
+      {
+        label: 'Loja',
+        data: _loja,
+        borderColor: _c2,
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        tension: 0.3,
+        datalabels: { display: false },
+      },
+      {
+        label: 'Pedidos',
+        data: _pedidos,
+        borderColor: _c3,
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        borderDash: [6, 3],
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        tension: 0.3,
+        datalabels: { display: false },
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ' ' + ctx.dataset.label + ': ' + fmtReaisTooltip(ctx.parsed.y),
+        }
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { size: 10 } },
+      },
+      y: {
+        grid: { color: '#F3F4F6' },
+        ticks: {
+          font: { size: 10 },
+          callback: v => fmtReais(v),
+        },
+        beginAtZero: true,
+      },
+    },
+  }
+});
+{% endif %}
+
+function mudarAno(ano) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('ano', ano);
+  window.location.href = url.toString();
+}
+function abrirSeletorLoja() {
+  document.getElementById('m-sheet-overlay').classList.add('open');
+  document.getElementById('m-store-sheet').classList.add('open');
+}
+function fecharSeletorLoja() {
+  document.getElementById('m-sheet-overlay').classList.remove('open');
+  document.getElementById('m-store-sheet').classList.remove('open');
+}
+function selecionarEmpresa(id) {
+  const url = new URL(window.location.href);
+  if (id) { url.searchParams.set('company_id', id); }
+  else    { url.searchParams.delete('company_id'); }
+  url.searchParams.delete('store_id');
+  window.location.href = url.toString();
+}
+function selecionarLoja(id) {
+  const url = new URL(window.location.href);
+  if (id) { url.searchParams.set('store_id', id); }
+  else    { url.searchParams.delete('store_id'); }
+  window.location.href = url.toString();
+}
+</script>
+{% endblock %}

@@ -129,6 +129,37 @@ def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
     return result
 
 
+def faturamento_mensal(portal, cnpj, ano):
+    """Faturamento mensal por tipo de transação (V=Loja, P=Pedidos) para um dado ano."""
+    rows = db.query_all("""
+        SELECT
+            EXTRACT(MONTH FROM data_documento)::int AS mes,
+            SUM(CASE WHEN tipo_transacao = 'V' THEN valor_total ELSE 0 END) AS loja,
+            SUM(CASE WHEN tipo_transacao = 'P' THEN valor_total ELSE 0 END) AS pedidos,
+            SUM(valor_total)                                                 AS total
+        FROM microvix.microvix_movimento
+        WHERE portal                = %s
+          AND cnpj_emp              = %s
+          AND EXTRACT(YEAR FROM data_documento) = %s
+          AND cancelado            <> 'S'
+          AND excluido             <> 'S'
+          AND soma_relatorio        = 'S'
+          AND tipo_transacao       IN ('V', 'P')
+          AND cod_natureza_operacao = '10030'
+        GROUP BY mes
+        ORDER BY mes
+    """, (portal, cnpj, ano))
+    base = {m: {'loja': 0.0, 'pedidos': 0.0, 'total': 0.0} for m in range(1, 13)}
+    for row in rows:
+        m = row['mes']
+        base[m] = {
+            'loja':    round(float(row['loja']    or 0), 2),
+            'pedidos': round(float(row['pedidos'] or 0), 2),
+            'total':   round(float(row['total']   or 0), 2),
+        }
+    return [{'mes': m, **base[m]} for m in range(1, 13)]
+
+
 def top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
     """Top 5 produtos por faturamento, separado em novo/recorrente, via faciais.person_purchases."""
     rows = db.query_all("""

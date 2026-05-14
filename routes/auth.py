@@ -71,8 +71,6 @@ def logout():
     return redirect(url_for('auth.login'))
 
 
-
-
 @auth_bp.route('/dashboard')
 @login_required
 @screen_required('dashboard')
