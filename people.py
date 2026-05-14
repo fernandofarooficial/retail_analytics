@@ -176,7 +176,7 @@ def vendas_mensal_por_vendedor(portal, cnpj, ano):
           AND  mm.cancelado            <> 'S'
           AND  mm.excluido             <> 'S'
           AND  mm.soma_relatorio        = 'S'
-          AND  mm.tipo_transacao        = 'V'
+          AND  mm.tipo_transacao        IN ('V', 'P')
           AND  mm.cod_natureza_operacao = '10030'
           AND  mm.cod_vendedor IS NOT NULL
         GROUP  BY mes, vendedor
