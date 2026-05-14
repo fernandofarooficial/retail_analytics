@@ -8,7 +8,8 @@ from routes.utils import (login_required, screen_required,
 import db
 from metas import get_metas as _get_metas
 from people import (qtd_novos as _qtd_novos, qtd_recorrentes as _qtd_recorrentes,
-                    kpi_microvix as _kpi_microvix, faixa_horaria as _faixa_horaria)
+                    kpi_microvix as _kpi_microvix, faixa_horaria as _faixa_horaria,
+                    ticket_por_tipo as _ticket_por_tipo)
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -69,56 +70,6 @@ def logout():
     return redirect(url_for('auth.login'))
 
 
-def _ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
-    """Ticket médio por nota, separado em novo/recorrente, via faciais.person_purchases."""
-    rows = db.query_all("""
-        WITH base AS (
-            SELECT 
-                pp.person_id AS clientes,
-                MIN(mm.data_documento) AS data_nota_fiscal,
-                COUNT(DISTINCT pp.bill) AS notas,
-                SUM(mm.valor_total) AS total_valor,
-                MIN(vpac.first_record)::DATE AS estreia
-            FROM faciais.person_purchases pp
-            JOIN microvix.microvix_movimento mm 
-                ON pp.bill = mm.documento
-            LEFT JOIN faciais.vw_primeira_aparicao_clientes vpac 
-                ON pp.person_id = vpac.person_id 
-            WHERE mm.data_documento::date BETWEEN %s AND %s
-                AND pp.store_id = %s
-                AND mm.portal = %s
-                AND mm.cnpj_emp = %s
-                AND mm.cod_natureza_operacao = '10030'
-                AND mm.cancelado           <> 'S'
-                AND mm.excluido            <> 'S'
-                AND mm.soma_relatorio       = 'S'
-                AND mm.tipo_transacao       = 'V'
-            GROUP BY pp.person_id
-        )
-        SELECT 
-            (estreia IS NOT NULL AND estreia < data_nota_fiscal) AS is_rec,
-            SUM(notas) AS num_bills,
-            SUM(total_valor) AS faturamento
-        FROM base
-        GROUP BY (estreia IS NOT NULL AND estreia < data_nota_fiscal);
-    """, (data_inicio, data_fim, sid, portal, cnpj))
-    result = {'ticket_novo': None, 'ticket_rec': None}
-    for row in rows:
-        n = int(row['num_bills'] or 0)
-        f = float(row['faturamento'] or 0)
-        ticket = round(f / n, 2) if n > 0 else 0.0
-        if row['is_rec']:
-            result['ticket_rec'] = ticket
-        else:
-            result['ticket_novo'] = ticket
-    if rows:
-        result.setdefault('ticket_novo', 0.0)
-        result.setdefault('ticket_rec', 0.0)
-        if result['ticket_novo'] is None:
-            result['ticket_novo'] = 0.0
-        if result['ticket_rec'] is None:
-            result['ticket_rec'] = 0.0
-    return result
 
 
 def _top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim):

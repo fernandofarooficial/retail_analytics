@@ -8,7 +8,8 @@ import os
 import db
 from metas import get_metas as _get_metas
 from people import (qtd_novos as _qtd_novos, qtd_recorrentes as _qtd_recorrentes,
-                    kpi_microvix as _kpi_microvix, faixa_horaria as _faixa_horaria)
+                    kpi_microvix as _kpi_microvix, faixa_horaria as _faixa_horaria,
+                    ticket_por_tipo as _ticket_por_tipo)
 from routes.utils import (fmt_permanencia, kpi_tempo_loja, kpi_tempo_loja_range,
                            tempo_gauge, HEIMDALL_IMAGE_BASE)
 
@@ -92,59 +93,6 @@ def logout():
     return redirect(url_for('mobile.login'))
 
 
-def _ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
-    """Ticket médio por nota, separado em novo/recorrente, via faciais.person_purchases."""
-    rows = db.query_all("""
-        WITH bills AS (
-            SELECT pp.person_id,
-                   pp.bill,
-                   EXISTS (
-                       SELECT 1 FROM faciais.detection_records dr
-                       WHERE  dr.person_id = pp.person_id AND dr.store_id = %s
-                         AND  DATE(dr.created_at) < DATE(pp.created_at)
-                   ) AS is_rec
-            FROM   faciais.person_purchases pp
-            WHERE  pp.store_id              = %s
-              AND  DATE(pp.created_at) BETWEEN %s AND %s
-              AND  (pp.is_cancelled IS NOT TRUE)
-        ),
-        fat_bills AS (
-            SELECT mm.documento,
-                   SUM(mm.valor_liquido) AS valor_nota
-            FROM   microvix.microvix_movimento mm
-            WHERE  mm.portal                = %s
-              AND  mm.cnpj_emp              = %s
-              AND  DATE(mm.data_documento)  BETWEEN %s AND %s
-              AND  mm.cancelado            <> 'S'
-              AND  mm.excluido             <> 'S'
-              AND  mm.soma_relatorio        = 'S'
-              AND  mm.tipo_transacao        = 'V'
-              AND  mm.cod_natureza_operacao = '10030'
-            GROUP  BY mm.documento
-        )
-        SELECT  b.is_rec,
-                COUNT(DISTINCT b.bill)          AS num_bills,
-                COALESCE(SUM(fb.valor_nota), 0) AS faturamento
-        FROM    bills b
-        JOIN    fat_bills fb ON fb.documento = b.bill
-        GROUP   BY b.is_rec
-    """, (sid, sid, data_inicio, data_fim,
-          portal, cnpj, data_inicio, data_fim))
-    result = {'ticket_novo': None, 'ticket_rec': None}
-    for row in rows:
-        n = row['num_bills'] or 0
-        f = float(row['faturamento'] or 0)
-        ticket = round(f / n, 2) if n > 0 else 0.0
-        if row['is_rec']:
-            result['ticket_rec'] = ticket
-        else:
-            result['ticket_novo'] = ticket
-    if rows:
-        if result['ticket_novo'] is None:
-            result['ticket_novo'] = 0.0
-        if result['ticket_rec'] is None:
-            result['ticket_rec'] = 0.0
-    return result
 
 
 def _top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
