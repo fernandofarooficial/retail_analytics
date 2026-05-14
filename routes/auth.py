@@ -104,7 +104,7 @@ def _ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
     """, (data_inicio, data_fim, sid, portal, cnpj))
     result = {'ticket_novo': None, 'ticket_rec': None}
     for row in rows:
-        n = row['num_bills'] or 0
+        n = int(row['num_bills'] or 0)
         f = float(row['faturamento'] or 0)
         ticket = round(f / n, 2) if n > 0 else 0.0
         if row['is_rec']:
