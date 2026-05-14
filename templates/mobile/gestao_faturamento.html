@@ -253,10 +253,15 @@
 {% block scripts %}
 <script>
 {% if active_store and fat_mensal %}
-const _meses  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-const _loja    = {{ fat_mensal | map(attribute='loja')    | list | tojson }};
-const _pedidos = {{ fat_mensal | map(attribute='pedidos') | list | tojson }};
-const _total   = {{ fat_mensal | map(attribute='total')   | list | tojson }};
+const _allMeses   = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const _allLoja    = {{ fat_mensal | map(attribute='loja')    | list | tojson }};
+const _allPedidos = {{ fat_mensal | map(attribute='pedidos') | list | tojson }};
+const _allTotal   = {{ fat_mensal | map(attribute='total')   | list | tojson }};
+const _idx     = _allTotal.map((v, i) => v > 0 ? i : -1).filter(i => i >= 0);
+const _meses   = _idx.map(i => _allMeses[i]);
+const _loja    = _idx.map(i => _allLoja[i]);
+const _pedidos = _idx.map(i => _allPedidos[i]);
+const _total   = _idx.map(i => _allTotal[i]);
 
 function fmtReais(v) {
   if (v >= 1e6)  return 'R$ ' + (v / 1e6).toFixed(1).replace('.', ',') + 'M';
