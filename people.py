@@ -165,7 +165,7 @@ def vendas_mensal_por_vendedor(portal, cnpj, ano):
     Retorna dict com meses_nomes e series=[{nome, dados}]."""
     rows = db.query_all("""
         SELECT EXTRACT(MONTH FROM mm.data_documento)::int AS mes,
-               COALESCE(NULLIF(TRIM(mv.nome_vendedor), ''), mm.cod_vendedor) AS vendedor,
+               COALESCE(NULLIF(TRIM(mv.nome_vendedor), ''), mm.cod_vendedor::text) AS vendedor,
                SUM(mm.valor_total) AS total
         FROM   microvix.microvix_movimento mm
         LEFT JOIN microvix.microvix_vendedores mv
