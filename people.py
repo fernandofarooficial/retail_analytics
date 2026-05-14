@@ -127,3 +127,59 @@ def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
         if result['ticket_rec'] is None:
             result['ticket_rec'] = 0.0
     return result
+
+
+def top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
+    """Top 5 produtos por faturamento, separado em novo/recorrente, via faciais.person_purchases."""
+    rows = db.query_all("""
+        WITH bills AS (
+            SELECT pp.bill,
+                   EXISTS (
+                       SELECT 1 FROM faciais.detection_records dr
+                       WHERE  dr.person_id = pp.person_id AND dr.store_id = %s
+                         AND  DATE(dr.created_at) < DATE(pp.created_at)
+                   ) AS is_rec
+            FROM   faciais.person_purchases pp
+            WHERE  pp.store_id = %s
+              AND  DATE(pp.created_at) BETWEEN %s AND %s
+              AND  (pp.is_cancelled IS NOT TRUE)
+        ),
+        linhas AS (
+            SELECT b.is_rec,
+                   COALESCE(NULLIF(TRIM(mp.descricao_basica), ''), mp.nome) AS produto,
+                   mm.valor_liquido
+            FROM   bills b
+            JOIN   microvix.microvix_movimento mm ON mm.documento = b.bill
+            JOIN   microvix.microvix_produtos mp
+                   ON mp.portal = mm.portal AND mp.cod_produto = mm.cod_produto
+            WHERE  mm.portal = %s AND mm.cnpj_emp = %s
+              AND  mm.cancelado <> 'S' AND mm.excluido <> 'S'
+              AND  mm.soma_relatorio = 'S' AND mm.tipo_transacao = 'V'
+              AND  mm.cod_natureza_operacao = '10030'
+        ),
+        totais AS (
+            SELECT is_rec, produto, SUM(valor_liquido) AS total_fat
+            FROM   linhas GROUP BY is_rec, produto
+        ),
+        fat_total AS (
+            SELECT is_rec, SUM(total_fat) AS grand_total FROM totais GROUP BY is_rec
+        ),
+        ranked AS (
+            SELECT t.is_rec, t.produto, t.total_fat, ft.grand_total,
+                   ROW_NUMBER() OVER (PARTITION BY t.is_rec ORDER BY t.total_fat DESC) AS rn
+            FROM   totais t JOIN fat_total ft ON ft.is_rec = t.is_rec
+            WHERE  t.total_fat > 0
+        )
+        SELECT is_rec, produto, total_fat,
+               ROUND(total_fat * 100.0 / NULLIF(grand_total, 0), 1) AS pct
+        FROM   ranked WHERE rn <= 5
+        ORDER  BY is_rec, rn
+    """, (sid, sid, data_inicio, data_fim, portal, cnpj))
+    result = {'novos': [], 'recorrentes': []}
+    for row in rows:
+        item = {'nome': row['produto'], 'total': round(float(row['total_fat'] or 0), 2), 'pct': float(row['pct'] or 0)}
+        if row['is_rec']:
+            result['recorrentes'].append(item)
+        else:
+            result['novos'].append(item)
+    return result
