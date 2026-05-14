@@ -75,16 +75,16 @@ def _ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
         WITH base AS (
             SELECT 
                 pp.person_id AS clientes,
-                MIN(mm.data_documento)::DATE AS data_nota_fiscal,
+                DATE(MIN(mm.data_documento)) AS data_nota_fiscal,
                 COUNT(DISTINCT pp.bill) AS notas,
                 SUM(mm.valor_total) AS total_valor,
-                MIN(vpac.first_record)::DATE AS estreia
+                DATE(MIN(vpac.first_record)) AS estreia
             FROM faciais.person_purchases pp
             JOIN microvix.microvix_movimento mm 
                 ON pp.bill = mm.documento
             LEFT JOIN faciais.vw_primeira_aparicao_clientes vpac 
                 ON pp.person_id = vpac.person_id 
-            WHERE mm.data_documento::date BETWEEN %s AND %s
+            WHERE DATE(mm.data_documento) BETWEEN %s AND %s
                 AND pp.store_id = %s
                 AND mm.portal = %s
                 AND mm.cnpj_emp = %s
