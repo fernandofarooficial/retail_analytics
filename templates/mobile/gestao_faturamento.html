@@ -21,39 +21,8 @@
   .m-hdr-info-lbl { font-size: 0.6rem; color: var(--accent); white-space: nowrap; }
   .m-hdr-info-val { font-size: 0.68rem; font-weight: 700; color: var(--secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
 
-  /* ── Sub-tabs ── */
-  .m-gestao-tabs {
-    display: flex;
-    gap: 0.4rem;
-    padding: 0.6rem 1rem 0;
-    background: var(--bg);
-    border-bottom: 1px solid #E5E7EB;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .m-gtab {
-    flex-shrink: 0;
-    font-size: 0.8rem;
-    font-weight: 600;
-    padding: 0.3rem 0.85rem;
-    border-radius: 20px;
-    border: 1.5px solid transparent;
-    text-decoration: none;
-    cursor: pointer;
-    color: #6B7280;
-    background: #F3F4F6;
-    transition: background .15s, color .15s;
-  }
-  .m-gtab-active {
-    background: var(--theme-primary);
-    color: #fff;
-    border-color: var(--theme-primary);
-  }
-  .m-gtab-disabled {
-    opacity: 0.45;
-    cursor: default;
-    pointer-events: none;
-  }
+  /* ── Sub-tabs (override bar bg to match page bg) ── */
+  .m-tabs-bar { background: var(--bg); }
 
   /* ── Seletor de ano ── */
   .m-ano-row {
@@ -162,10 +131,12 @@
   </header>
 
   <!-- ── Sub-tabs ─────────────────────────────────────────────────────── -->
-  <div class="m-gestao-tabs">
-    <a href="{{ request.path }}{% if request.query_string %}?{{ request.query_string | replace('ano=' ~ ano, '') | replace('&&','&') | trim('&') }}{% endif %}" class="m-gtab m-gtab-active">Faturamento</a>
-    <span class="m-gtab m-gtab-disabled">Vendas</span>
-    <span class="m-gtab m-gtab-disabled">Estoque</span>
+  <div class="m-tabs-bar">
+    <div class="m-tabs-l1">
+      <button class="m-tab-l1 active">Faturamento</button>
+      <button class="m-tab-l1" style="opacity:0.45;pointer-events:none;cursor:default;">Vendas</button>
+      <button class="m-tab-l1" style="opacity:0.45;pointer-events:none;cursor:default;">Estoque</button>
+    </div>
   </div>
 
   <!-- ── Conteúdo ──────────────────────────────────────────────────────── -->
