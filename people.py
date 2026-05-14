@@ -160,6 +160,52 @@ def faturamento_mensal(portal, cnpj, ano):
     return [{'mes': m, **base[m]} for m in range(1, 13)]
 
 
+def vendas_mensal_por_vendedor(portal, cnpj, ano):
+    """Faturamento mensal por vendedor (tipo_transacao='V') para um dado ano.
+    Retorna dict com meses_nomes e series=[{nome, dados}]."""
+    rows = db.query_all("""
+        SELECT EXTRACT(MONTH FROM mm.data_documento)::int AS mes,
+               COALESCE(NULLIF(TRIM(mv.nome_vendedor), ''), mm.cod_vendedor) AS vendedor,
+               SUM(mm.valor_total) AS total
+        FROM   microvix.microvix_movimento mm
+        LEFT JOIN microvix.microvix_vendedores mv
+               ON mv.portal = mm.portal AND mv.cod_vendedor = mm.cod_vendedor
+        WHERE  mm.portal                = %s
+          AND  mm.cnpj_emp              = %s
+          AND  EXTRACT(YEAR FROM mm.data_documento) = %s
+          AND  mm.cancelado            <> 'S'
+          AND  mm.excluido             <> 'S'
+          AND  mm.soma_relatorio        = 'S'
+          AND  mm.tipo_transacao        = 'V'
+          AND  mm.cod_natureza_operacao = '10030'
+          AND  mm.cod_vendedor IS NOT NULL AND mm.cod_vendedor <> ''
+        GROUP  BY mes, vendedor
+        ORDER  BY mes, vendedor
+    """, (portal, cnpj, ano))
+
+    meses_set     = set()
+    vendedores_set = set()
+    grid          = {}
+    for row in rows:
+        m = row['mes']
+        v = row['vendedor']
+        t = round(float(row['total'] or 0), 2)
+        meses_set.add(m)
+        vendedores_set.add(v)
+        grid[(m, v)] = t
+
+    _nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+              'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    meses_sorted     = sorted(meses_set)
+    meses_nomes      = [_nomes[m - 1] for m in meses_sorted]
+    vendedores_sorted = sorted(vendedores_set)
+    series = [
+        {'nome': v, 'dados': [grid.get((m, v), 0.0) for m in meses_sorted]}
+        for v in vendedores_sorted
+    ]
+    return {'meses_nomes': meses_nomes, 'series': series}
+
+
 def top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
     """Top 5 produtos por faturamento, separado em novo/recorrente, via faciais.person_purchases."""
     rows = db.query_all("""

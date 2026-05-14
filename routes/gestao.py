@@ -2,7 +2,8 @@ from datetime import date as date_type
 from flask import Blueprint, render_template, request, redirect, url_for, session
 from routes.utils import login_required
 import db
-from people import faturamento_mensal as _faturamento_mensal
+from people import (faturamento_mensal as _faturamento_mensal,
+                    vendas_mensal_por_vendedor as _vendas_mensal_por_vendedor)
 
 gestao_bp = Blueprint('gestao', __name__, url_prefix='/retail_analytics/gestao')
 
@@ -252,4 +253,34 @@ def faturamento():
         ano=ano,
         ano_atual=ano_atual,
         fat_mensal=fat_mensal,
+    )
+
+
+# ── Vendas ────────────────────────────────────────────────────────────────────
+
+@gestao_bp.route('/vendas')
+@login_required
+def vendas():
+    ctx, redir = _store_context('gestao.vendas')
+    if redir:
+        return redir
+
+    ano_atual = date_type.today().year
+    try:
+        ano = int(request.args.get('ano', ano_atual))
+    except (ValueError, TypeError):
+        ano = ano_atual
+
+    vendas_data = {'meses_nomes': [], 'series': []}
+    if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
+        vendas_data = _vendas_mensal_por_vendedor(
+            ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano
+        )
+
+    return render_template(
+        'gestao/vendas.html',
+        **ctx,
+        ano=ano,
+        ano_atual=ano_atual,
+        vendas_data=vendas_data,
     )

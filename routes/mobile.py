@@ -11,7 +11,8 @@ from people import (qtd_novos as _qtd_novos, qtd_recorrentes as _qtd_recorrentes
                     kpi_microvix as _kpi_microvix, faixa_horaria as _faixa_horaria,
                     ticket_por_tipo as _ticket_por_tipo,
                     top5_por_tipo as _top5_por_tipo,
-                    faturamento_mensal as _faturamento_mensal)
+                    faturamento_mensal as _faturamento_mensal,
+                    vendas_mensal_por_vendedor as _vendas_mensal_por_vendedor)
 from routes.utils import (fmt_permanencia, kpi_tempo_loja, kpi_tempo_loja_range,
                            tempo_gauge, HEIMDALL_IMAGE_BASE)
 
@@ -1720,32 +1721,29 @@ def mapa_calor():
 
 # ── Gestão ────────────────────────────────────────────────────────────────────
 
-@mobile_bp.route('/gestao/faturamento')
-@_login_required
-def gestao_faturamento():
+def _gestao_mobile_ctx(endpoint):
+    """Context loader compartilhado por todas as rotas mobile de gestão.
+    Retorna (ctx_dict, redirect_ou_None).
+    """
     user_id   = session['user_id']
     user_type = session['user_type_id']
-    company_logo        = None
-    company_name        = None
-    companies           = []
-    selected_company_id = None
-    stores              = []
-    selected_store_id   = request.args.get('store_id', type=int)
+    selected_company_id = request.args.get('company_id', type=int)
+    selected_store_id   = request.args.get('store_id',   type=int)
+    company_logo = None
+    company_name = None
+    companies    = []
+    stores       = []
 
     # ── Restaurar última seleção ──────────────────────────────────────────────
     if not selected_store_id and 'company_id' not in request.args:
         saved = db.query_one(
-            "SELECT last_store_id FROM faciais.users WHERE user_id = %s",
-            (user_id,)
-        )
+            "SELECT last_store_id FROM faciais.users WHERE user_id = %s", (user_id,))
         if saved and saved['last_store_id']:
             last_sid = saved['last_store_id']
             if user_type in ('adm', 'man'):
                 if user_type == 'adm':
                     row = db.query_one(
-                        "SELECT company_id FROM faciais.stores WHERE store_id = %s",
-                        (last_sid,)
-                    )
+                        "SELECT company_id FROM faciais.stores WHERE store_id = %s", (last_sid,))
                 else:
                     row = db.query_one("""
                         SELECT s.company_id
@@ -1756,9 +1754,9 @@ def gestao_faturamento():
                         WHERE  s.store_id = %s AND ucg.user_id = %s
                     """, (last_sid, user_id))
                 if row:
-                    return redirect(url_for('mobile.gestao_faturamento',
-                                            company_id=row['company_id'],
-                                            store_id=last_sid))
+                    return None, redirect(url_for(endpoint,
+                                                  company_id=row['company_id'],
+                                                  store_id=last_sid))
             elif user_type == 'ret':
                 row = db.query_one("""
                     SELECT s.store_id
@@ -1768,15 +1766,14 @@ def gestao_faturamento():
                     WHERE  s.store_id = %s AND urg.user_id = %s
                 """, (last_sid, user_id))
                 if row:
-                    return redirect(url_for('mobile.gestao_faturamento', store_id=last_sid))
+                    return None, redirect(url_for(endpoint, store_id=last_sid))
             elif user_type == 'emp':
                 row = db.query_one(
                     "SELECT store_id FROM faciais.user_stores "
                     "WHERE store_id = %s AND user_id = %s",
-                    (last_sid, user_id)
-                )
+                    (last_sid, user_id))
                 if row:
-                    return redirect(url_for('mobile.gestao_faturamento', store_id=last_sid))
+                    return None, redirect(url_for(endpoint, store_id=last_sid))
 
     # ── Carrega empresas e lojas ──────────────────────────────────────────────
     if user_type == 'adm':
@@ -1784,10 +1781,8 @@ def gestao_faturamento():
             SELECT c.company_id, c.company_name, ct.logo_url
             FROM   faciais.companies c
             JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
-            WHERE  ct.logo_url IS NOT NULL
-            ORDER  BY c.company_name
+            WHERE  ct.logo_url IS NOT NULL ORDER BY c.company_name
         """)
-        selected_company_id = request.args.get('company_id', type=int)
         if selected_company_id:
             match = next((c for c in companies if c['company_id'] == selected_company_id), None)
             if match:
@@ -1795,9 +1790,7 @@ def gestao_faturamento():
                 company_name = match['company_name']
             stores = db.query_all("""
                 SELECT store_id, store_name, store_short_name, cnpj
-                FROM   faciais.stores
-                WHERE  company_id = %s
-                ORDER  BY store_name
+                FROM   faciais.stores WHERE company_id = %s ORDER BY store_name
             """, (selected_company_id,))
 
     elif user_type == 'man':
@@ -1806,10 +1799,8 @@ def gestao_faturamento():
             FROM   faciais.user_company_groups ucg
             JOIN   faciais.companies c        ON c.company_group_id = ucg.company_group_id
             LEFT   JOIN faciais.company_themes ct ON ct.company_id  = c.company_id
-            WHERE  ucg.user_id = %s
-            ORDER  BY c.company_name
+            WHERE  ucg.user_id = %s ORDER BY c.company_name
         """, (user_id,))
-        selected_company_id = request.args.get('company_id', type=int)
         if selected_company_id:
             match = next((c for c in companies if c['company_id'] == selected_company_id), None)
             if match:
@@ -1817,9 +1808,7 @@ def gestao_faturamento():
                 company_name = match['company_name']
             stores = db.query_all("""
                 SELECT store_id, store_name, store_short_name, cnpj
-                FROM   faciais.stores
-                WHERE  company_id = %s
-                ORDER  BY store_name
+                FROM   faciais.stores WHERE company_id = %s ORDER BY store_name
             """, (selected_company_id,))
         else:
             first = next((c for c in companies if c.get('logo_url')), None)
@@ -1834,8 +1823,7 @@ def gestao_faturamento():
             JOIN   faciais.stores s          ON s.retailer_group_id = urg.retailer_group_id
             JOIN   faciais.companies c       ON c.company_id = s.company_id
             JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
-            WHERE  urg.user_id = %s AND ct.logo_url IS NOT NULL
-            LIMIT  1
+            WHERE  urg.user_id = %s AND ct.logo_url IS NOT NULL LIMIT 1
         """, (user_id,))
         if row:
             company_logo = row['logo_url']
@@ -1844,8 +1832,7 @@ def gestao_faturamento():
             SELECT DISTINCT s.store_id, s.store_name, s.store_short_name, s.cnpj
             FROM   faciais.user_retailer_groups urg
             JOIN   faciais.stores s ON s.retailer_group_id = urg.retailer_group_id
-            WHERE  urg.user_id = %s
-            ORDER  BY s.store_name
+            WHERE  urg.user_id = %s ORDER BY s.store_name
         """, (user_id,))
 
     elif user_type == 'emp':
@@ -1855,8 +1842,7 @@ def gestao_faturamento():
             JOIN   faciais.stores s          ON s.store_id = us.store_id
             JOIN   faciais.companies c       ON c.company_id = s.company_id
             JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
-            WHERE  us.user_id = %s AND ct.logo_url IS NOT NULL
-            LIMIT  1
+            WHERE  us.user_id = %s AND ct.logo_url IS NOT NULL LIMIT 1
         """, (user_id,))
         if row:
             company_logo = row['logo_url']
@@ -1865,8 +1851,7 @@ def gestao_faturamento():
             SELECT s.store_id, s.store_name, s.store_short_name, s.cnpj
             FROM   faciais.user_stores us
             JOIN   faciais.stores s ON s.store_id = us.store_id
-            WHERE  us.user_id = %s
-            ORDER  BY s.store_name
+            WHERE  us.user_id = %s ORDER BY s.store_name
         """, (user_id,))
 
     # ── Resolve loja ativa ────────────────────────────────────────────────────
@@ -1885,25 +1870,12 @@ def gestao_faturamento():
         if active_store['cnpj']:
             active_store_cnpj = str(active_store['cnpj']).zfill(14)
         row = db.query_one("""
-            SELECT c.microvix_portal
-            FROM   faciais.stores s
+            SELECT c.microvix_portal FROM faciais.stores s
             JOIN   faciais.companies c ON c.company_id = s.company_id
             WHERE  s.store_id = %s
         """, (active_store['store_id'],))
         if row:
             active_microvix_portal = row['microvix_portal']
-
-    # ── Ano selecionado ───────────────────────────────────────────────────────
-    ano_atual = date_type.today().year
-    try:
-        ano = int(request.args.get('ano', ano_atual))
-    except (ValueError, TypeError):
-        ano = ano_atual
-
-    # ── Dados de faturamento ──────────────────────────────────────────────────
-    fat_mensal = []
-    if active_store and active_microvix_portal and active_store_cnpj:
-        fat_mensal = _faturamento_mensal(active_microvix_portal, active_store_cnpj, ano)
 
     # ── Tema ──────────────────────────────────────────────────────────────────
     theme = dict(primary_color='#F47B20', secondary_color='#0057A8', accent_color='#FFFFFF',
@@ -1914,8 +1886,7 @@ def gestao_faturamento():
     if not theme_company_id and active_store:
         row = db.query_one(
             "SELECT company_id FROM faciais.stores WHERE store_id = %s",
-            (active_store['store_id'],)
-        )
+            (active_store['store_id'],))
         if row:
             theme_company_id = row['company_id']
     if theme_company_id:
@@ -1923,8 +1894,7 @@ def gestao_faturamento():
             """SELECT primary_color, secondary_color, accent_color, text_color, background_color,
                       graph_color_1, graph_color_2, graph_color_3, graph_color_4
                FROM   faciais.company_themes WHERE company_id = %s""",
-            (theme_company_id,)
-        )
+            (theme_company_id,))
         if row:
             theme['primary_color']   = row['primary_color']
             theme['secondary_color'] = row['secondary_color']
@@ -1937,8 +1907,7 @@ def gestao_faturamento():
                 if row[k]:
                     theme[k] = row[k]
 
-    return render_template(
-        'mobile/gestao_faturamento.html',
+    return dict(
         company_logo=company_logo,
         company_name=company_name,
         companies=companies,
@@ -1946,10 +1915,63 @@ def gestao_faturamento():
         selected_company_id=selected_company_id,
         selected_store_id=selected_store_id,
         active_store=active_store,
+        active_store_cnpj=active_store_cnpj,
+        active_microvix_portal=active_microvix_portal,
+        theme=theme,
+    ), None
+
+
+@mobile_bp.route('/gestao/faturamento')
+@_login_required
+def gestao_faturamento():
+    ctx, redir = _gestao_mobile_ctx('mobile.gestao_faturamento')
+    if redir:
+        return redir
+
+    ano_atual = date_type.today().year
+    try:
+        ano = int(request.args.get('ano', ano_atual))
+    except (ValueError, TypeError):
+        ano = ano_atual
+
+    fat_mensal = []
+    if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
+        fat_mensal = _faturamento_mensal(
+            ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano)
+
+    return render_template(
+        'mobile/gestao_faturamento.html',
+        **ctx,
         ano=ano,
         ano_atual=ano_atual,
         fat_mensal=fat_mensal,
-        theme=theme,
+    )
+
+
+@mobile_bp.route('/gestao/vendas')
+@_login_required
+def gestao_vendas():
+    ctx, redir = _gestao_mobile_ctx('mobile.gestao_vendas')
+    if redir:
+        return redir
+
+    ano_atual = date_type.today().year
+    try:
+        ano = int(request.args.get('ano', ano_atual))
+    except (ValueError, TypeError):
+        ano = ano_atual
+
+    vendas_data = {'meses_nomes': [], 'series': []}
+    if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
+        vendas_data = _vendas_mensal_por_vendedor(
+            ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano)
+
+    return render_template(
+        'mobile/gestao_vendas.html',
+        **ctx,
+        ano=ano,
+        ano_atual=ano_atual,
+        vendas_data=vendas_data,
     )
 
 
