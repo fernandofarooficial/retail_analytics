@@ -5,7 +5,7 @@ from routes.utils import login_required
 import db
 from people import (faturamento_diario_mes      as _faturamento_diario_mes,
                     vendas_mensal_por_vendedor   as _vendas_mensal_por_vendedor)
-from metas import meta_faturamento_mes as _meta_faturamento_mes
+from metas import meta_faturamento_mes_total as _meta_faturamento_mes_total
 
 motor_bp = Blueprint('motor', __name__, url_prefix='/retail_analytics/motor')
 
@@ -231,23 +231,22 @@ def faturamento():
         fat_diario = _faturamento_diario_mes(
             ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano, mes)
 
+    mes_fim  = date_type(ano, mes, dias_no_mes)
     meta_mes = None
     if ctx['active_store']:
-        meta_mes = _meta_faturamento_mes(ctx['active_store']['store_id'], mes_inicio)
+        meta_mes = _meta_faturamento_mes_total(ctx['active_store']['store_id'], mes_inicio, mes_fim)
 
     labels         = [f"{d:02d}/{mes:02d}" for d in range(1, dias_no_mes + 1)]
     realizado_acum = []
-    meta_acum      = []
     acum           = 0.0
-    meta_diaria    = (meta_mes / dias_no_mes) if meta_mes else None
 
     for dia in range(1, dias_no_mes + 1):
         acum += fat_diario.get(dia, 0.0)
         realizado_acum.append(round(acum, 2) if date_type(ano, mes, dia) <= hoje else None)
-        meta_acum.append(round(meta_diaria * dia, 2) if meta_diaria is not None else None)
 
+    meta_acum      = [round(meta_mes, 2)] * dias_no_mes if meta_mes else [None] * dias_no_mes
     realizado_hoje = realizado_acum[hoje.day - 1]
-    meta_hoje      = meta_acum[hoje.day - 1] if meta_acum else None
+    meta_hoje      = round(meta_mes, 2) if meta_mes else None
     pct_hoje       = round(realizado_hoje / meta_hoje * 100, 1) if (meta_hoje and realizado_hoje is not None) else None
 
     return render_template(

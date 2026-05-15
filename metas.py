@@ -95,6 +95,41 @@ def meta_faturamento_mes(store_id, mes_inicio):
     return _goal_value(fat_tid, 'monthly', mes_inicio)
 
 
+def meta_faturamento_mes_total(store_id, mes_inicio, mes_fim):
+    """
+    Meta total do mês: valor mensal cadastrado ou soma das metas diárias do período.
+    Usado quando a meta é lançada por dia e não como valor mensal único.
+    """
+    fat_tid = _target_id(_GOAL_FATURAMENTO, store_id)
+    if fat_tid is None:
+        return None
+
+    monthly = _goal_value(fat_tid, 'monthly', mes_inicio)
+    if monthly is not None:
+        return monthly
+
+    row = db.query_one("""
+        SELECT SUM(COALESCE(gv.target_value, gvt.target_value)) AS total
+        FROM   generate_series(%s::date, %s::date, '1 day'::interval) AS d(day)
+        LEFT   JOIN faciais.goal_values gv
+               ON  gv.goal_target_id = %s
+               AND gv.goal_period_id  = 'daily'
+               AND gv.reference_date  = d.day
+        LEFT   JOIN LATERAL (
+            SELECT target_value FROM faciais.goal_value_templates
+            WHERE  goal_target_id = %s
+              AND  goal_period_id  = 'daily'
+              AND  date_from      <= d.day
+              AND  (date_to IS NULL OR date_to >= d.day)
+            ORDER  BY date_from DESC LIMIT 1
+        ) gvt ON TRUE
+    """, (mes_inicio, mes_fim, fat_tid, fat_tid))
+
+    if row and row['total'] is not None:
+        return float(row['total'])
+    return None
+
+
 def get_metas(store_id,
               data_dia,
               semana_inicio, semana_fim,
