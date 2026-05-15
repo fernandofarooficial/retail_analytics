@@ -159,16 +159,43 @@
   <div class="gest-chart-header">
     <span class="gest-chart-title">Faturamento Acumulado — {{ mes_nome }} {{ ano }}</span>
     <div class="gest-legend">
-      <span class="gest-leg-item">
-        <span class="gest-leg-line" style="background:{{ theme.graph_color_1 }};"></span>Realizado
-      </span>
       {% if tem_meta %}
       <span class="gest-leg-item">
-        <span class="gest-leg-line gest-leg-line-dashed" style="--c:{{ theme.graph_color_3 }};"></span>Meta
+        <span class="gest-leg-line gest-leg-line-dashed" style="--c:{{ theme.graph_color_1 }};"></span>Meta
       </span>
       {% endif %}
+      <span class="gest-leg-item">
+        <span class="gest-leg-line" style="background:{{ theme.graph_color_2 }};"></span>Realizado
+      </span>
     </div>
   </div>
+
+  <!-- ── KPIs acumulados até hoje ── -->
+  <div style="display:flex; gap:1.5rem; flex-wrap:wrap; margin-bottom:1.25rem;">
+    {% if tem_meta and meta_hoje is not none %}
+    <div style="display:flex; flex-direction:column; gap:0.15rem;">
+      <span style="font-size:0.75rem; color:#6B7280; font-weight:500;">Meta acumulada</span>
+      <span style="font-size:1.25rem; font-weight:700; color:{{ theme.graph_color_1 }};">
+        {{ meta_hoje | br_valor('R$') }}
+      </span>
+    </div>
+    {% endif %}
+    <div style="display:flex; flex-direction:column; gap:0.15rem;">
+      <span style="font-size:0.75rem; color:#6B7280; font-weight:500;">Realizado acumulado</span>
+      <span style="font-size:1.25rem; font-weight:700; color:{{ theme.graph_color_2 }};">
+        {{ realizado_hoje | br_valor('R$') if realizado_hoje is not none else '—' }}
+      </span>
+    </div>
+    {% if pct_hoje is not none %}
+    <div style="display:flex; flex-direction:column; gap:0.15rem;">
+      <span style="font-size:0.75rem; color:#6B7280; font-weight:500;">Atingimento</span>
+      <span style="font-size:1.25rem; font-weight:700; color:{% if pct_hoje >= 100 %}#059669{% elif pct_hoje >= 75 %}#D97706{% else %}#DC2626{% endif %};">
+        {{ pct_hoje | br_valor('%') }}
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
   <div class="gest-chart-wrap">
     <canvas id="chart-motor-fat"></canvas>
   </div>
@@ -185,8 +212,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const _realizado = {{ realizado_acum | tojson }};
   const _meta      = {{ meta_acum | tojson }};
   const _temMeta   = {{ 'true' if tem_meta else 'false' }};
-  const _c1 = '{{ theme.graph_color_1 }}';
-  const _c3 = '{{ theme.graph_color_3 }}';
+  const _cMeta      = '{{ theme.graph_color_1 }}';
+  const _cRealizado = '{{ theme.graph_color_2 }}';
 
   function fmtReais(v) {
     if (v == null) return '';
@@ -203,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function () {
     {
       label: 'Realizado',
       data: _realizado,
-      borderColor: _c1,
+      borderColor: _cRealizado,
       backgroundColor: 'transparent',
       borderWidth: 2.5,
       pointRadius: 3,
@@ -214,10 +241,10 @@ document.addEventListener('DOMContentLoaded', function () {
     },
   ];
   if (_temMeta) {
-    _datasets.push({
+    _datasets.unshift({
       label: 'Meta',
       data: _meta,
-      borderColor: _c3,
+      borderColor: _cMeta,
       backgroundColor: 'transparent',
       borderWidth: 2,
       borderDash: [6, 3],

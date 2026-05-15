@@ -246,6 +246,10 @@ def faturamento():
         realizado_acum.append(round(acum, 2) if date_type(ano, mes, dia) <= hoje else None)
         meta_acum.append(round(meta_diaria * dia, 2) if meta_diaria is not None else None)
 
+    realizado_hoje = realizado_acum[hoje.day - 1]
+    meta_hoje      = meta_acum[hoje.day - 1] if meta_acum else None
+    pct_hoje       = round(realizado_hoje / meta_hoje * 100, 1) if (meta_hoje and realizado_hoje is not None) else None
+
     return render_template(
         'motor/faturamento.html',
         **ctx,
@@ -256,6 +260,9 @@ def faturamento():
         realizado_acum=realizado_acum,
         meta_acum=meta_acum,
         tem_meta=(meta_mes is not None),
+        realizado_hoje=realizado_hoje,
+        meta_hoje=meta_hoje,
+        pct_hoje=pct_hoje,
     )
 
 
