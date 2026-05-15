@@ -1975,6 +1975,50 @@ def gestao_vendas():
     )
 
 
+# ── Motor ─────────────────────────────────────────────────────────────────────
+
+@mobile_bp.route('/motor/faturamento')
+@_login_required
+def motor_faturamento():
+    ctx, redir = _gestao_mobile_ctx('mobile.motor_faturamento')
+    if redir:
+        return redir
+
+    ano_atual = date_type.today().year
+    fat_mensal = []
+    if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
+        fat_mensal = _faturamento_mensal(
+            ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano_atual)
+
+    return render_template(
+        'mobile/motor_faturamento.html',
+        **ctx,
+        ano=ano_atual,
+        fat_mensal=fat_mensal,
+    )
+
+
+@mobile_bp.route('/motor/vendas')
+@_login_required
+def motor_vendas():
+    ctx, redir = _gestao_mobile_ctx('mobile.motor_vendas')
+    if redir:
+        return redir
+
+    ano_atual = date_type.today().year
+    vendas_data = {'meses_nomes': [], 'series': []}
+    if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
+        vendas_data = _vendas_mensal_por_vendedor(
+            ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano_atual)
+
+    return render_template(
+        'mobile/motor_vendas.html',
+        **ctx,
+        ano=ano_atual,
+        vendas_data=vendas_data,
+    )
+
+
 # ── Proxy de imagens do servidor de heatmap ───────────────────────────────────
 
 @mobile_bp.route('/heatmap-imagem')
