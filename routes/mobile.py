@@ -295,12 +295,9 @@ def dashboard():
     if active_store:
         if active_store['cnpj']:
             active_store_cnpj = str(active_store['cnpj']).zfill(14)
-        row = db.query_one("""
-            SELECT c.microvix_portal
-            FROM   faciais.stores s
-            JOIN   faciais.companies c ON c.company_id = s.company_id
-            WHERE  s.store_id = %s
-        """, (active_store['store_id'],))
+        row = db.query_one(
+            "SELECT microvix_portal FROM faciais.stores WHERE store_id = %s",
+            (active_store['store_id'],))
         if row:
             active_microvix_portal = row['microvix_portal']
 
@@ -1869,11 +1866,9 @@ def _gestao_mobile_ctx(endpoint):
     if active_store:
         if active_store['cnpj']:
             active_store_cnpj = str(active_store['cnpj']).zfill(14)
-        row = db.query_one("""
-            SELECT c.microvix_portal FROM faciais.stores s
-            JOIN   faciais.companies c ON c.company_id = s.company_id
-            WHERE  s.store_id = %s
-        """, (active_store['store_id'],))
+        row = db.query_one(
+            "SELECT microvix_portal FROM faciais.stores WHERE store_id = %s",
+            (active_store['store_id'],))
         if row:
             active_microvix_portal = row['microvix_portal']
 

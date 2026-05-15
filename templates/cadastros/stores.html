@@ -20,6 +20,7 @@
                 <th>Nome Curto</th>
                 <th>Empresa</th>
                 <th>CNPJ</th>
+                <th style="width:110px">Portal Microvix</th>
                 <th>Cidade / UF</th>
                 <th>Perfil Calendário</th>
                 <th class="col-actions">Ações</th>
@@ -33,6 +34,11 @@
                 <td>{{ r.store_short_name or '—' }}</td>
                 <td>{{ r.company_name or '—' }}</td>
                 <td>{{ r.cnpj or '—' }}</td>
+                <td>
+                    {% if r.microvix_portal %}
+                        <span class="badge">{{ r.microvix_portal }}</span>
+                    {% else %}—{% endif %}
+                </td>
                 <td>
                     {% if r.city and r.uf %}
                         {{ r.city }}/{{ r.uf }}
@@ -51,6 +57,7 @@
                         data-company="{{ r.company_id or '' }}"
                         data-lojista="{{ r.retailer_group_id or '' }}"
                         data-cnpj="{{ r.cnpj or '' }}"
+                        data-portal="{{ r.microvix_portal or '' }}"
                         data-cep="{{ r.cep or '' }}"
                         data-number="{{ r.address_number or '' | e }}"
                         data-complement="{{ r.address_complement or '' | e }}"
@@ -68,7 +75,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="8" class="table-empty">Nenhuma loja cadastrada.</td></tr>
+            <tr><td colspan="9" class="table-empty">Nenhuma loja cadastrada.</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -120,6 +127,10 @@
                 <div class="form-group">
                     <label>CNPJ</label>
                     <input type="text" id="f-cnpj" name="cnpj" maxlength="14" placeholder="00000000000000">
+                </div>
+                <div class="form-group">
+                    <label>Portal Microvix <small>(opcional)</small></label>
+                    <input type="number" id="f-portal" name="microvix_portal" min="1" placeholder="ex: 123456">
                 </div>
                 <div class="form-group">
                     <label>Perfil de Calendário</label>
@@ -223,7 +234,7 @@ async function buscarCep() {
     }
 }
 
-const CLEAR_FIELDS = ['f-name','f-short','f-cnpj','f-cep','f-uf','f-city','f-neighborhood','f-number','f-complement'];
+const CLEAR_FIELDS = ['f-name','f-short','f-cnpj','f-portal','f-cep','f-uf','f-city','f-neighborhood','f-number','f-complement'];
 
 function abrirNovo() {
     document.getElementById('modal-titulo').textContent = 'Nova Loja';
@@ -247,6 +258,7 @@ function abrirEditar(btn) {
     document.getElementById('f-company').value          = d.company;
     document.getElementById('f-lojista').value          = d.lojista;
     document.getElementById('f-cnpj').value             = d.cnpj;
+    document.getElementById('f-portal').value           = d.portal;
     document.getElementById('f-cep').value              = d.cep ? formatCep(d.cep) : '';
     document.getElementById('f-uf').value               = d.uf;
     document.getElementById('f-city').value             = d.city;

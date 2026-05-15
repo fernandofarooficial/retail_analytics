@@ -164,13 +164,12 @@ def empresas():
             if action == 'criar':
                 db.execute(
                     "INSERT INTO faciais.companies "
-                    "(company_name, company_group_id, company_type_id, microvix_portal, fiscal_year_start_date) "
-                    "VALUES (%s, %s, %s, %s, %s)",
+                    "(company_name, company_group_id, company_type_id, fiscal_year_start_date) "
+                    "VALUES (%s, %s, %s, %s)",
                     (
                         request.form['nome'].strip(),
                         request.form.get('grupo') or None,
                         request.form.get('tipo') or None,
-                        request.form.get('microvix_portal') or None,
                         request.form.get('fiscal_year_start_date') or None,
                     )
                 )
@@ -179,14 +178,13 @@ def empresas():
             elif action == 'editar':
                 db.execute(
                     "UPDATE faciais.companies "
-                    "SET company_name=%s, company_group_id=%s, company_type_id=%s, microvix_portal=%s, "
+                    "SET company_name=%s, company_group_id=%s, company_type_id=%s, "
                     "    fiscal_year_start_date=%s "
                     "WHERE company_id=%s",
                     (
                         request.form['nome'].strip(),
                         request.form.get('grupo') or None,
                         request.form.get('tipo') or None,
-                        request.form.get('microvix_portal') or None,
                         request.form.get('fiscal_year_start_date') or None,
                         request.form['_id'],
                     )
@@ -324,15 +322,16 @@ def lojas():
                 db.execute(
                     """INSERT INTO faciais.stores
                        (company_id, retailer_group_id, store_name, store_short_name,
-                        cnpj, cep, address_number, address_complement,
+                        cnpj, microvix_portal, cep, address_number, address_complement,
                         uf, city, neighborhood, calendar_profile_id)
-                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                     (
                         request.form.get('company_id') or None,
                         request.form.get('retailer_group_id') or None,
                         request.form['store_name'].strip(),
                         request.form.get('store_short_name', '').strip() or None,
                         request.form.get('cnpj') or None,
+                        request.form.get('microvix_portal') or None,
                         request.form.get('cep', '').strip() or None,
                         request.form.get('address_number', '').strip() or None,
                         request.form.get('address_complement', '').strip() or None,
@@ -348,7 +347,7 @@ def lojas():
                 db.execute(
                     """UPDATE faciais.stores SET
                        company_id=%s, retailer_group_id=%s, store_name=%s, store_short_name=%s,
-                       cnpj=%s, cep=%s, address_number=%s, address_complement=%s,
+                       cnpj=%s, microvix_portal=%s, cep=%s, address_number=%s, address_complement=%s,
                        uf=%s, city=%s, neighborhood=%s, calendar_profile_id=%s
                        WHERE store_id=%s""",
                     (
@@ -357,6 +356,7 @@ def lojas():
                         request.form['store_name'].strip(),
                         request.form.get('store_short_name', '').strip() or None,
                         request.form.get('cnpj') or None,
+                        request.form.get('microvix_portal') or None,
                         request.form.get('cep', '').strip() or None,
                         request.form.get('address_number', '').strip() or None,
                         request.form.get('address_complement', '').strip() or None,
