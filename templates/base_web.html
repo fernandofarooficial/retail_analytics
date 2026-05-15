@@ -25,6 +25,8 @@
            href="{{ url_for('auth.visitacao') }}">Visitação</a>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('gestao.') %}active{% endif %}"
            href="{{ url_for('gestao.faturamento') }}">Gestão</a>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('motor.') %}active{% endif %}"
+           href="{{ url_for('motor.faturamento') }}">Motor</a>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('conta.') %}active{% endif %}"
            href="{{ url_for('conta.trocar_senha') }}">Trocar Senha</a>
     </div>

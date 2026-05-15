@@ -49,6 +49,7 @@ from routes.usuarios  import usuarios_bp
 from routes.mobile    import mobile_bp
 from routes.metas     import metas_bp
 from routes.gestao    import gestao_bp
+from routes.motor     import motor_bp
 
 app.register_blueprint(auth_bp,      url_prefix='/retail_analytics')
 app.register_blueprint(cadastros_bp)
@@ -57,6 +58,7 @@ app.register_blueprint(usuarios_bp)
 app.register_blueprint(mobile_bp,    url_prefix='/retail_analytics/m')
 app.register_blueprint(metas_bp)
 app.register_blueprint(gestao_bp)
+app.register_blueprint(motor_bp)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5003, debug=False)
