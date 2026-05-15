@@ -10,8 +10,9 @@
 from datetime import date
 import db
 
-_GOAL_FATURAMENTO  = 1
-_GOAL_TICKET_MEDIO = 2
+_GOAL_FATURAMENTO       = 1
+_GOAL_TICKET_MEDIO      = 2
+_GOAL_FATURAMENTO_TOTAL = 3
 
 
 def _target_id(goal_id, store_id):
@@ -95,21 +96,25 @@ def meta_faturamento_mes(store_id, mes_inicio):
     return _goal_value(fat_tid, 'monthly', mes_inicio)
 
 
-def meta_faturamento_mes_total(store_id, mes_inicio, mes_fim):
+def meta_faturamento_acum_diario(store_id, mes_inicio, mes_fim):
     """
-    Meta total do mês: valor mensal cadastrado ou soma das metas diárias do período.
-    Usado quando a meta é lançada por dia e não como valor mensal único.
+    Retorna (daily_dict, meta_total) para o gráfico Motor — Faturamento.
+    - daily_dict : {dia_do_mes: valor_meta_diaria}  (acumula no chamador)
+    - meta_total : soma de todos os dias do mês (None se sem meta configurada)
+
+    Prioridade:
+    1. Desdobramento diário em goal_values / goal_value_templates (period='daily')
+    2. Meta mensal (period='monthly') distribuída pelos dias úteis com peso
+       usando vw_store_calendar (hierarquia: exceção > feriado geo > perfil > base)
     """
-    fat_tid = _target_id(_GOAL_FATURAMENTO, store_id)
+    fat_tid = _target_id(_GOAL_FATURAMENTO_TOTAL, store_id)
     if fat_tid is None:
-        return None
+        return {}, None
 
-    monthly = _goal_value(fat_tid, 'monthly', mes_inicio)
-    if monthly is not None:
-        return monthly
-
-    row = db.query_one("""
-        SELECT SUM(COALESCE(gv.target_value, gvt.target_value)) AS total
+    # ── 1. Tenta desdobramento diário ────────────────────────────────────────
+    rows = db.query_all("""
+        SELECT EXTRACT(DAY FROM d.day)::int AS dia,
+               COALESCE(gv.target_value, gvt.target_value) AS valor
         FROM   generate_series(%s::date, %s::date, '1 day'::interval) AS d(day)
         LEFT   JOIN faciais.goal_values gv
                ON  gv.goal_target_id = %s
@@ -123,11 +128,35 @@ def meta_faturamento_mes_total(store_id, mes_inicio, mes_fim):
               AND  (date_to IS NULL OR date_to >= d.day)
             ORDER  BY date_from DESC LIMIT 1
         ) gvt ON TRUE
+        WHERE  COALESCE(gv.target_value, gvt.target_value) IS NOT NULL
     """, (mes_inicio, mes_fim, fat_tid, fat_tid))
 
-    if row and row['total'] is not None:
-        return float(row['total'])
-    return None
+    if rows:
+        daily = {r['dia']: float(r['valor']) for r in rows}
+        return daily, sum(daily.values())
+
+    # ── 2. Distribui meta mensal pelos dias úteis com peso ───────────────────
+    monthly = _goal_value(fat_tid, 'monthly', mes_inicio)
+    if monthly is None:
+        return {}, None
+
+    cal_rows = db.query_all("""
+        SELECT EXTRACT(DAY FROM calendar_date)::int AS dia, day_weight
+        FROM   faciais.vw_store_calendar
+        WHERE  store_id      = %s
+          AND  calendar_date BETWEEN %s AND %s
+        ORDER  BY calendar_date
+    """, (store_id, mes_inicio, mes_fim))
+
+    total_peso = sum(float(r['day_weight']) for r in cal_rows)
+    if total_peso == 0:
+        return {}, float(monthly)
+
+    daily = {
+        r['dia']: round(float(monthly) * float(r['day_weight']) / total_peso, 2)
+        for r in cal_rows if float(r['day_weight']) > 0
+    }
+    return daily, float(monthly)
 
 
 def get_metas(store_id,
