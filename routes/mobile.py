@@ -6,12 +6,13 @@ from flask import (Blueprint, render_template, request, redirect,
 from werkzeug.security import check_password_hash, generate_password_hash
 import os
 import db
-from metas import get_metas as _get_metas
+from metas import get_metas as _get_metas, meta_faturamento_mes as _meta_faturamento_mes
 from people import (qtd_novos as _qtd_novos, qtd_recorrentes as _qtd_recorrentes,
                     kpi_microvix as _kpi_microvix, faixa_horaria as _faixa_horaria,
                     ticket_por_tipo as _ticket_por_tipo,
                     top5_por_tipo as _top5_por_tipo,
                     faturamento_mensal as _faturamento_mensal,
+                    faturamento_diario_mes as _faturamento_diario_mes,
                     vendas_mensal_por_vendedor as _vendas_mensal_por_vendedor)
 from routes.utils import (fmt_permanencia, kpi_tempo_loja, kpi_tempo_loja_range,
                            tempo_gauge, HEIMDALL_IMAGE_BASE)
@@ -1979,17 +1980,45 @@ def motor_faturamento():
     if redir:
         return redir
 
-    ano_atual = date_type.today().year
-    fat_mensal = []
+    hoje       = date_type.today()
+    ano        = hoje.year
+    mes        = hoje.month
+    mes_inicio = date_type(ano, mes, 1)
+    dias_no_mes = calendar.monthrange(ano, mes)[1]
+
+    fat_diario = {}
     if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
-        fat_mensal = _faturamento_mensal(
-            ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano_atual)
+        fat_diario = _faturamento_diario_mes(
+            ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano, mes)
+
+    meta_mes = None
+    if ctx['active_store']:
+        meta_mes = _meta_faturamento_mes(ctx['active_store']['store_id'], mes_inicio)
+
+    _nomes_mes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+    labels         = [f"{d:02d}/{mes:02d}" for d in range(1, dias_no_mes + 1)]
+    realizado_acum = []
+    meta_acum      = []
+    acum           = 0.0
+    meta_diaria    = (meta_mes / dias_no_mes) if meta_mes else None
+
+    for dia in range(1, dias_no_mes + 1):
+        acum += fat_diario.get(dia, 0.0)
+        realizado_acum.append(round(acum, 2) if date_type(ano, mes, dia) <= hoje else None)
+        meta_acum.append(round(meta_diaria * dia, 2) if meta_diaria is not None else None)
 
     return render_template(
         'mobile/motor_faturamento.html',
         **ctx,
-        ano=ano_atual,
-        fat_mensal=fat_mensal,
+        mes_nome=_nomes_mes[mes - 1],
+        ano=ano,
+        mes=mes,
+        labels=labels,
+        realizado_acum=realizado_acum,
+        meta_acum=meta_acum,
+        tem_meta=(meta_mes is not None),
     )
 
 

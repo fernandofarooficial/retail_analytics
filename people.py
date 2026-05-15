@@ -160,6 +160,27 @@ def faturamento_mensal(portal, cnpj, ano):
     return [{'mes': m, **base[m]} for m in range(1, 13)]
 
 
+def faturamento_diario_mes(portal, cnpj, ano, mes):
+    """Faturamento total por dia para o mês/ano dado. Retorna dict {dia: total}."""
+    rows = db.query_all("""
+        SELECT EXTRACT(DAY FROM data_documento)::int AS dia,
+               SUM(valor_total) AS total
+        FROM   microvix.microvix_movimento
+        WHERE  portal                = %s
+          AND  cnpj_emp              = %s
+          AND  EXTRACT(YEAR  FROM data_documento) = %s
+          AND  EXTRACT(MONTH FROM data_documento) = %s
+          AND  cancelado            <> 'S'
+          AND  excluido             <> 'S'
+          AND  soma_relatorio        = 'S'
+          AND  tipo_transacao       IN ('V', 'P')
+          AND  cod_natureza_operacao = '10030'
+        GROUP  BY dia
+        ORDER  BY dia
+    """, (portal, cnpj, ano, mes))
+    return {row['dia']: round(float(row['total'] or 0), 2) for row in rows}
+
+
 def vendas_mensal_por_vendedor(portal, cnpj, ano):
     """Faturamento mensal por vendedor (tipo_transacao='V') para um dado ano.
     Retorna dict com meses_nomes e series=[{nome, dados}]."""

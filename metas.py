@@ -87,6 +87,14 @@ def _ytd_fat(target_id, data_dia, mes_inicio):
     return sum(float(r['target_value']) for r in (rows or []) if r['target_value'] is not None)
 
 
+def meta_faturamento_mes(store_id, mes_inicio):
+    """Retorna a meta mensal de faturamento para a loja, ou None se não configurada."""
+    fat_tid = _target_id(_GOAL_FATURAMENTO, store_id)
+    if fat_tid is None:
+        return None
+    return _goal_value(fat_tid, 'monthly', mes_inicio)
+
+
 def get_metas(store_id,
               data_dia,
               semana_inicio, semana_fim,
