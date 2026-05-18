@@ -6,6 +6,7 @@ from routes.utils import (login_required, screen_required,
                            fmt_permanencia, kpi_tempo_loja, kpi_tempo_loja_range,
                            tempo_gauge, HEIMDALL_IMAGE_BASE)
 import db
+from extensions import cache
 from metas import get_metas as _get_metas
 from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     kpi_microvix as _kpi_microvix, faixa_horaria as _faixa_horaria,
@@ -796,30 +797,9 @@ def dashboard():
     )
 
 
-@auth_bp.route('/dashboard/charts')
-@login_required
-def dashboard_charts():
-    user_id   = session['user_id']
-    user_type = session['user_type_id']
-    store_id  = request.args.get('store_id', type=int)
-
-    if not store_id:
-        return jsonify({})
-
-    active_store = _resolve_store_for_user(user_id, user_type, store_id)
-    if not active_store:
-        return jsonify({}), 403
-
-    active_store_cnpj = str(active_store['cnpj']).zfill(14) if active_store['cnpj'] else None
-    row = db.query_one("SELECT microvix_portal FROM faciais.stores WHERE store_id = %s", (store_id,))
-    active_microvix_portal = row['microvix_portal'] if row else None
-
-    data_str = request.args.get('date', date_type.today().strftime('%Y-%m-%d'))
-    try:
-        date_type.fromisoformat(data_str)
-    except ValueError:
-        data_str = date_type.today().strftime('%Y-%m-%d')
-
+@cache.memoize(timeout=900)
+def _compute_charts_data(store_id, data_str, active_store_cnpj, active_microvix_portal):
+    sid = store_id
     selected_date     = date_type.fromisoformat(data_str)
     semana_inicio     = selected_date - timedelta(days=selected_date.weekday())
     semana_fim        = semana_inicio + timedelta(days=6)
@@ -849,8 +829,6 @@ def dashboard_charts():
     ytd_fim        = selected_date
     ytd_inicio_str = ytd_inicio.strftime('%Y-%m-%d')
     ytd_fim_str    = ytd_fim.strftime('%Y-%m-%d')
-
-    sid = store_id
 
     chart_faixa_dia = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
     chart_faixa_sem = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
@@ -1086,7 +1064,7 @@ def dashboard_charts():
             t5['novos']       = resultado['novos']
             t5['recorrentes'] = resultado['recorrentes']
 
-    return jsonify({
+    return {
         'faixa':       {'dia': chart_faixa_dia,       'sem': chart_faixa_sem,       'mes': chart_faixa_mes,       'ytd': chart_faixa_ytd},
         'genero':      {'dia': chart_genero_dia,      'sem': chart_genero_sem,      'mes': chart_genero_mes,      'ytd': chart_genero_ytd},
         'ocorrencias': {'dia': chart_ocorrencias_dia, 'sem': chart_ocorrencias_sem, 'mes': chart_ocorrencias_mes, 'ytd': chart_ocorrencias_ytd},
@@ -1094,7 +1072,34 @@ def dashboard_charts():
         'top_fat':     {'dia': top_produtos_fat_dia,  'sem': top_produtos_fat_sem,  'mes': top_produtos_fat_mes,  'ytd': top_produtos_fat_ytd},
         'combinacoes': {'dia': combinacoes_dia,       'sem': combinacoes_sem,       'mes': combinacoes_mes,       'ytd': combinacoes_ytd},
         'top5_tipo':   {'dia': top5_tipo_dia,         'sem': top5_tipo_sem,         'mes': top5_tipo_mes,         'ytd': top5_tipo_ytd},
-    })
+    }
+
+
+@auth_bp.route('/dashboard/charts')
+@login_required
+def dashboard_charts():
+    user_id   = session['user_id']
+    user_type = session['user_type_id']
+    store_id  = request.args.get('store_id', type=int)
+
+    if not store_id:
+        return jsonify({})
+
+    active_store = _resolve_store_for_user(user_id, user_type, store_id)
+    if not active_store:
+        return jsonify({}), 403
+
+    active_store_cnpj = str(active_store['cnpj']).zfill(14) if active_store['cnpj'] else None
+    row = db.query_one("SELECT microvix_portal FROM faciais.stores WHERE store_id = %s", (store_id,))
+    active_microvix_portal = row['microvix_portal'] if row else None
+
+    data_str = request.args.get('date', date_type.today().strftime('%Y-%m-%d'))
+    try:
+        date_type.fromisoformat(data_str)
+    except ValueError:
+        data_str = date_type.today().strftime('%Y-%m-%d')
+
+    return jsonify(_compute_charts_data(store_id, data_str, active_store_cnpj, active_microvix_portal))
 
 
 # ── Visitação ─────────────────────────────────────────────────────────────────

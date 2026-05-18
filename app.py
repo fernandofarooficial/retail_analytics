@@ -2,11 +2,17 @@ import os
 from datetime import datetime
 from flask import Flask
 from dotenv import load_dotenv
+from extensions import cache
 
 load_dotenv()
 
 app = Flask(__name__, static_url_path='/retail_analytics/static')
 app.secret_key = os.environ['SECRET_KEY']
+
+cache.init_app(app, config={
+    'CACHE_TYPE': 'SimpleCache',
+    'CACHE_DEFAULT_TIMEOUT': 900,
+})
 
 
 @app.context_processor
