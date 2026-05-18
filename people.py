@@ -75,6 +75,25 @@ def qtd_novos(loja, dia_i, dia_f):
     return row['total'] if row else 0
 
 
+def qtd_novos_recorrentes(loja, dia_i, dia_f):
+    row = db.query_one("""
+        SELECT
+            COUNT(DISTINCT CASE WHEN dr.created_at::date > vpc.first_record::date
+                                THEN p.person_id END) AS recorrentes,
+            COUNT(DISTINCT CASE WHEN dr.created_at::date = vpc.first_record::date
+                                THEN p.person_id END) AS novos
+        FROM faciais.detection_records dr
+        JOIN faciais.people p ON dr.person_id = p.person_id
+        JOIN faciais.vw_primeira_aparicao_clientes vpc ON p.person_id = vpc.person_id
+        WHERE p.person_type_id = 'C'
+          AND dr.store_id = %s
+          AND dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
+    """, (loja, dia_i, dia_f))
+    if row:
+        return int(row['recorrentes'] or 0), int(row['novos'] or 0)
+    return 0, 0
+
+
 def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
     """Ticket médio por nota, separado em novo/recorrente, via faciais.person_purchases."""
     rows = db.query_all("""
