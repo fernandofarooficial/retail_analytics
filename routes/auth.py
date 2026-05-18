@@ -1,6 +1,6 @@
-import calendar
+﻿import calendar
 from datetime import date as date_type, timedelta
-from flask import Blueprint, render_template, request, redirect, url_for, session
+from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
 from werkzeug.security import check_password_hash
 from routes.utils import (login_required, screen_required,
                            fmt_permanencia, kpi_tempo_loja, kpi_tempo_loja_range,
@@ -25,6 +25,43 @@ def _prev_business_day(d):
 def _is_mobile():
     ua = request.headers.get('User-Agent', '').lower()
     return any(k in ua for k in ('iphone', 'android', 'mobile', 'ipad'))
+
+
+def _replace_year_safe(d, year):
+    try:
+        return d.replace(year=year)
+    except ValueError:
+        return date_type(year, d.month, 28)
+
+
+def _resolve_store_for_user(user_id, user_type, store_id):
+    if user_type == 'adm':
+        return db.query_one(
+            "SELECT store_id, store_name, cnpj FROM faciais.stores WHERE store_id = %s",
+            (store_id,))
+    if user_type == 'man':
+        return db.query_one("""
+            SELECT s.store_id, s.store_name, s.cnpj
+            FROM   faciais.stores s
+            JOIN   faciais.companies c ON c.company_id = s.company_id
+            JOIN   faciais.user_company_groups ucg ON ucg.company_group_id = c.company_group_id
+            WHERE  s.store_id = %s AND ucg.user_id = %s
+        """, (store_id, user_id))
+    if user_type == 'ret':
+        return db.query_one("""
+            SELECT s.store_id, s.store_name, s.cnpj
+            FROM   faciais.stores s
+            JOIN   faciais.user_retailer_groups urg ON urg.retailer_group_id = s.retailer_group_id
+            WHERE  s.store_id = %s AND urg.user_id = %s
+        """, (store_id, user_id))
+    if user_type == 'emp':
+        return db.query_one("""
+            SELECT s.store_id, s.store_name, s.cnpj
+            FROM   faciais.stores s
+            JOIN   faciais.user_stores us ON us.store_id = s.store_id
+            WHERE  s.store_id = %s AND us.user_id = %s
+        """, (store_id, user_id))
+    return None
 
 
 @auth_bp.route('/')
@@ -317,12 +354,6 @@ def dashboard():
     mes_label    = f"{_MESES[selected_date.month - 1]} {selected_date.year}"
 
     # ── YTD: período do ano fiscal ────────────────────────────────────────────
-    def _replace_year_safe(d, year):
-        try:
-            return d.replace(year=year)
-        except ValueError:
-            return date_type(year, d.month, 28)
-
     _fiscal_row = None
     if active_store:
         _fiscal_row = db.query_one("""
@@ -620,442 +651,39 @@ def dashboard():
     kpi_tempo_gauge_mes = tempo_gauge(kpi_mes['tempo_loja'])
     kpi_tempo_gauge_ytd = tempo_gauge(kpi_ytd['tempo_loja'])
 
-    # ── Gráfico faixa horária – Operacional ──────────────────────────────────
+    # -- Gráficos: calculados async em /dashboard/charts ----------------------------
     chart_faixa_dia = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
     chart_faixa_sem = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
     chart_faixa_mes = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
     chart_faixa_ytd = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
-
-    if active_store:
-        sid = active_store['store_id']
-
-        rows = db.query_all("""
-            SELECT EXTRACT(HOUR FROM min_time)::int AS hora, COUNT(*) AS clientes
-            FROM (
-                SELECT dr.person_id, MIN(dr.created_at) AS min_time
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
-                GROUP  BY dr.person_id
-            ) sub GROUP BY hora ORDER BY hora
-        """, (sid, data_str, data_str))
-        for row in rows:
-            chart_faixa_dia['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
-
-        if active_microvix_portal and active_store_cnpj:
-            for row in _faixa_horaria(active_microvix_portal, active_store_cnpj, data_str, data_str):
-                chart_faixa_dia['vendas'][int(row['hora'])]       = int(row['vendas'] or 0)
-                chart_faixa_dia['faturamento'][int(row['hora'])]  = float(row['faturamento'] or 0)
-
-        rows = db.query_all("""
-            SELECT EXTRACT(HOUR FROM min_time)::int AS hora, COUNT(*) AS clientes
-            FROM (
-                SELECT dr.person_id, DATE(dr.created_at) AS dia, MIN(dr.created_at) AS min_time
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
-                GROUP  BY dr.person_id, DATE(dr.created_at)
-            ) sub GROUP BY hora ORDER BY hora
-        """, (sid, semana_inicio_str, semana_fim_str))
-        for row in rows:
-            chart_faixa_sem['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
-
-        if active_microvix_portal and active_store_cnpj:
-            for row in _faixa_horaria(active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str):
-                chart_faixa_sem['vendas'][int(row['hora'])]      = int(row['vendas'] or 0)
-                chart_faixa_sem['faturamento'][int(row['hora'])] = float(row['faturamento'] or 0)
-
-        rows = db.query_all("""
-            SELECT EXTRACT(HOUR FROM min_time)::int AS hora, COUNT(*) AS clientes
-            FROM (
-                SELECT dr.person_id, DATE(dr.created_at) AS dia, MIN(dr.created_at) AS min_time
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
-                GROUP  BY dr.person_id, DATE(dr.created_at)
-            ) sub GROUP BY hora ORDER BY hora
-        """, (sid, mes_inicio_str, mes_fim_str))
-        for row in rows:
-            chart_faixa_mes['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
-
-        if active_microvix_portal and active_store_cnpj:
-            for row in _faixa_horaria(active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str):
-                chart_faixa_mes['vendas'][int(row['hora'])]      = int(row['vendas'] or 0)
-                chart_faixa_mes['faturamento'][int(row['hora'])] = float(row['faturamento'] or 0)
-
-        # ── Gráfico gênero por faixa horária ─────────────────────────────────
-        chart_genero_dia = {'F': [0]*24, 'M': [0]*24}
-        chart_genero_sem = {'F': [0]*24, 'M': [0]*24}
-        chart_genero_mes = {'F': [0]*24, 'M': [0]*24}
-
-        _GENERO_DIA_QUERY = """
-            SELECT EXTRACT(HOUR FROM min_time)::int AS hora,
-                   gender_id, COUNT(*) AS total
-            FROM (
-                SELECT dr.person_id, p.gender_id, MIN(dr.created_at) AS min_time
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
-                GROUP  BY dr.person_id, p.gender_id
-            ) sub
-            GROUP BY hora, gender_id ORDER BY hora
-        """
-        for row in db.query_all(_GENERO_DIA_QUERY, (sid, data_str, data_str)):
-            g = row['gender_id']
-            if g in chart_genero_dia:
-                chart_genero_dia[g][int(row['hora'])] = int(row['total'] or 0)
-
-        # ── Gráfico ocorrências por hora (Novos vs Recorrentes) – Dia ─────────
-        chart_ocorrencias_dia = {'novos': [0]*24, 'recorrentes': [0]*24}
-        for row in db.query_all("""
-            SELECT hora,
-                   SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
-                   SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
-            FROM (
-                SELECT EXTRACT(HOUR FROM MIN(dr.created_at))::int AS hora,
-                       (vpc.first_record::date < %s) AS is_rec
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
-                GROUP  BY dr.person_id, vpc.first_record
-            ) sub
-            GROUP BY hora ORDER BY hora
-        """, (data_str, sid, data_str, data_str)):
-            h = int(row['hora'])
-            chart_ocorrencias_dia['recorrentes'][h] = int(row['recorrentes'] or 0)
-            chart_ocorrencias_dia['novos'][h]        = int(row['novos'] or 0)
-
-        chart_ocorrencias_sem = {'novos': [0]*24, 'recorrentes': [0]*24}
-        for row in db.query_all("""
-            WITH pv AS (
-                SELECT dr.person_id, MIN(dr.created_at) AS primeira_visita,
-                       vpc.first_record
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
-                GROUP  BY dr.person_id, vpc.first_record
-            )
-            SELECT hora,
-                   SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
-                   SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
-            FROM (
-                SELECT EXTRACT(HOUR FROM pv.primeira_visita)::int AS hora,
-                       (pv.first_record::date < DATE(pv.primeira_visita)) AS is_rec
-                FROM pv
-            ) sub
-            GROUP BY hora ORDER BY hora
-        """, (sid, semana_inicio_str, semana_fim_str)):
-            h = int(row['hora'])
-            chart_ocorrencias_sem['recorrentes'][h] = int(row['recorrentes'] or 0)
-            chart_ocorrencias_sem['novos'][h]        = int(row['novos'] or 0)
-
-        chart_ocorrencias_mes = {'novos': [0]*24, 'recorrentes': [0]*24}
-        for row in db.query_all("""
-            WITH pv AS (
-                SELECT dr.person_id, MIN(dr.created_at) AS primeira_visita,
-                       vpc.first_record
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
-                GROUP  BY dr.person_id, vpc.first_record
-            )
-            SELECT hora,
-                   SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
-                   SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
-            FROM (
-                SELECT EXTRACT(HOUR FROM pv.primeira_visita)::int AS hora,
-                       (pv.first_record::date < DATE(pv.primeira_visita)) AS is_rec
-                FROM pv
-            ) sub
-            GROUP BY hora ORDER BY hora
-        """, (sid, mes_inicio_str, mes_fim_str)):
-            h = int(row['hora'])
-            chart_ocorrencias_mes['recorrentes'][h] = int(row['recorrentes'] or 0)
-            chart_ocorrencias_mes['novos'][h]        = int(row['novos'] or 0)
-
-        _GENERO_RANGE_QUERY = """
-            SELECT EXTRACT(HOUR FROM min_time)::int AS hora,
-                   gender_id, COUNT(*) AS total
-            FROM (
-                SELECT dr.person_id, p.gender_id,
-                       DATE(dr.created_at) AS dia, MIN(dr.created_at) AS min_time
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
-                GROUP  BY dr.person_id, p.gender_id, DATE(dr.created_at)
-            ) sub
-            GROUP BY hora, gender_id ORDER BY hora
-        """
-        for row in db.query_all(_GENERO_RANGE_QUERY, (sid, semana_inicio_str, semana_fim_str)):
-            g = row['gender_id']
-            if g in chart_genero_sem:
-                chart_genero_sem[g][int(row['hora'])] = int(row['total'] or 0)
-
-        for row in db.query_all(_GENERO_RANGE_QUERY, (sid, mes_inicio_str, mes_fim_str)):
-            g = row['gender_id']
-            if g in chart_genero_mes:
-                chart_genero_mes[g][int(row['hora'])] = int(row['total'] or 0)
-
-        # ── Top produtos ─────────────────────────────────────────────────────
-        top_produtos_qtde_dia = []
-        top_produtos_fat_dia  = []
-        top_produtos_qtde_sem = []
-        top_produtos_fat_sem  = []
-        top_produtos_qtde_mes = []
-        top_produtos_fat_mes  = []
-        top_produtos_qtde_ytd = []
-        top_produtos_fat_ytd  = []
-        combinacoes_dia       = []
-        combinacoes_sem       = []
-        combinacoes_mes       = []
-        combinacoes_ytd       = []
-        top5_tipo_dia = {'novos': [], 'recorrentes': []}
-        top5_tipo_sem = {'novos': [], 'recorrentes': []}
-        top5_tipo_mes = {'novos': [], 'recorrentes': []}
-        top5_tipo_ytd = {'novos': [], 'recorrentes': []}
-
-        _FILTRO_MV = (
-            "m.portal = %s AND m.cnpj_emp = %s "
-            "AND m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S' "
-            "AND m.tipo_transacao = 'V' AND m.cod_natureza_operacao = '10030'"
-        )
-        _JOIN_PROD = (
-            "JOIN microvix.microvix_produtos p "
-            "ON p.portal = m.portal AND p.cod_produto = m.cod_produto"
-        )
-        _NOME_PROD = "COALESCE(NULLIF(TRIM(p.descricao_basica),''), p.nome)"
-
-        if active_microvix_portal and active_store_cnpj:
-            def _top_query(date_filter, order_expr, params):
-                sql = f"""
-                    SELECT {_NOME_PROD} AS produto, {order_expr} AS total
-                    FROM   microvix.microvix_movimento m
-                    {_JOIN_PROD}
-                    WHERE  {_FILTRO_MV} AND {date_filter}
-                    GROUP  BY produto ORDER BY total DESC LIMIT 5
-                """
-                return [{'nome': r['produto'], 'total': round(float(r['total'] or 0), 2)}
-                        for r in db.query_all(sql, params)]
-
-            _p = (active_microvix_portal, active_store_cnpj)
-            _date_dia  = "m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'"
-            _date_sem  = "m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'"
-
-            top_produtos_qtde_dia = _top_query(_date_dia,  "SUM(m.quantidade)",   _p + (data_str, data_str))
-            top_produtos_fat_dia  = _top_query(_date_dia,  "SUM(m.valor_liquido)", _p + (data_str, data_str))
-            top_produtos_qtde_sem = _top_query(_date_sem,  "SUM(m.quantidade)",   _p + (semana_inicio_str, semana_fim_str))
-            top_produtos_fat_sem  = _top_query(_date_sem,  "SUM(m.valor_liquido)", _p + (semana_inicio_str, semana_fim_str))
-            top_produtos_qtde_mes = _top_query(_date_sem,  "SUM(m.quantidade)",   _p + (mes_inicio_str, mes_fim_str))
-            top_produtos_fat_mes  = _top_query(_date_sem,  "SUM(m.valor_liquido)", _p + (mes_inicio_str, mes_fim_str))
-
-            def _comb_query(date_filter, params):
-                sql = f"""
-                    SELECT
-                        COALESCE(NULLIF(TRIM(pa.descricao_basica),''), pa.nome) AS nome_a,
-                        COALESCE(NULLIF(TRIM(pb.descricao_basica),''), pb.nome) AS nome_b,
-                        COUNT(*) AS qtd
-                    FROM microvix.microvix_movimento a
-                    JOIN microvix.microvix_movimento b
-                        ON  a.portal    = b.portal
-                        AND a.cnpj_emp  = b.cnpj_emp
-                        AND a.documento = b.documento
-                        AND a.cod_produto < b.cod_produto
-                    JOIN microvix.microvix_produtos pa
-                        ON pa.portal = a.portal AND pa.cod_produto = a.cod_produto
-                    JOIN microvix.microvix_produtos pb
-                        ON pb.portal = b.portal AND pb.cod_produto = b.cod_produto
-                    WHERE a.portal = %s AND a.cnpj_emp = %s
-                      AND a.cancelado <> 'S' AND a.excluido <> 'S' AND a.soma_relatorio = 'S'
-                      AND a.tipo_transacao = 'V' AND a.cod_natureza_operacao = '10030'
-                      AND b.cancelado <> 'S' AND b.excluido <> 'S' AND b.soma_relatorio = 'S'
-                      AND b.tipo_transacao = 'V' AND b.cod_natureza_operacao = '10030'
-                      AND {date_filter}
-                    GROUP BY nome_a, nome_b
-                    ORDER BY qtd DESC LIMIT 10
-                """
-                return [{'nome_a': r['nome_a'], 'nome_b': r['nome_b'], 'qtd': int(r['qtd'])}
-                        for r in db.query_all(sql, params)]
-
-            combinacoes_dia = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (data_str, data_str))
-            combinacoes_sem = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (semana_inicio_str, semana_fim_str))
-            combinacoes_mes = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (mes_inicio_str, mes_fim_str))
-            top_produtos_qtde_ytd = _top_query(_date_sem, "SUM(m.quantidade)",    _p + (ytd_inicio_str, ytd_fim_str))
-            top_produtos_fat_ytd  = _top_query(_date_sem, "SUM(m.valor_liquido)", _p + (ytd_inicio_str, ytd_fim_str))
-            combinacoes_ytd = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (ytd_inicio_str, ytd_fim_str))
-            _sid = active_store['store_id']
-            top5_tipo_dia = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, data_str, data_str)
-            top5_tipo_sem = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str)
-            top5_tipo_mes = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str)
-            top5_tipo_ytd = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str)
-
-        # ── Frequência de retorno por horário/dia ────────────────────────────
-        chart_freq_retorno_dia = [None]*24
-        chart_freq_retorno_sem = []
-        chart_freq_retorno_mes = []
-        chart_freq_retorno_ytd = []
-
-        _FREQ_DIA_SQL = """
-            WITH fv AS (
-                SELECT dr.person_id,
-                       EXTRACT(HOUR FROM MIN(dr.created_at))::int AS hora,
-                       DATE(MIN(dr.created_at)) AS today
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
-                GROUP  BY dr.person_id
-            ),
-            pv AS (
-                SELECT fv.hora,
-                       (fv.today - MAX(DATE(dr2.created_at)))::int AS gap_days
-                FROM   fv
-                JOIN   faciais.detection_records dr2 ON dr2.person_id = fv.person_id
-                WHERE  dr2.store_id = %s AND dr2.created_at < fv.today
-                GROUP  BY fv.person_id, fv.hora, fv.today
-            )
-            SELECT hora, ROUND(AVG(gap_days)::numeric, 1) AS avg_days
-            FROM   pv GROUP BY hora ORDER BY hora
-        """
-        for row in db.query_all(_FREQ_DIA_SQL, (sid, data_str, data_str, sid)):
-            chart_freq_retorno_dia[int(row['hora'])] = float(row['avg_days'])
-
-        _FREQ_RANGE_SQL = """
-            WITH fv AS (
-                SELECT dr.person_id,
-                       DATE(MIN(dr.created_at)) AS visit_day
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
-                GROUP  BY dr.person_id, DATE(dr.created_at)
-            ),
-            pv AS (
-                SELECT fv.visit_day,
-                       (fv.visit_day - MAX(DATE(dr2.created_at)))::int AS gap_days
-                FROM   fv
-                JOIN   faciais.detection_records dr2 ON dr2.person_id = fv.person_id
-                WHERE  dr2.store_id = %s AND dr2.created_at < fv.visit_day
-                GROUP  BY fv.person_id, fv.visit_day
-            )
-            SELECT visit_day, ROUND(AVG(gap_days)::numeric, 1) AS avg_days
-            FROM   pv GROUP BY visit_day ORDER BY visit_day
-        """
-        _DIAS_PT = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
-        chart_freq_retorno_sem = [
-            {'label': _DIAS_PT[row['visit_day'].weekday()], 'avg': float(row['avg_days'])}
-            for row in db.query_all(_FREQ_RANGE_SQL, (sid, semana_inicio_str, semana_fim_str, sid))
-        ]
-        chart_freq_retorno_mes = [
-            {'label': row['visit_day'].strftime('%d/%m'), 'avg': float(row['avg_days'])}
-            for row in db.query_all(_FREQ_RANGE_SQL, (sid, mes_inicio_str, mes_fim_str, sid))
-        ]
-        chart_freq_retorno_ytd = [
-            {'label': row['visit_day'].strftime('%d/%m'), 'avg': float(row['avg_days'])}
-            for row in db.query_all(_FREQ_RANGE_SQL, (sid, ytd_inicio_str, ytd_fim_str, sid))
-        ]
-
-        # ── Charts YTD – faixa horária ────────────────────────────────────────
-        rows = db.query_all("""
-            SELECT EXTRACT(HOUR FROM min_time)::int AS hora, COUNT(*) AS clientes
-            FROM (
-                SELECT dr.person_id, MIN(dr.created_at) AS min_time
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people  p   ON p.person_id  = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
-                GROUP  BY dr.person_id, DATE(dr.created_at)
-            ) sub GROUP BY hora ORDER BY hora
-        """, (sid, ytd_inicio_str, ytd_fim_str))
-        for row in rows:
-            chart_faixa_ytd['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
-
-        if active_microvix_portal and active_store_cnpj:
-            for row in _faixa_horaria(active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str):
-                chart_faixa_ytd['vendas'][int(row['hora'])]      = int(row['vendas'] or 0)
-                chart_faixa_ytd['faturamento'][int(row['hora'])] = float(row['faturamento'] or 0)
-
-        chart_genero_ytd = {'F': [0]*24, 'M': [0]*24}
-        for row in db.query_all(_GENERO_RANGE_QUERY, (sid, ytd_inicio_str, ytd_fim_str)):
-            g = row['gender_id']
-            if g in chart_genero_ytd:
-                chart_genero_ytd[g][int(row['hora'])] = int(row['total'] or 0)
-
-        chart_ocorrencias_ytd = {'novos': [0]*24, 'recorrentes': [0]*24}
-        for row in db.query_all("""
-            WITH pv AS (
-                SELECT dr.person_id, MIN(dr.created_at) AS primeira_visita,
-                       vpc.first_record
-                FROM   faciais.detection_records dr
-                JOIN   faciais.people p ON p.person_id = dr.person_id
-                JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
-                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL
-                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
-                GROUP  BY dr.person_id, vpc.first_record
-            )
-            SELECT hora,
-                   SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
-                   SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
-            FROM (
-                SELECT EXTRACT(HOUR FROM pv.primeira_visita)::int AS hora,
-                       (pv.first_record::date < DATE(pv.primeira_visita)) AS is_rec
-                FROM pv
-            ) sub
-            GROUP BY hora ORDER BY hora
-        """, (sid, ytd_inicio_str, ytd_fim_str)):
-            h = int(row['hora'])
-            chart_ocorrencias_ytd['recorrentes'][h] = int(row['recorrentes'] or 0)
-            chart_ocorrencias_ytd['novos'][h]        = int(row['novos'] or 0)
-
-    else:
-        chart_genero_dia = {'F': [0]*24, 'M': [0]*24}
-        chart_genero_sem = {'F': [0]*24, 'M': [0]*24}
-        chart_genero_mes = {'F': [0]*24, 'M': [0]*24}
-        chart_ocorrencias_dia = {'novos': [0]*24, 'recorrentes': [0]*24}
-        chart_ocorrencias_sem = {'novos': [0]*24, 'recorrentes': [0]*24}
-        chart_ocorrencias_mes = {'novos': [0]*24, 'recorrentes': [0]*24}
-        top_produtos_qtde_dia = []
-        top_produtos_fat_dia  = []
-        top_produtos_qtde_sem = []
-        top_produtos_fat_sem  = []
-        top_produtos_qtde_mes = []
-        top_produtos_fat_mes  = []
-        top_produtos_qtde_ytd = []
-        top_produtos_fat_ytd  = []
-        combinacoes_ytd       = []
-        top5_tipo_dia = {'novos': [], 'recorrentes': []}
-        top5_tipo_sem = {'novos': [], 'recorrentes': []}
-        top5_tipo_mes = {'novos': [], 'recorrentes': []}
-        top5_tipo_ytd = {'novos': [], 'recorrentes': []}
-        chart_genero_ytd      = {'F': [0]*24, 'M': [0]*24}
-        chart_ocorrencias_ytd = {'novos': [0]*24, 'recorrentes': [0]*24}
-        chart_freq_retorno_dia = [None]*24
-        chart_freq_retorno_sem = []
-        chart_freq_retorno_mes = []
-        chart_freq_retorno_ytd = []
-
+    chart_genero_dia = {'F': [0]*24, 'M': [0]*24}
+    chart_genero_sem = {'F': [0]*24, 'M': [0]*24}
+    chart_genero_mes = {'F': [0]*24, 'M': [0]*24}
+    chart_genero_ytd = {'F': [0]*24, 'M': [0]*24}
+    chart_ocorrencias_dia = {'novos': [0]*24, 'recorrentes': [0]*24}
+    chart_ocorrencias_sem = {'novos': [0]*24, 'recorrentes': [0]*24}
+    chart_ocorrencias_mes = {'novos': [0]*24, 'recorrentes': [0]*24}
+    chart_ocorrencias_ytd = {'novos': [0]*24, 'recorrentes': [0]*24}
+    top_produtos_qtde_dia = []
+    top_produtos_fat_dia  = []
+    top_produtos_qtde_sem = []
+    top_produtos_fat_sem  = []
+    top_produtos_qtde_mes = []
+    top_produtos_fat_mes  = []
+    top_produtos_qtde_ytd = []
+    top_produtos_fat_ytd  = []
+    combinacoes_dia = []
+    combinacoes_sem = []
+    combinacoes_mes = []
+    combinacoes_ytd = []
+    top5_tipo_dia = {'novos': [], 'recorrentes': []}
+    top5_tipo_sem = {'novos': [], 'recorrentes': []}
+    top5_tipo_mes = {'novos': [], 'recorrentes': []}
+    top5_tipo_ytd = {'novos': [], 'recorrentes': []}
+    chart_freq_retorno_dia = [None]*24
+    chart_freq_retorno_sem = []
+    chart_freq_retorno_mes = []
+    chart_freq_retorno_ytd = []
     # ── Tema da empresa ──────────────────────────────────────────────────────
     theme = dict(primary_color='#F47B20', text_color='#111827',
                  graph_color_1='#0057A8', graph_color_2='#F47B20',
@@ -1166,6 +794,307 @@ def dashboard():
         top5_tipo_ytd=top5_tipo_ytd,
         metas=metas,
     )
+
+
+@auth_bp.route('/dashboard/charts')
+@login_required
+def dashboard_charts():
+    user_id   = session['user_id']
+    user_type = session['user_type_id']
+    store_id  = request.args.get('store_id', type=int)
+
+    if not store_id:
+        return jsonify({})
+
+    active_store = _resolve_store_for_user(user_id, user_type, store_id)
+    if not active_store:
+        return jsonify({}), 403
+
+    active_store_cnpj = str(active_store['cnpj']).zfill(14) if active_store['cnpj'] else None
+    row = db.query_one("SELECT microvix_portal FROM faciais.stores WHERE store_id = %s", (store_id,))
+    active_microvix_portal = row['microvix_portal'] if row else None
+
+    data_str = request.args.get('date', date_type.today().strftime('%Y-%m-%d'))
+    try:
+        date_type.fromisoformat(data_str)
+    except ValueError:
+        data_str = date_type.today().strftime('%Y-%m-%d')
+
+    selected_date     = date_type.fromisoformat(data_str)
+    semana_inicio     = selected_date - timedelta(days=selected_date.weekday())
+    semana_fim        = semana_inicio + timedelta(days=6)
+    _, ultimo_dia     = calendar.monthrange(selected_date.year, selected_date.month)
+    mes_inicio        = selected_date.replace(day=1)
+    mes_fim           = selected_date.replace(day=ultimo_dia)
+    semana_inicio_str = semana_inicio.strftime('%Y-%m-%d')
+    semana_fim_str    = semana_fim.strftime('%Y-%m-%d')
+    mes_inicio_str    = mes_inicio.strftime('%Y-%m-%d')
+    mes_fim_str       = mes_fim.strftime('%Y-%m-%d')
+
+    _fiscal_row = db.query_one("""
+        SELECT c.fiscal_year_start_date
+        FROM   faciais.stores s
+        JOIN   faciais.companies c ON c.company_id = s.company_id
+        WHERE  s.store_id = %s
+    """, (store_id,))
+    _fys = _fiscal_row['fiscal_year_start_date'] if _fiscal_row else None
+    if _fys:
+        try:
+            _ytd_cand = date_type(selected_date.year, _fys.month, _fys.day)
+        except ValueError:
+            _ytd_cand = date_type(selected_date.year, _fys.month, 28)
+        ytd_inicio = _ytd_cand if _ytd_cand <= selected_date else _replace_year_safe(_ytd_cand, selected_date.year - 1)
+    else:
+        ytd_inicio = selected_date.replace(month=1, day=1)
+    ytd_fim        = selected_date
+    ytd_inicio_str = ytd_inicio.strftime('%Y-%m-%d')
+    ytd_fim_str    = ytd_fim.strftime('%Y-%m-%d')
+
+    sid = store_id
+
+    chart_faixa_dia = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
+    chart_faixa_sem = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
+    chart_faixa_mes = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
+    chart_faixa_ytd = {'clientes': [0]*24, 'vendas': [0]*24, 'faturamento': [0.0]*24}
+
+    rows = db.query_all("""
+        SELECT EXTRACT(HOUR FROM min_time)::int AS hora, COUNT(*) AS clientes
+        FROM (
+            SELECT dr.person_id, MIN(dr.created_at) AS min_time
+            FROM   faciais.detection_records dr
+            JOIN   faciais.people p ON p.person_id = dr.person_id
+            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+              AND  dr.person_id IS NOT NULL
+              AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
+            GROUP  BY dr.person_id
+        ) sub GROUP BY hora ORDER BY hora
+    """, (sid, data_str, data_str))
+    for row in rows:
+        chart_faixa_dia['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
+
+    for periodo, cf, di, df in [
+        (chart_faixa_sem, semana_inicio_str, semana_fim_str, None),
+        (chart_faixa_mes, mes_inicio_str,    mes_fim_str,    None),
+        (chart_faixa_ytd, ytd_inicio_str,    ytd_fim_str,    None),
+    ]:
+        for row in db.query_all("""
+            SELECT EXTRACT(HOUR FROM min_time)::int AS hora, COUNT(*) AS clientes
+            FROM (
+                SELECT dr.person_id, DATE(dr.created_at) AS dia, MIN(dr.created_at) AS min_time
+                FROM   faciais.detection_records dr
+                JOIN   faciais.people p ON p.person_id = dr.person_id
+                WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+                  AND  dr.person_id IS NOT NULL
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
+                GROUP  BY dr.person_id, DATE(dr.created_at)
+            ) sub GROUP BY hora ORDER BY hora
+        """, (sid, di, df)):
+            periodo['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
+
+    if active_microvix_portal and active_store_cnpj:
+        for row in _faixa_horaria(active_microvix_portal, active_store_cnpj, data_str, data_str):
+            chart_faixa_dia['vendas'][int(row['hora'])]      = int(row['vendas'] or 0)
+            chart_faixa_dia['faturamento'][int(row['hora'])] = float(row['faturamento'] or 0)
+        for cf, di, df in [
+            (chart_faixa_sem, semana_inicio_str, semana_fim_str),
+            (chart_faixa_mes, mes_inicio_str,    mes_fim_str),
+            (chart_faixa_ytd, ytd_inicio_str,    ytd_fim_str),
+        ]:
+            for row in _faixa_horaria(active_microvix_portal, active_store_cnpj, di, df):
+                cf['vendas'][int(row['hora'])]      = int(row['vendas'] or 0)
+                cf['faturamento'][int(row['hora'])] = float(row['faturamento'] or 0)
+
+    chart_genero_dia = {'F': [0]*24, 'M': [0]*24}
+    chart_genero_sem = {'F': [0]*24, 'M': [0]*24}
+    chart_genero_mes = {'F': [0]*24, 'M': [0]*24}
+    chart_genero_ytd = {'F': [0]*24, 'M': [0]*24}
+
+    _GENERO_DIA_QUERY = """
+        SELECT EXTRACT(HOUR FROM min_time)::int AS hora, gender_id, COUNT(*) AS total
+        FROM (
+            SELECT dr.person_id, p.gender_id, MIN(dr.created_at) AS min_time
+            FROM   faciais.detection_records dr
+            JOIN   faciais.people p ON p.person_id = dr.person_id
+            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+              AND  dr.person_id IS NOT NULL
+              AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
+            GROUP  BY dr.person_id, p.gender_id
+        ) sub GROUP BY hora, gender_id ORDER BY hora
+    """
+    for row in db.query_all(_GENERO_DIA_QUERY, (sid, data_str, data_str)):
+        g = row['gender_id']
+        if g in chart_genero_dia:
+            chart_genero_dia[g][int(row['hora'])] = int(row['total'] or 0)
+
+    _GENERO_RANGE_QUERY = """
+        SELECT EXTRACT(HOUR FROM min_time)::int AS hora, gender_id, COUNT(*) AS total
+        FROM (
+            SELECT dr.person_id, p.gender_id, DATE(dr.created_at) AS dia, MIN(dr.created_at) AS min_time
+            FROM   faciais.detection_records dr
+            JOIN   faciais.people p ON p.person_id = dr.person_id
+            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+              AND  dr.person_id IS NOT NULL
+              AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
+            GROUP  BY dr.person_id, p.gender_id, DATE(dr.created_at)
+        ) sub GROUP BY hora, gender_id ORDER BY hora
+    """
+    for cg, di, df in [
+        (chart_genero_sem, semana_inicio_str, semana_fim_str),
+        (chart_genero_mes, mes_inicio_str,    mes_fim_str),
+        (chart_genero_ytd, ytd_inicio_str,    ytd_fim_str),
+    ]:
+        for row in db.query_all(_GENERO_RANGE_QUERY, (sid, di, df)):
+            g = row['gender_id']
+            if g in cg:
+                cg[g][int(row['hora'])] = int(row['total'] or 0)
+
+    chart_ocorrencias_dia = {'novos': [0]*24, 'recorrentes': [0]*24}
+    for row in db.query_all("""
+        SELECT hora,
+               SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
+               SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
+        FROM (
+            SELECT EXTRACT(HOUR FROM MIN(dr.created_at))::int AS hora,
+                   (vpc.first_record::date < %s) AS is_rec
+            FROM   faciais.detection_records dr
+            JOIN   faciais.people p ON p.person_id = dr.person_id
+            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
+            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+              AND  dr.person_id IS NOT NULL
+              AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
+            GROUP  BY dr.person_id, vpc.first_record
+        ) sub GROUP BY hora ORDER BY hora
+    """, (data_str, sid, data_str, data_str)):
+        h = int(row['hora'])
+        chart_ocorrencias_dia['recorrentes'][h] = int(row['recorrentes'] or 0)
+        chart_ocorrencias_dia['novos'][h]        = int(row['novos'] or 0)
+
+    _OC_RANGE_SQL = """
+        WITH pv AS (
+            SELECT dr.person_id, MIN(dr.created_at) AS primeira_visita, vpc.first_record
+            FROM   faciais.detection_records dr
+            JOIN   faciais.people p ON p.person_id = dr.person_id
+            JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
+            WHERE  dr.store_id = %s AND p.person_type_id = 'C'
+              AND  dr.person_id IS NOT NULL
+              AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
+            GROUP  BY dr.person_id, vpc.first_record
+        )
+        SELECT hora,
+               SUM(CASE WHEN is_rec THEN 1 ELSE 0 END) AS recorrentes,
+               SUM(CASE WHEN NOT is_rec THEN 1 ELSE 0 END) AS novos
+        FROM (
+            SELECT EXTRACT(HOUR FROM pv.primeira_visita)::int AS hora,
+                   (pv.first_record::date < DATE(pv.primeira_visita)) AS is_rec
+            FROM pv
+        ) sub GROUP BY hora ORDER BY hora
+    """
+    chart_ocorrencias_sem = {'novos': [0]*24, 'recorrentes': [0]*24}
+    chart_ocorrencias_mes = {'novos': [0]*24, 'recorrentes': [0]*24}
+    chart_ocorrencias_ytd = {'novos': [0]*24, 'recorrentes': [0]*24}
+    for co, di, df in [
+        (chart_ocorrencias_sem, semana_inicio_str, semana_fim_str),
+        (chart_ocorrencias_mes, mes_inicio_str,    mes_fim_str),
+        (chart_ocorrencias_ytd, ytd_inicio_str,    ytd_fim_str),
+    ]:
+        for row in db.query_all(_OC_RANGE_SQL, (sid, di, df)):
+            h = int(row['hora'])
+            co['recorrentes'][h] = int(row['recorrentes'] or 0)
+            co['novos'][h]        = int(row['novos'] or 0)
+
+    top_produtos_qtde_dia = []
+    top_produtos_fat_dia  = []
+    top_produtos_qtde_sem = []
+    top_produtos_fat_sem  = []
+    top_produtos_qtde_mes = []
+    top_produtos_fat_mes  = []
+    top_produtos_qtde_ytd = []
+    top_produtos_fat_ytd  = []
+    combinacoes_dia = []
+    combinacoes_sem = []
+    combinacoes_mes = []
+    combinacoes_ytd = []
+    top5_tipo_dia = {'novos': [], 'recorrentes': []}
+    top5_tipo_sem = {'novos': [], 'recorrentes': []}
+    top5_tipo_mes = {'novos': [], 'recorrentes': []}
+    top5_tipo_ytd = {'novos': [], 'recorrentes': []}
+
+    if active_microvix_portal and active_store_cnpj:
+        _FILTRO_MV = (
+            "m.portal = %s AND m.cnpj_emp = %s "
+            "AND m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S' "
+            "AND m.tipo_transacao = 'V' AND m.cod_natureza_operacao = '10030'"
+        )
+        _JOIN_PROD = (
+            "JOIN microvix.microvix_produtos p "
+            "ON p.portal = m.portal AND p.cod_produto = m.cod_produto"
+        )
+        _NOME_PROD = "COALESCE(NULLIF(TRIM(p.descricao_basica),''), p.nome)"
+        _p = (active_microvix_portal, active_store_cnpj)
+        _date_range = "m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'"
+
+        def _top_query(params, order_expr):
+            sql = f"""
+                SELECT {_NOME_PROD} AS produto, {order_expr} AS total
+                FROM   microvix.microvix_movimento m {_JOIN_PROD}
+                WHERE  {_FILTRO_MV} AND {_date_range}
+                GROUP  BY produto ORDER BY total DESC LIMIT 5
+            """
+            return [{'nome': r['produto'], 'total': round(float(r['total'] or 0), 2)}
+                    for r in db.query_all(sql, params)]
+
+        def _comb_query(params):
+            sql = f"""
+                SELECT
+                    COALESCE(NULLIF(TRIM(pa.descricao_basica),''), pa.nome) AS nome_a,
+                    COALESCE(NULLIF(TRIM(pb.descricao_basica),''), pb.nome) AS nome_b,
+                    COUNT(*) AS qtd
+                FROM microvix.microvix_movimento a
+                JOIN microvix.microvix_movimento b
+                    ON  a.portal = b.portal AND a.cnpj_emp = b.cnpj_emp
+                    AND a.documento = b.documento AND a.cod_produto < b.cod_produto
+                JOIN microvix.microvix_produtos pa ON pa.portal = a.portal AND pa.cod_produto = a.cod_produto
+                JOIN microvix.microvix_produtos pb ON pb.portal = b.portal AND pb.cod_produto = b.cod_produto
+                WHERE a.portal = %s AND a.cnpj_emp = %s
+                  AND a.cancelado <> 'S' AND a.excluido <> 'S' AND a.soma_relatorio = 'S'
+                  AND a.tipo_transacao = 'V' AND a.cod_natureza_operacao = '10030'
+                  AND b.cancelado <> 'S' AND b.excluido <> 'S' AND b.soma_relatorio = 'S'
+                  AND b.tipo_transacao = 'V' AND b.cod_natureza_operacao = '10030'
+                  AND a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'
+                GROUP BY nome_a, nome_b ORDER BY qtd DESC LIMIT 10
+            """
+            return [{'nome_a': r['nome_a'], 'nome_b': r['nome_b'], 'qtd': int(r['qtd'])}
+                    for r in db.query_all(sql, params)]
+
+        for (tq, tf, comb, t5, di, df) in [
+            (top_produtos_qtde_dia, top_produtos_fat_dia, 'dia', top5_tipo_dia, data_str,           data_str),
+            (top_produtos_qtde_sem, top_produtos_fat_sem, 'sem', top5_tipo_sem, semana_inicio_str,  semana_fim_str),
+            (top_produtos_qtde_mes, top_produtos_fat_mes, 'mes', top5_tipo_mes, mes_inicio_str,     mes_fim_str),
+            (top_produtos_qtde_ytd, top_produtos_fat_ytd, 'ytd', top5_tipo_ytd, ytd_inicio_str,    ytd_fim_str),
+        ]:
+            tq[:] = _top_query(_p + (di, df), "SUM(m.quantidade)")
+            tf[:] = _top_query(_p + (di, df), "SUM(m.valor_liquido)")
+            if comb == 'dia':
+                combinacoes_dia = _comb_query(_p + (di, df))
+            elif comb == 'sem':
+                combinacoes_sem = _comb_query(_p + (di, df))
+            elif comb == 'mes':
+                combinacoes_mes = _comb_query(_p + (di, df))
+            else:
+                combinacoes_ytd = _comb_query(_p + (di, df))
+            resultado = _top5_por_tipo(sid, active_microvix_portal, active_store_cnpj, di, df)
+            t5['novos']       = resultado['novos']
+            t5['recorrentes'] = resultado['recorrentes']
+
+    return jsonify({
+        'faixa':       {'dia': chart_faixa_dia,       'sem': chart_faixa_sem,       'mes': chart_faixa_mes,       'ytd': chart_faixa_ytd},
+        'genero':      {'dia': chart_genero_dia,      'sem': chart_genero_sem,      'mes': chart_genero_mes,      'ytd': chart_genero_ytd},
+        'ocorrencias': {'dia': chart_ocorrencias_dia, 'sem': chart_ocorrencias_sem, 'mes': chart_ocorrencias_mes, 'ytd': chart_ocorrencias_ytd},
+        'top_qtde':    {'dia': top_produtos_qtde_dia, 'sem': top_produtos_qtde_sem, 'mes': top_produtos_qtde_mes, 'ytd': top_produtos_qtde_ytd},
+        'top_fat':     {'dia': top_produtos_fat_dia,  'sem': top_produtos_fat_sem,  'mes': top_produtos_fat_mes,  'ytd': top_produtos_fat_ytd},
+        'combinacoes': {'dia': combinacoes_dia,       'sem': combinacoes_sem,       'mes': combinacoes_mes,       'ytd': combinacoes_ytd},
+        'top5_tipo':   {'dia': top5_tipo_dia,         'sem': top5_tipo_sem,         'mes': top5_tipo_mes,         'ytd': top5_tipo_ytd},
+    })
 
 
 # ── Visitação ─────────────────────────────────────────────────────────────────

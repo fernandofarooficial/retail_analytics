@@ -404,6 +404,8 @@
         {% endif %}
     </div>
 
+    <div id="charts-loading-msg" style="display:none;padding:12px 16px;color:#9CA3AF;font-size:13px;text-align:center">Carregando gráficos...</div>
+
     <!-- COMERCIAL – DIA -->
     <div class="tab-panel" data-panel="comercial-dia">
 
@@ -509,33 +511,14 @@
         <div class="charts-row">
             <div class="com-pair-wrap">
                 <div class="com-comb-title">Combinações de Compra</div>
-                {% if combinacoes_dia %}
-                <table class="com-comb-table">
-                    <thead><tr>
-                        <th class="com-comb-rank">#</th>
-                        <th>Combinação</th>
-                        <th class="com-comb-qtd">Qtd</th>
-                    </tr></thead>
-                    <tbody>
-                    {% for c in combinacoes_dia %}
-                    <tr>
-                        <td class="com-comb-rank">{{ loop.index }}</td>
-                        <td>{{ c.nome_a }} + {{ c.nome_b }}</td>
-                        <td class="com-comb-qtd">{{ c.qtd }}</td>
-                    </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}<p class="com-no-data">—</p>{% endif %}
+                <div id="comb-dia-wrap"></div>
             </div>
             <div class="com-pair-canvas-wrap"><canvas id="chart-ticket-tipo-dia"></canvas></div>
         </div>
-        {% if top5_tipo_dia.novos or top5_tipo_dia.recorrentes %}
-        <div class="charts-row">
+        <div class="charts-row" id="top5-tipo-dia-row" style="display:none">
             <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-novos-dia"></canvas></div>
             <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-rec-dia"></canvas></div>
         </div>
-        {% endif %}
         {% endif %}
     </div>
 
@@ -963,33 +946,14 @@
         <div class="charts-row">
             <div class="com-pair-wrap">
                 <div class="com-comb-title">Combinações de Compra</div>
-                {% if combinacoes_sem %}
-                <table class="com-comb-table">
-                    <thead><tr>
-                        <th class="com-comb-rank">#</th>
-                        <th>Combinação</th>
-                        <th class="com-comb-qtd">Qtd</th>
-                    </tr></thead>
-                    <tbody>
-                    {% for c in combinacoes_sem %}
-                    <tr>
-                        <td class="com-comb-rank">{{ loop.index }}</td>
-                        <td>{{ c.nome_a }} + {{ c.nome_b }}</td>
-                        <td class="com-comb-qtd">{{ c.qtd }}</td>
-                    </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}<p class="com-no-data">—</p>{% endif %}
+                <div id="comb-sem-wrap"></div>
             </div>
             <div class="com-pair-canvas-wrap"><canvas id="chart-ticket-tipo-sem"></canvas></div>
         </div>
-        {% if top5_tipo_sem.novos or top5_tipo_sem.recorrentes %}
-        <div class="charts-row">
+        <div class="charts-row" id="top5-tipo-sem-row" style="display:none">
             <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-novos-sem"></canvas></div>
             <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-rec-sem"></canvas></div>
         </div>
-        {% endif %}
         {% endif %}
     </div>
 
@@ -1097,33 +1061,14 @@
         <div class="charts-row">
             <div class="com-pair-wrap">
                 <div class="com-comb-title">Combinações de Compra</div>
-                {% if combinacoes_mes %}
-                <table class="com-comb-table">
-                    <thead><tr>
-                        <th class="com-comb-rank">#</th>
-                        <th>Combinação</th>
-                        <th class="com-comb-qtd">Qtd</th>
-                    </tr></thead>
-                    <tbody>
-                    {% for c in combinacoes_mes %}
-                    <tr>
-                        <td class="com-comb-rank">{{ loop.index }}</td>
-                        <td>{{ c.nome_a }} + {{ c.nome_b }}</td>
-                        <td class="com-comb-qtd">{{ c.qtd }}</td>
-                    </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}<p class="com-no-data">—</p>{% endif %}
+                <div id="comb-mes-wrap"></div>
             </div>
             <div class="com-pair-canvas-wrap"><canvas id="chart-ticket-tipo-mes"></canvas></div>
         </div>
-        {% if top5_tipo_mes.novos or top5_tipo_mes.recorrentes %}
-        <div class="charts-row">
+        <div class="charts-row" id="top5-tipo-mes-row" style="display:none">
             <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-novos-mes"></canvas></div>
             <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-rec-mes"></canvas></div>
         </div>
-        {% endif %}
         {% endif %}
     </div>
 
@@ -1875,33 +1820,14 @@
         <div class="charts-row">
             <div class="com-pair-wrap">
                 <div class="com-comb-title">Combinações de Compra</div>
-                {% if combinacoes_ytd %}
-                <table class="com-comb-table">
-                    <thead><tr>
-                        <th class="com-comb-rank">#</th>
-                        <th>Combinação</th>
-                        <th class="com-comb-qtd">Qtd</th>
-                    </tr></thead>
-                    <tbody>
-                    {% for c in combinacoes_ytd %}
-                    <tr>
-                        <td class="com-comb-rank">{{ loop.index }}</td>
-                        <td>{{ c.nome_a }} + {{ c.nome_b }}</td>
-                        <td class="com-comb-qtd">{{ c.qtd }}</td>
-                    </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}<p class="com-no-data">—</p>{% endif %}
+                <div id="comb-ytd-wrap"></div>
             </div>
             <div class="com-pair-canvas-wrap"><canvas id="chart-ticket-tipo-ytd"></canvas></div>
         </div>
-        {% if top5_tipo_ytd.novos or top5_tipo_ytd.recorrentes %}
-        <div class="charts-row">
+        <div class="charts-row" id="top5-tipo-ytd-row" style="display:none">
             <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-novos-ytd"></canvas></div>
             <div class="chart-donut-tipo-wrap"><canvas id="chart-top5-rec-ytd"></canvas></div>
         </div>
-        {% endif %}
         {% endif %}
     </div>
 
@@ -2137,11 +2063,6 @@ function _hexAlpha(hex, alpha) {
     const b = parseInt(hex.slice(4, 6), 16);
     return `rgba(${r},${g},${b},${alpha})`;
 }
-const _faixaDia    = {{ chart_faixa_dia | tojson }};
-const _faixaSem    = {{ chart_faixa_sem | tojson }};
-const _faixaMes    = {{ chart_faixa_mes | tojson }};
-const _faixaYtd    = {{ chart_faixa_ytd | tojson }};
-
 function _criarFaixaChart(canvasId, data) {
     const el = document.getElementById(canvasId);
     if (!el) return;
@@ -2230,15 +2151,6 @@ function _criarFaixaChart(canvasId, data) {
         }
     });
 }
-
-const _generoDia = {{ chart_genero_dia | tojson }};
-const _generoSem = {{ chart_genero_sem | tojson }};
-const _generoMes = {{ chart_genero_mes | tojson }};
-const _generoYtd = {{ chart_genero_ytd | tojson }};
-const _ocorrenciasDia = {{ chart_ocorrencias_dia | tojson }};
-const _ocorrenciasSem = {{ chart_ocorrencias_sem | tojson }};
-const _ocorrenciasMes = {{ chart_ocorrencias_mes | tojson }};
-const _ocorrenciasYtd = {{ chart_ocorrencias_ytd | tojson }};
 
 function _criarGeneroChart(canvasId, data) {
     const el = document.getElementById(canvasId);
@@ -2440,15 +2352,6 @@ function _criarFreqRetornoEstChart(canvasId, ocorrenciasData) {
     });
 }
 
-const _topQtdeDia = {{ top_produtos_qtde_dia | tojson }};
-const _topFatDia  = {{ top_produtos_fat_dia  | tojson }};
-const _topQtdeSem = {{ top_produtos_qtde_sem | tojson }};
-const _topFatSem  = {{ top_produtos_fat_sem  | tojson }};
-const _topQtdeMes = {{ top_produtos_qtde_mes | tojson }};
-const _topFatMes  = {{ top_produtos_fat_mes  | tojson }};
-const _topQtdeYtd = {{ top_produtos_qtde_ytd | tojson }};
-const _topFatYtd  = {{ top_produtos_fat_ytd  | tojson }};
-
 function _criarTopProdChart(canvasId, dados, titulo, cor) {
     const el = document.getElementById(canvasId);
     if (!el) return;
@@ -2532,11 +2435,6 @@ function _criarTicketTipoChart(canvasId, data, titulo) {
         plugins: [ChartDataLabels]
     });
 }
-
-const _top5TipoDia = {{ top5_tipo_dia | tojson }};
-const _top5TipoSem = {{ top5_tipo_sem | tojson }};
-const _top5TipoMes = {{ top5_tipo_mes | tojson }};
-const _top5TipoYtd = {{ top5_tipo_ytd | tojson }};
 
 function _criarTop5TipoChart(canvasId, dados, titulo, cores) {
     const el = document.getElementById(canvasId);
@@ -2735,52 +2633,10 @@ function _criarGauge(divId, actual, meta) {
 }
 
 window.addEventListener('load', () => {
-    _criarFaixaChart('chart-faixa-dia', _faixaDia);
-    _criarFaixaChart('chart-faixa-sem', _faixaSem);
-    _criarFaixaChart('chart-faixa-mes', _faixaMes);
-    _criarFaixaChart('chart-faixa-ytd', _faixaYtd);
-    _criarOcorrenciasChart('chart-genero-dia', _ocorrenciasDia);
-    _criarOcorrenciasChart('chart-ocorrencias-sem', _ocorrenciasSem);
-    _criarOcorrenciasChart('chart-ocorrencias-mes', _ocorrenciasMes);
-    _criarOcorrenciasChart('chart-ocorrencias-ytd', _ocorrenciasYtd);
-    _criarConversaoChart('chart-conversao-dia', _faixaDia);
-    _criarConversaoChart('chart-conversao-sem', _faixaSem);
-    _criarConversaoChart('chart-conversao-mes', _faixaMes);
-    _criarConversaoChart('chart-conversao-ytd', _faixaYtd);
-    _criarTopProdChart('chart-top-qtde-dia', _topQtdeDia, 'Top 5 Produtos — Quantidade',   _graphColor1);
-    _criarTopProdChart('chart-top-fat-dia',  _topFatDia,  'Top 5 Produtos — Faturamento',  _graphColor1);
-    _criarTopProdChart('chart-top-qtde-sem', _topQtdeSem, 'Top 5 Produtos — Quantidade',   _graphColor1);
-    _criarTopProdChart('chart-top-fat-sem',  _topFatSem,  'Top 5 Produtos — Faturamento',  _graphColor1);
-    _criarTopProdChart('chart-top-qtde-mes', _topQtdeMes, 'Top 5 Produtos — Quantidade',   _graphColor1);
-    _criarTopProdChart('chart-top-fat-mes',  _topFatMes,  'Top 5 Produtos — Faturamento',  _graphColor1);
-    _criarTopProdChart('chart-top-qtde-ytd', _topQtdeYtd, 'Top 5 Produtos — Quantidade',   _graphColor1);
-    _criarTopProdChart('chart-top-fat-ytd',  _topFatYtd,  'Top 5 Produtos — Faturamento',  _graphColor1);
     _criarTicketTipoChart('chart-ticket-tipo-dia', _ticketDia, 'Ticket Médio por Tipo de Cliente');
     _criarTicketTipoChart('chart-ticket-tipo-sem', _ticketSem, 'Ticket Médio por Tipo de Cliente');
     _criarTicketTipoChart('chart-ticket-tipo-mes', _ticketMes, 'Ticket Médio por Tipo de Cliente');
     _criarTicketTipoChart('chart-ticket-tipo-ytd', _ticketYtd, 'Ticket Médio por Tipo de Cliente');
-    const _coresNovos = [1.0, 0.82, 0.65, 0.48, 0.32].map(a => _hexAlpha(_graphColor2, a));
-    const _coresRec   = [1.0, 0.82, 0.65, 0.48, 0.32].map(a => _hexAlpha(_graphColor1, a));
-    _criarTop5TipoChart('chart-top5-novos-dia', _top5TipoDia.novos,        'Top 5 Produtos — Clientes Novos',        _coresNovos);
-    _criarTop5TipoChart('chart-top5-rec-dia',   _top5TipoDia.recorrentes,  'Top 5 Produtos — Clientes Recorrentes',  _coresRec);
-    _criarTop5TipoChart('chart-top5-novos-sem', _top5TipoSem.novos,        'Top 5 Produtos — Clientes Novos',        _coresNovos);
-    _criarTop5TipoChart('chart-top5-rec-sem',   _top5TipoSem.recorrentes,  'Top 5 Produtos — Clientes Recorrentes',  _coresRec);
-    _criarTop5TipoChart('chart-top5-novos-mes', _top5TipoMes.novos,        'Top 5 Produtos — Clientes Novos',        _coresNovos);
-    _criarTop5TipoChart('chart-top5-rec-mes',   _top5TipoMes.recorrentes,  'Top 5 Produtos — Clientes Recorrentes',  _coresRec);
-    _criarTop5TipoChart('chart-top5-novos-ytd', _top5TipoYtd.novos,        'Top 5 Produtos — Clientes Novos',        _coresNovos);
-    _criarTop5TipoChart('chart-top5-rec-ytd',   _top5TipoYtd.recorrentes,  'Top 5 Produtos — Clientes Recorrentes',  _coresRec);
-    _criarEstFatChart('chart-est-fat-dia', _faixaDia);
-    _criarEstFatChart('chart-est-fat-sem', _faixaSem);
-    _criarEstFatChart('chart-est-fat-mes', _faixaMes);
-    _criarEstFatChart('chart-est-fat-ytd', _faixaYtd);
-    _criarEstTicketChart('chart-est-ticket-dia', _faixaDia);
-    _criarEstTicketChart('chart-est-ticket-sem', _faixaSem);
-    _criarEstTicketChart('chart-est-ticket-mes', _faixaMes);
-    _criarEstTicketChart('chart-est-ticket-ytd', _faixaYtd);
-    _criarFreqRetornoEstChart('chart-freq-retorno-est-dia', _ocorrenciasDia);
-    _criarFreqRetornoEstChart('chart-freq-retorno-est-sem', _ocorrenciasSem);
-    _criarFreqRetornoEstChart('chart-freq-retorno-est-mes', _ocorrenciasMes);
-    _criarFreqRetornoEstChart('chart-freq-retorno-est-ytd', _ocorrenciasYtd);
     _criarGauge('chart-gauge-fat-dia',    {{ kpi_com.faturamento     | tojson }}, {{ (metas.faturamento_dia     if metas else none) | tojson }});
     _criarGauge('chart-gauge-ticket-dia', {{ kpi_com.ticket_medio    | tojson }}, {{ (metas.ticket_medio        if metas else none) | tojson }});
     _criarGauge('chart-gauge-fat-sem',    {{ kpi_com_sem.faturamento | tojson }}, {{ (metas.faturamento_semana  if metas else none) | tojson }});
@@ -2789,6 +2645,92 @@ window.addEventListener('load', () => {
     _criarGauge('chart-gauge-ticket-mes', {{ kpi_com_mes.ticket_medio| tojson }}, {{ (metas.ticket_medio        if metas else none) | tojson }});
     _criarGauge('chart-gauge-fat-ytd',    {{ kpi_com_ytd.faturamento | tojson }}, {{ (metas.faturamento_ytd     if metas else none) | tojson }});
     _criarGauge('chart-gauge-ticket-ytd', {{ kpi_com_ytd.ticket_medio| tojson }}, {{ (metas.ticket_medio        if metas else none) | tojson }});
+
+    const _storeId = {{ selected_store_id | tojson }};
+    const _dateStr = {{ data_str | tojson }};
+    if (_storeId) _loadCharts(_storeId, _dateStr);
 });
+
+async function _loadCharts(storeId, dateStr) {
+    const li = document.getElementById('charts-loading-msg');
+    if (li) li.style.display = '';
+    try {
+        const resp = await fetch(
+            `/retail_analytics/dashboard/charts?store_id=${storeId}&date=${encodeURIComponent(dateStr)}`
+        );
+        if (!resp.ok) return;
+        _initCharts(await resp.json());
+    } catch(e) {
+        console.error('charts load error', e);
+    } finally {
+        if (li) li.style.display = 'none';
+    }
+}
+
+function _renderCombTable(wrapperId, data) {
+    const wrap = document.getElementById(wrapperId);
+    if (!wrap) return;
+    if (!data || !data.length) { wrap.innerHTML = '<p class="com-no-data">—</p>'; return; }
+    let h = '<table class="com-comb-table"><thead><tr><th class="com-comb-rank">#</th><th>Combinação</th><th class="com-comb-qtd">Qtd</th></tr></thead><tbody>';
+    data.forEach((c, i) => { h += `<tr><td class="com-comb-rank">${i+1}</td><td>${c.nome_a} + ${c.nome_b}</td><td class="com-comb-qtd">${c.qtd}</td></tr>`; });
+    wrap.innerHTML = h + '</tbody></table>';
+}
+
+function _initCharts(d) {
+    const _coresNovos = [1.0, 0.82, 0.65, 0.48, 0.32].map(a => _hexAlpha(_graphColor2, a));
+    const _coresRec   = [1.0, 0.82, 0.65, 0.48, 0.32].map(a => _hexAlpha(_graphColor1, a));
+    const _f = d.faixa, _o = d.ocorrencias, _tq = d.top_qtde, _tf = d.top_fat, _t5 = d.top5_tipo;
+    _criarFaixaChart('chart-faixa-dia', _f.dia);
+    _criarFaixaChart('chart-faixa-sem', _f.sem);
+    _criarFaixaChart('chart-faixa-mes', _f.mes);
+    _criarFaixaChart('chart-faixa-ytd', _f.ytd);
+    _criarOcorrenciasChart('chart-genero-dia',        _o.dia);
+    _criarOcorrenciasChart('chart-ocorrencias-sem',   _o.sem);
+    _criarOcorrenciasChart('chart-ocorrencias-mes',   _o.mes);
+    _criarOcorrenciasChart('chart-ocorrencias-ytd',   _o.ytd);
+    _criarConversaoChart('chart-conversao-dia', _f.dia);
+    _criarConversaoChart('chart-conversao-sem', _f.sem);
+    _criarConversaoChart('chart-conversao-mes', _f.mes);
+    _criarConversaoChart('chart-conversao-ytd', _f.ytd);
+    _criarTopProdChart('chart-top-qtde-dia', _tq.dia, 'Top 5 Produtos — Quantidade',  _graphColor1);
+    _criarTopProdChart('chart-top-fat-dia',  _tf.dia, 'Top 5 Produtos — Faturamento', _graphColor1);
+    _criarTopProdChart('chart-top-qtde-sem', _tq.sem, 'Top 5 Produtos — Quantidade',  _graphColor1);
+    _criarTopProdChart('chart-top-fat-sem',  _tf.sem, 'Top 5 Produtos — Faturamento', _graphColor1);
+    _criarTopProdChart('chart-top-qtde-mes', _tq.mes, 'Top 5 Produtos — Quantidade',  _graphColor1);
+    _criarTopProdChart('chart-top-fat-mes',  _tf.mes, 'Top 5 Produtos — Faturamento', _graphColor1);
+    _criarTopProdChart('chart-top-qtde-ytd', _tq.ytd, 'Top 5 Produtos — Quantidade',  _graphColor1);
+    _criarTopProdChart('chart-top-fat-ytd',  _tf.ytd, 'Top 5 Produtos — Faturamento', _graphColor1);
+    _criarTop5TipoChart('chart-top5-novos-dia', _t5.dia.novos,        'Top 5 Produtos — Clientes Novos',       _coresNovos);
+    _criarTop5TipoChart('chart-top5-rec-dia',   _t5.dia.recorrentes,  'Top 5 Produtos — Clientes Recorrentes', _coresRec);
+    _criarTop5TipoChart('chart-top5-novos-sem', _t5.sem.novos,        'Top 5 Produtos — Clientes Novos',       _coresNovos);
+    _criarTop5TipoChart('chart-top5-rec-sem',   _t5.sem.recorrentes,  'Top 5 Produtos — Clientes Recorrentes', _coresRec);
+    _criarTop5TipoChart('chart-top5-novos-mes', _t5.mes.novos,        'Top 5 Produtos — Clientes Novos',       _coresNovos);
+    _criarTop5TipoChart('chart-top5-rec-mes',   _t5.mes.recorrentes,  'Top 5 Produtos — Clientes Recorrentes', _coresRec);
+    _criarTop5TipoChart('chart-top5-novos-ytd', _t5.ytd.novos,        'Top 5 Produtos — Clientes Novos',       _coresNovos);
+    _criarTop5TipoChart('chart-top5-rec-ytd',   _t5.ytd.recorrentes,  'Top 5 Produtos — Clientes Recorrentes', _coresRec);
+    _criarEstFatChart('chart-est-fat-dia', _f.dia);
+    _criarEstFatChart('chart-est-fat-sem', _f.sem);
+    _criarEstFatChart('chart-est-fat-mes', _f.mes);
+    _criarEstFatChart('chart-est-fat-ytd', _f.ytd);
+    _criarEstTicketChart('chart-est-ticket-dia', _f.dia);
+    _criarEstTicketChart('chart-est-ticket-sem', _f.sem);
+    _criarEstTicketChart('chart-est-ticket-mes', _f.mes);
+    _criarEstTicketChart('chart-est-ticket-ytd', _f.ytd);
+    _criarFreqRetornoEstChart('chart-freq-retorno-est-dia', _o.dia);
+    _criarFreqRetornoEstChart('chart-freq-retorno-est-sem', _o.sem);
+    _criarFreqRetornoEstChart('chart-freq-retorno-est-mes', _o.mes);
+    _criarFreqRetornoEstChart('chart-freq-retorno-est-ytd', _o.ytd);
+    _renderCombTable('comb-dia-wrap', d.combinacoes.dia);
+    _renderCombTable('comb-sem-wrap', d.combinacoes.sem);
+    _renderCombTable('comb-mes-wrap', d.combinacoes.mes);
+    _renderCombTable('comb-ytd-wrap', d.combinacoes.ytd);
+    ['dia','sem','mes','ytd'].forEach(p => {
+        const t = d.top5_tipo[p];
+        if (t.novos.length || t.recorrentes.length) {
+            const row = document.getElementById('top5-tipo-' + p + '-row');
+            if (row) row.style.display = '';
+        }
+    });
+}
 </script>
 {% endblock %}
