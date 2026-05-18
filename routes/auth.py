@@ -7,7 +7,7 @@ from routes.utils import (login_required, screen_required,
                            tempo_gauge, HEIMDALL_IMAGE_BASE)
 import db
 from metas import get_metas as _get_metas
-from people import (qtd_novos as _qtd_novos, qtd_recorrentes as _qtd_recorrentes,
+from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     kpi_microvix as _kpi_microvix, faixa_horaria as _faixa_horaria,
                     ticket_por_tipo as _ticket_por_tipo,
                     top5_por_tipo as _top5_por_tipo)
@@ -370,8 +370,7 @@ def dashboard():
     if active_store:
         sid = active_store['store_id']
 
-        kpi['recorrentes'] = _qtd_recorrentes(sid, data_str, data_str) or 0
-        kpi['novos']       = _qtd_novos(sid, data_str, data_str) or 0
+        kpi['recorrentes'], kpi['novos'] = _qtd_novos_recorrentes(sid, data_str, data_str)
         kpi['visitantes']  = kpi['recorrentes'] + kpi['novos']
 
         if active_microvix_portal and active_store_cnpj:
@@ -389,8 +388,7 @@ def dashboard():
         kpi['tempo_loja'] = kpi_tempo_loja(sid, data_str)
 
         # ── Operacional – Semana ─────────────────────────────────────────────
-        kpi_sem['recorrentes'] = _qtd_recorrentes(sid, semana_inicio_str, semana_fim_str) or 0
-        kpi_sem['novos']       = _qtd_novos(sid, semana_inicio_str, semana_fim_str) or 0
+        kpi_sem['recorrentes'], kpi_sem['novos'] = _qtd_novos_recorrentes(sid, semana_inicio_str, semana_fim_str)
         kpi_sem['visitantes']  = kpi_sem['recorrentes'] + kpi_sem['novos']
 
         if active_microvix_portal and active_store_cnpj:
@@ -408,8 +406,7 @@ def dashboard():
         kpi_sem['tempo_loja'] = kpi_tempo_loja_range(sid, semana_inicio_str, semana_fim_str)
 
         # ── Operacional – Mês ─────────────────────────────────────────────────
-        kpi_mes['recorrentes'] = _qtd_recorrentes(sid, mes_inicio_str, mes_fim_str) or 0
-        kpi_mes['novos']       = _qtd_novos(sid, mes_inicio_str, mes_fim_str) or 0
+        kpi_mes['recorrentes'], kpi_mes['novos'] = _qtd_novos_recorrentes(sid, mes_inicio_str, mes_fim_str)
         kpi_mes['visitantes']  = kpi_mes['recorrentes'] + kpi_mes['novos']
 
         if active_microvix_portal and active_store_cnpj:
@@ -427,8 +424,7 @@ def dashboard():
         kpi_mes['tempo_loja'] = kpi_tempo_loja_range(sid, mes_inicio_str, mes_fim_str)
 
         # ── Operacional – YTD ─────────────────────────────────────────────────
-        kpi_ytd['recorrentes'] = _qtd_recorrentes(sid, ytd_inicio_str, ytd_fim_str) or 0
-        kpi_ytd['novos']       = _qtd_novos(sid, ytd_inicio_str, ytd_fim_str) or 0
+        kpi_ytd['recorrentes'], kpi_ytd['novos'] = _qtd_novos_recorrentes(sid, ytd_inicio_str, ytd_fim_str)
         kpi_ytd['visitantes']  = kpi_ytd['recorrentes'] + kpi_ytd['novos']
 
         if active_microvix_portal and active_store_cnpj:
@@ -516,8 +512,7 @@ def dashboard():
         _ps   = _prev.strftime('%Y-%m-%d')
         sid   = active_store['store_id']
 
-        kpi_ant['recorrentes'] = _qtd_recorrentes(sid, _ps, _ps) or 0
-        kpi_ant['novos']       = _qtd_novos(sid, _ps, _ps) or 0
+        kpi_ant['recorrentes'], kpi_ant['novos'] = _qtd_novos_recorrentes(sid, _ps, _ps)
         kpi_ant['visitantes']  = kpi_ant['recorrentes'] + kpi_ant['novos']
 
         if active_microvix_portal and active_store_cnpj:
@@ -544,8 +539,7 @@ def dashboard():
     kpi_ant_com_sem = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
     if active_store:
         sid = active_store['store_id']
-        kpi_ant_sem['recorrentes'] = _qtd_recorrentes(sid, semana_ant_inicio_str, semana_ant_fim_str) or 0
-        kpi_ant_sem['novos']       = _qtd_novos(sid, semana_ant_inicio_str, semana_ant_fim_str) or 0
+        kpi_ant_sem['recorrentes'], kpi_ant_sem['novos'] = _qtd_novos_recorrentes(sid, semana_ant_inicio_str, semana_ant_fim_str)
         kpi_ant_sem['visitantes']  = kpi_ant_sem['recorrentes'] + kpi_ant_sem['novos']
 
         if active_microvix_portal and active_store_cnpj:
@@ -572,8 +566,7 @@ def dashboard():
     kpi_ant_com_mes = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
     if active_store:
         sid = active_store['store_id']
-        kpi_ant_mes['recorrentes'] = _qtd_recorrentes(sid, mes_ant_inicio_str, mes_ant_fim_str) or 0
-        kpi_ant_mes['novos']       = _qtd_novos(sid, mes_ant_inicio_str, mes_ant_fim_str) or 0
+        kpi_ant_mes['recorrentes'], kpi_ant_mes['novos'] = _qtd_novos_recorrentes(sid, mes_ant_inicio_str, mes_ant_fim_str)
         kpi_ant_mes['visitantes']  = kpi_ant_mes['recorrentes'] + kpi_ant_mes['novos']
 
         if active_microvix_portal and active_store_cnpj:
@@ -600,8 +593,7 @@ def dashboard():
     kpi_ant_com_ytd = dict(faturamento=None, ticket_medio=None, vendas=None, itens_venda=None)
     if active_store:
         sid = active_store['store_id']
-        kpi_ant_ytd['recorrentes'] = _qtd_recorrentes(sid, ytd_ant_inicio_str, ytd_ant_fim_str) or 0
-        kpi_ant_ytd['novos']       = _qtd_novos(sid, ytd_ant_inicio_str, ytd_ant_fim_str) or 0
+        kpi_ant_ytd['recorrentes'], kpi_ant_ytd['novos'] = _qtd_novos_recorrentes(sid, ytd_ant_inicio_str, ytd_ant_fim_str)
         kpi_ant_ytd['visitantes']  = kpi_ant_ytd['recorrentes'] + kpi_ant_ytd['novos']
 
         if active_microvix_portal and active_store_cnpj:
