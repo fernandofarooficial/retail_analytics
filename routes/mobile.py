@@ -940,7 +940,9 @@ def dashboard():
                        (fv.today - MAX(DATE(dr2.created_at)))::int AS gap_days
                 FROM   fv
                 JOIN   faciais.detection_records dr2 ON dr2.person_id = fv.person_id
-                WHERE  dr2.store_id = %s AND dr2.created_at < fv.today
+                WHERE  dr2.store_id = %s
+                  AND  dr2.created_at < fv.today
+                  AND  dr2.created_at >= fv.today - INTERVAL '365 days'
                 GROUP  BY fv.person_id, fv.hora, fv.today
             )
             SELECT hora, ROUND(AVG(gap_days)::numeric, 1) AS avg_days
@@ -965,7 +967,9 @@ def dashboard():
                        (fv.visit_day - MAX(DATE(dr2.created_at)))::int AS gap_days
                 FROM   fv
                 JOIN   faciais.detection_records dr2 ON dr2.person_id = fv.person_id
-                WHERE  dr2.store_id = %s AND dr2.created_at < fv.visit_day
+                WHERE  dr2.store_id = %s
+                  AND  dr2.created_at < fv.visit_day
+                  AND  dr2.created_at >= fv.visit_day - INTERVAL '365 days'
                 GROUP  BY fv.person_id, fv.visit_day
             )
             SELECT visit_day, ROUND(AVG(gap_days)::numeric, 1) AS avg_days
