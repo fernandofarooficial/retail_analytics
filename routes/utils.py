@@ -32,11 +32,12 @@ def kpi_tempo_loja(sid, data_str):
             FROM   faciais.detection_records dr
             JOIN   faciais.people p ON p.person_id = dr.person_id
             WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-              AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
+              AND  dr.person_id IS NOT NULL
+              AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
             GROUP  BY dr.person_id
             HAVING MAX(dr.created_at) > MIN(dr.created_at)
         ) sub
-    """, (sid, data_str))
+    """, (sid, data_str, data_str))
     return int(r['avg_seg']) if r and r['avg_seg'] else None
 
 
@@ -50,7 +51,7 @@ def kpi_tempo_loja_range(sid, inicio_str, fim_str):
             JOIN   faciais.people p ON p.person_id = dr.person_id
             WHERE  dr.store_id = %s AND p.person_type_id = 'C'
               AND  dr.person_id IS NOT NULL
-              AND  DATE(dr.created_at) BETWEEN %s AND %s
+              AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
             GROUP  BY dr.person_id, DATE(dr.created_at)
             HAVING MAX(dr.created_at) > MIN(dr.created_at)
         ) sub

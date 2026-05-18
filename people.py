@@ -9,7 +9,7 @@ def kpi_microvix(portal, cnpj, dia_i, dia_f):
         FROM   microvix.microvix_movimento
         WHERE  portal                = %s
           AND  cnpj_emp             = %s
-          AND  DATE(data_documento) BETWEEN %s AND %s
+          AND  data_documento >= %s::date AND data_documento < %s::date + INTERVAL '1 day'
           AND  cancelado           <> 'S'
           AND  excluido            <> 'S'
           AND  soma_relatorio       = 'S'
@@ -37,7 +37,7 @@ def qtd_recorrentes(loja, dia_i, dia_f):
         JOIN faciais.vw_primeira_aparicao_clientes vpc ON p.person_id = vpc.person_id
         WHERE p.person_type_id = 'C'
           AND dr.store_id = %s
-          AND dr.created_at::date BETWEEN %s AND %s
+          AND dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
           AND dr.created_at::date > vpc.first_record::date
     """, (loja, dia_i, dia_f))
     return row['total'] if row else 0
@@ -50,7 +50,7 @@ def faixa_horaria(portal, cnpj, dia_i, dia_f):
                SUM(valor_total)           AS faturamento
         FROM   microvix.microvix_movimento
         WHERE  portal   = %s AND cnpj_emp = %s
-          AND  DATE(data_documento) BETWEEN %s AND %s
+          AND  data_documento >= %s::date AND data_documento < %s::date + INTERVAL '1 day'
           AND  cancelado           <> 'S'
           AND  excluido            <> 'S'
           AND  soma_relatorio       = 'S'
@@ -69,7 +69,7 @@ def qtd_novos(loja, dia_i, dia_f):
         JOIN faciais.vw_primeira_aparicao_clientes vpc ON p.person_id = vpc.person_id
         WHERE p.person_type_id = 'C'
           AND dr.store_id = %s
-          AND dr.created_at::date BETWEEN %s AND %s
+          AND dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
           AND dr.created_at::date = vpc.first_record::date
     """, (loja, dia_i, dia_f))
     return row['total'] if row else 0
@@ -90,7 +90,7 @@ def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
                 ON pp.bill = mm.documento
             LEFT JOIN faciais.vw_primeira_aparicao_clientes vpac
                 ON pp.person_id = vpac.person_id
-            WHERE mm.data_documento::date BETWEEN %s AND %s
+            WHERE mm.data_documento >= %s::date AND mm.data_documento < %s::date + INTERVAL '1 day'
               AND pp.is_cancelled IS NOT TRUE
               AND pp.store_id              = %s
               AND mm.portal                = %s
@@ -235,11 +235,11 @@ def top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
                    EXISTS (
                        SELECT 1 FROM faciais.detection_records dr
                        WHERE  dr.person_id = pp.person_id AND dr.store_id = %s
-                         AND  DATE(dr.created_at) < DATE(pp.created_at)
+                         AND  dr.created_at < pp.created_at::date
                    ) AS is_rec
             FROM   faciais.person_purchases pp
             WHERE  pp.store_id = %s
-              AND  DATE(pp.created_at) BETWEEN %s AND %s
+              AND  pp.created_at >= %s::date AND pp.created_at < %s::date + INTERVAL '1 day'
               AND  (pp.is_cancelled IS NOT TRUE)
         ),
         linhas AS (

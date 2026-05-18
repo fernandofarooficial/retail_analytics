@@ -644,10 +644,11 @@ def dashboard():
                 FROM   faciais.detection_records dr
                 JOIN   faciais.people  p   ON p.person_id  = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
+                  AND  dr.person_id IS NOT NULL
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
                 GROUP  BY dr.person_id
             ) sub GROUP BY hora ORDER BY hora
-        """, (sid, data_str))
+        """, (sid, data_str, data_str))
         for row in rows:
             chart_faixa_dia['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
 
@@ -664,7 +665,7 @@ def dashboard():
                 JOIN   faciais.people  p   ON p.person_id  = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
-                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
                 GROUP  BY dr.person_id, DATE(dr.created_at)
             ) sub GROUP BY hora ORDER BY hora
         """, (sid, semana_inicio_str, semana_fim_str))
@@ -684,7 +685,7 @@ def dashboard():
                 JOIN   faciais.people  p   ON p.person_id  = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
-                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
                 GROUP  BY dr.person_id, DATE(dr.created_at)
             ) sub GROUP BY hora ORDER BY hora
         """, (sid, mes_inicio_str, mes_fim_str))
@@ -709,12 +710,13 @@ def dashboard():
                 FROM   faciais.detection_records dr
                 JOIN   faciais.people p ON p.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
+                  AND  dr.person_id IS NOT NULL
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
                 GROUP  BY dr.person_id, p.gender_id
             ) sub
             GROUP BY hora, gender_id ORDER BY hora
         """
-        for row in db.query_all(_GENERO_DIA_QUERY, (sid, data_str)):
+        for row in db.query_all(_GENERO_DIA_QUERY, (sid, data_str, data_str)):
             g = row['gender_id']
             if g in chart_genero_dia:
                 chart_genero_dia[g][int(row['hora'])] = int(row['total'] or 0)
@@ -732,11 +734,12 @@ def dashboard():
                 JOIN   faciais.people p ON p.person_id = dr.person_id
                 JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
+                  AND  dr.person_id IS NOT NULL
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
                 GROUP  BY dr.person_id, vpc.first_record
             ) sub
             GROUP BY hora ORDER BY hora
-        """, (data_str, sid, data_str)):
+        """, (data_str, sid, data_str, data_str)):
             h = int(row['hora'])
             chart_ocorrencias_dia['recorrentes'][h] = int(row['recorrentes'] or 0)
             chart_ocorrencias_dia['novos'][h]        = int(row['novos'] or 0)
@@ -751,7 +754,7 @@ def dashboard():
                 JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
-                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
                 GROUP  BY dr.person_id, vpc.first_record
             )
             SELECT hora,
@@ -778,7 +781,7 @@ def dashboard():
                 JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
-                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
                 GROUP  BY dr.person_id, vpc.first_record
             )
             SELECT hora,
@@ -805,7 +808,7 @@ def dashboard():
                 JOIN   faciais.people p ON p.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
-                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
                 GROUP  BY dr.person_id, p.gender_id, DATE(dr.created_at)
             ) sub
             GROUP BY hora, gender_id ORDER BY hora
@@ -862,11 +865,11 @@ def dashboard():
                         for r in db.query_all(sql, params)]
 
             _p = (active_microvix_portal, active_store_cnpj)
-            _date_dia  = "DATE(m.data_documento) = %s"
-            _date_sem  = "DATE(m.data_documento) BETWEEN %s AND %s"
+            _date_dia  = "m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'"
+            _date_sem  = "m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'"
 
-            top_produtos_qtde_dia = _top_query(_date_dia,  "SUM(m.quantidade)",   _p + (data_str,))
-            top_produtos_fat_dia  = _top_query(_date_dia,  "SUM(m.valor_liquido)", _p + (data_str,))
+            top_produtos_qtde_dia = _top_query(_date_dia,  "SUM(m.quantidade)",   _p + (data_str, data_str))
+            top_produtos_fat_dia  = _top_query(_date_dia,  "SUM(m.valor_liquido)", _p + (data_str, data_str))
             top_produtos_qtde_sem = _top_query(_date_sem,  "SUM(m.quantidade)",   _p + (semana_inicio_str, semana_fim_str))
             top_produtos_fat_sem  = _top_query(_date_sem,  "SUM(m.valor_liquido)", _p + (semana_inicio_str, semana_fim_str))
             top_produtos_qtde_mes = _top_query(_date_sem,  "SUM(m.quantidade)",   _p + (mes_inicio_str, mes_fim_str))
@@ -900,12 +903,12 @@ def dashboard():
                 return [{'nome_a': r['nome_a'], 'nome_b': r['nome_b'], 'qtd': int(r['qtd'])}
                         for r in db.query_all(sql, params)]
 
-            combinacoes_dia = _comb_query("DATE(a.data_documento) = %s",              _p + (data_str,))
-            combinacoes_sem = _comb_query("DATE(a.data_documento) BETWEEN %s AND %s", _p + (semana_inicio_str, semana_fim_str))
-            combinacoes_mes = _comb_query("DATE(a.data_documento) BETWEEN %s AND %s", _p + (mes_inicio_str, mes_fim_str))
+            combinacoes_dia = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (data_str, data_str))
+            combinacoes_sem = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (semana_inicio_str, semana_fim_str))
+            combinacoes_mes = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (mes_inicio_str, mes_fim_str))
             top_produtos_qtde_ytd = _top_query(_date_sem, "SUM(m.quantidade)",    _p + (ytd_inicio_str, ytd_fim_str))
             top_produtos_fat_ytd  = _top_query(_date_sem, "SUM(m.valor_liquido)", _p + (ytd_inicio_str, ytd_fim_str))
-            combinacoes_ytd = _comb_query("DATE(a.data_documento) BETWEEN %s AND %s", _p + (ytd_inicio_str, ytd_fim_str))
+            combinacoes_ytd = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (ytd_inicio_str, ytd_fim_str))
             _sid = active_store['store_id']
             top5_tipo_dia = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, data_str, data_str)
             top5_tipo_sem = _top5_por_tipo(_sid, active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str)
@@ -926,7 +929,8 @@ def dashboard():
                 FROM   faciais.detection_records dr
                 JOIN   faciais.people p ON p.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
-                  AND  dr.person_id IS NOT NULL AND DATE(dr.created_at) = %s
+                  AND  dr.person_id IS NOT NULL
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
                 GROUP  BY dr.person_id
             ),
             pv AS (
@@ -934,13 +938,13 @@ def dashboard():
                        (fv.today - MAX(DATE(dr2.created_at)))::int AS gap_days
                 FROM   fv
                 JOIN   faciais.detection_records dr2 ON dr2.person_id = fv.person_id
-                WHERE  dr2.store_id = %s AND DATE(dr2.created_at) < fv.today
+                WHERE  dr2.store_id = %s AND dr2.created_at < fv.today
                 GROUP  BY fv.person_id, fv.hora, fv.today
             )
             SELECT hora, ROUND(AVG(gap_days)::numeric, 1) AS avg_days
             FROM   pv GROUP BY hora ORDER BY hora
         """
-        for row in db.query_all(_FREQ_DIA_SQL, (sid, data_str, sid)):
+        for row in db.query_all(_FREQ_DIA_SQL, (sid, data_str, data_str, sid)):
             chart_freq_retorno_dia[int(row['hora'])] = float(row['avg_days'])
 
         _FREQ_RANGE_SQL = """
@@ -951,7 +955,7 @@ def dashboard():
                 JOIN   faciais.people p ON p.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
-                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
                 GROUP  BY dr.person_id, DATE(dr.created_at)
             ),
             pv AS (
@@ -959,7 +963,7 @@ def dashboard():
                        (fv.visit_day - MAX(DATE(dr2.created_at)))::int AS gap_days
                 FROM   fv
                 JOIN   faciais.detection_records dr2 ON dr2.person_id = fv.person_id
-                WHERE  dr2.store_id = %s AND DATE(dr2.created_at) < fv.visit_day
+                WHERE  dr2.store_id = %s AND dr2.created_at < fv.visit_day
                 GROUP  BY fv.person_id, fv.visit_day
             )
             SELECT visit_day, ROUND(AVG(gap_days)::numeric, 1) AS avg_days
@@ -988,7 +992,7 @@ def dashboard():
                 JOIN   faciais.people  p   ON p.person_id  = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
-                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
                 GROUP  BY dr.person_id, DATE(dr.created_at)
             ) sub GROUP BY hora ORDER BY hora
         """, (sid, ytd_inicio_str, ytd_fim_str))
@@ -1016,7 +1020,7 @@ def dashboard():
                 JOIN   faciais.vw_primeira_aparicao_clientes vpc ON vpc.person_id = dr.person_id
                 WHERE  dr.store_id = %s AND p.person_type_id = 'C'
                   AND  dr.person_id IS NOT NULL
-                  AND  DATE(dr.created_at) BETWEEN %s AND %s
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
                 GROUP  BY dr.person_id, vpc.first_record
             )
             SELECT hora,
@@ -1354,7 +1358,7 @@ def visitacao():
                 FROM   faciais.detection_records dr
                 JOIN   faciais.people p ON p.person_id = dr.person_id
                 WHERE  dr.store_id        = %s
-                  AND  DATE(dr.created_at) = %s
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
                   AND  dr.person_id IS NOT NULL
                   AND  p.person_type_id   = 'C'
                 GROUP  BY dr.person_id
@@ -1365,7 +1369,7 @@ def visitacao():
                     dr.image_path
                 FROM   faciais.detection_records dr
                 WHERE  dr.store_id        = %s
-                  AND  DATE(dr.created_at) = %s
+                  AND  dr.created_at >= %s::date AND dr.created_at < %s::date + INTERVAL '1 day'
                   AND  dr.person_id IS NOT NULL
                   AND  dr.image_path IS NOT NULL
                 ORDER  BY dr.person_id, dr.created_at DESC
@@ -1374,7 +1378,7 @@ def visitacao():
                 SELECT DISTINCT dr.person_id
                 FROM   faciais.detection_records dr
                 WHERE  dr.store_id = %s
-                  AND  DATE(dr.created_at) < %s
+                  AND  dr.created_at < %s::date
                   AND  dr.person_id IS NOT NULL
             )
             SELECT
@@ -1394,7 +1398,7 @@ def visitacao():
             LEFT   JOIN last_img    li ON li.person_id = dd.person_id
             LEFT   JOIN recorrentes r  ON r.person_id  = dd.person_id
             ORDER  BY dd.primeiro_registro DESC
-        """, (sid, data_str, sid, data_str, sid, data_str))
+        """, (sid, data_str, data_str, sid, data_str, data_str, sid, data_str))
 
         for r in rows:
             clientes.append({
