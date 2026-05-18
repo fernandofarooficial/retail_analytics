@@ -15,6 +15,11 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dr_store_created
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dr_store_created_person
     ON faciais.detection_records (store_id, created_at, person_id);
 
+-- Suporta o DISTINCT ON (person_id) ORDER BY person_id, created_at da vw_primeira_aparicao_clientes
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dr_person_id_created
+    ON faciais.detection_records (person_id, created_at)
+    WHERE person_id IS NOT NULL;
+
 -- ============================================================
 -- faciais.people
 -- Join frequente com detection_records filtrando person_type_id
