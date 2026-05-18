@@ -855,7 +855,7 @@ def dashboard():
         _FILTRO_MV = (
             "m.portal = %s AND m.cnpj_emp = %s "
             "AND m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S' "
-            "AND m.tipo_transacao = 'V' AND m.cod_natureza_operacao = '10030'"
+            "AND (m.tipo_transacao IN ('P','V') OR m.tipo_transacao IS NULL) AND m.codigo_cliente = 1 AND m.cod_natureza_operacao = '10030'"
         )
         _JOIN_PROD = (
             "JOIN microvix.microvix_produtos p "
@@ -904,9 +904,9 @@ def dashboard():
                         ON pb.portal = b.portal AND pb.cod_produto = b.cod_produto
                     WHERE a.portal = %s AND a.cnpj_emp = %s
                       AND a.cancelado <> 'S' AND a.excluido <> 'S' AND a.soma_relatorio = 'S'
-                      AND a.tipo_transacao = 'V' AND a.cod_natureza_operacao = '10030'
+                      AND (a.tipo_transacao IN ('P','V') OR a.tipo_transacao IS NULL) AND a.codigo_cliente = 1 AND a.cod_natureza_operacao = '10030'
                       AND b.cancelado <> 'S' AND b.excluido <> 'S' AND b.soma_relatorio = 'S'
-                      AND b.tipo_transacao = 'V' AND b.cod_natureza_operacao = '10030'
+                      AND (b.tipo_transacao IN ('P','V') OR b.tipo_transacao IS NULL) AND b.codigo_cliente = 1 AND b.cod_natureza_operacao = '10030'
                       AND {date_filter}
                     GROUP BY nome_a, nome_b
                     ORDER BY qtd DESC LIMIT 10

@@ -47,12 +47,12 @@
     flex-wrap: wrap;
   }
 
-  /* ── Card do gráfico ── */
+  /* ── Card base ── */
   .gest-chart-card {
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 1px 6px rgba(0,0,0,.08);
-    padding: 1.5rem 1.5rem 1.25rem;
+    padding: 1.25rem 1.5rem;
   }
   .gest-chart-header {
     display: flex;
@@ -67,29 +67,86 @@
     font-weight: 700;
     color: #374151;
   }
-  .gest-legend {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    align-items: center;
+
+  /* ── Tabela de vendedores / detalhes ── */
+  .vend-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
   }
-  .gest-leg-item {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.8125rem;
+  .vend-table th {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #F3F4F6;
+    white-space: nowrap;
+  }
+  .vend-table td {
+    padding: 0.6rem 0.75rem;
     color: #374151;
+    border-bottom: 1px solid #F9FAFB;
+    white-space: nowrap;
   }
-  .gest-leg-line {
-    width: 22px;
-    height: 3px;
-    border-radius: 2px;
-    flex-shrink: 0;
+  .vend-table tbody tr:last-child td { border-bottom: none; }
+  .vend-val {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: #111827;
   }
-  .gest-chart-wrap {
-    position: relative;
-    height: 380px;
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+  .text-muted { color: #9CA3AF; font-style: italic; }
+
+  /* ── Linha clicável de vendedor ── */
+  .vend-row {
+    cursor: pointer;
+    transition: background .12s;
   }
+  .vend-row:hover td { background: #F9FAFB; }
+  .vend-row.selected td {
+    background: color-mix(in srgb, var(--theme-primary) 8%, #fff);
+  }
+  .vend-row.selected .vend-name {
+    font-weight: 700;
+    color: var(--theme-primary);
+  }
+
+  /* ── Seta de seleção ── */
+  .vend-arrow {
+    width: 20px;
+    text-align: center;
+    color: var(--theme-primary);
+    font-size: 0.9rem;
+    opacity: 0;
+  }
+  .vend-row.selected .vend-arrow { opacity: 1; }
+
+  /* ── Grid de detalhes ── */
+  .vend-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-top: 1.25rem;
+  }
+  @media (max-width: 720px) {
+    .vend-detail-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── Badge de variação ── */
+  .vend-delta {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.1rem 0.35rem;
+    border-radius: 6px;
+    margin-left: 0.35rem;
+    vertical-align: middle;
+  }
+  .delta-up   { background: #DCFCE7; color: #166534; }
+  .delta-down { background: #FEE2E2; color: #991B1B; }
+  .delta-eq   { background: #F3F4F6; color: #6B7280; }
 </style>
 
 <!-- ── Cabeçalho + seletor de empresa/loja ──────────────────────────── -->
@@ -143,109 +200,157 @@
 <p class="kpi-hint">Selecione uma loja para visualizar as vendas.</p>
 {% else %}
 
-<!-- ── Toolbar: informações do período ──────────────────────────────── -->
+<!-- ── Toolbar ──────────────────────────────────────────────────────── -->
 <div class="gest-toolbar">
-  <span style="font-size:0.9375rem; font-weight:700; color:#111827;">{{ ano }}</span>
+  <span style="font-size:0.9375rem; font-weight:700; color:#111827;">
+    {{ mes_nome_ant }} vs {{ mes_nome }} {{ ano }}
+  </span>
   <span style="font-size:0.875rem; color:#6B7280;">{{ active_store.store_name }}</span>
 </div>
 
-<!-- ── Gráfico ──────────────────────────────────────────────────────── -->
+{% if not vendedores %}
+<p class="kpi-hint">Sem dados de vendas para o período.</p>
+{% else %}
+
+<!-- ── Card: Lista de vendedores ────────────────────────────────────── -->
 <div class="gest-chart-card">
   <div class="gest-chart-header">
-    <span class="gest-chart-title">Vendas por Vendedor {{ ano }}</span>
-    <div class="gest-legend" id="gest-legend"></div>
+    <span class="gest-chart-title">Vendedores</span>
+    {% if selected_vendedor %}
+    <a href="{{ url_for('motor.vendas', company_id=selected_company_id, store_id=selected_store_id) }}"
+       style="font-size:0.8125rem; color:#6B7280; text-decoration:none;">&#10005; Limpar seleção</a>
+    {% endif %}
   </div>
-  <div class="gest-chart-wrap">
-    <canvas id="chart-motor-vendas"></canvas>
-  </div>
+  <table class="vend-table">
+    <thead>
+      <tr>
+        <th style="width:20px;"></th>
+        <th>Vendedor</th>
+        <th class="text-right">{{ mes_nome_ant }}</th>
+        <th class="text-right">{{ mes_nome }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in vendedores %}
+      {% set is_sel = (v.cod_vendedor == selected_vendedor) %}
+      <tr class="vend-row{% if is_sel %} selected{% endif %}"
+          onclick="selecionarVendedor('{{ v.cod_vendedor }}')">
+        <td class="vend-arrow">›</td>
+        <td class="vend-name">{{ v.nome.split(' ')[0] }}</td>
+        <td class="text-right vend-val">
+          {{ "%.1f"|format(v.total_ant / 1000)|replace('.', ',') }}k
+        </td>
+        <td class="text-right vend-val">
+          {{ "%.1f"|format(v.total_mes / 1000)|replace('.', ',') }}k
+          {% if v.total_ant > 0 %}
+            {% set delta = ((v.total_mes - v.total_ant) / v.total_ant * 100) %}
+            {% if delta > 0.5 %}
+              <span class="vend-delta delta-up">+{{ "%.0f"|format(delta) }}%</span>
+            {% elif delta < -0.5 %}
+              <span class="vend-delta delta-down">{{ "%.0f"|format(delta) }}%</span>
+            {% endif %}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 
+<!-- ── Detalhes do vendedor selecionado ─────────────────────────────── -->
+{% if selected_vendedor %}
+{% set vend_nome = (vendedores | selectattr('cod_vendedor', 'eq', selected_vendedor) | list | first) %}
+<div class="vend-detail-grid">
+
+  <!-- Top 5 Clientes -->
+  <div class="gest-chart-card">
+    <div class="gest-chart-header">
+      <span class="gest-chart-title">
+        Top 5 Clientes{% if vend_nome %} — {{ vend_nome.nome.split(' ')[0] }}{% endif %}
+      </span>
+      <span style="font-size:0.75rem; color:#9CA3AF;">base: {{ mes_nome_ant }}</span>
+    </div>
+    <table class="vend-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th class="text-right">{{ mes_nome_ant }}</th>
+          <th class="text-right">{{ mes_nome }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in top_clientes %}
+        <tr>
+          <td>{{ c.nome }}</td>
+          <td class="text-right vend-val">{{ "%.1f"|format(c.total_ant / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right vend-val">{{ "%.1f"|format(c.total_mes / 1000)|replace('.', ',') }}k</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="text-center text-muted" style="padding:1rem;">Sem dados</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Top 5 Produtos -->
+  <div class="gest-chart-card">
+    <div class="gest-chart-header">
+      <span class="gest-chart-title">
+        Top 5 Produtos{% if vend_nome %} — {{ vend_nome.nome.split(' ')[0] }}{% endif %}
+      </span>
+      <span style="font-size:0.75rem; color:#9CA3AF;">base: {{ mes_nome_ant }}</span>
+    </div>
+    <table class="vend-table">
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th class="text-right">{{ mes_nome_ant }}</th>
+          <th class="text-right">{{ mes_nome }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in top_produtos %}
+        <tr>
+          <td>{{ p.nome }}</td>
+          <td class="text-right vend-val">{{ "%.1f"|format(p.total_ant / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right vend-val">{{ "%.1f"|format(p.total_mes / 1000)|replace('.', ',') }}k</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="text-center text-muted" style="padding:1rem;">Sem dados</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endif %}
+
+{% endif %}
 {% endif %}
 {% endblock %}
 
 {% block head %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  {% if active_store and vendas_data.series %}
-  const _meses  = {{ vendas_data.meses_nomes | tojson }};
-  const _series = {{ vendas_data.series | tojson }};
-  const _colors = [
-    '{{ theme.graph_color_1 }}',
-    '{{ theme.graph_color_2 }}',
-    '{{ theme.graph_color_3 }}',
-    '{{ theme.graph_color_4 }}',
-  ];
-
-  function fmtReais(v) {
-    if (v >= 1e6) return 'R$ ' + (v / 1e6).toFixed(1).replace('.', ',') + 'M';
-    if (v >= 1e3) return 'R$ ' + (v / 1e3).toFixed(0) + 'K';
-    return 'R$ ' + v.toFixed(0);
+function selecionarVendedor(cod) {
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('vendedor') === cod) {
+    url.searchParams.delete('vendedor');
+  } else {
+    url.searchParams.set('vendedor', cod);
   }
-  function fmtReaisTooltip(v) {
-    return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-  }
-
-  const datasets = _series.map((s, i) => ({
-    label: s.nome,
-    data: s.dados,
-    borderColor: _colors[i % _colors.length],
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    pointRadius: 4,
-    pointHoverRadius: 6,
-    tension: 0.3,
-    datalabels: { display: false },
-  }));
-
-  new Chart(document.getElementById('chart-motor-vendas'), {
-    type: 'line',
-    plugins: [ChartDataLabels],
-    data: { labels: _meses, datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => ' ' + ctx.dataset.label + ': ' + fmtReaisTooltip(ctx.parsed.y),
-          }
-        },
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 12 } } },
-        y: {
-          grid: { color: '#F3F4F6' },
-          ticks: { font: { size: 12 }, callback: v => fmtReais(v) },
-          beginAtZero: true,
-        },
-      },
-    }
-  });
-
-  // Legenda dinâmica
-  const legend = document.getElementById('gest-legend');
-  _series.forEach((s, i) => {
-    const c = _colors[i % _colors.length];
-    const item = document.createElement('span');
-    item.className = 'gest-leg-item';
-    item.innerHTML = `<span class="gest-leg-line" style="background:${c};"></span>${s.nome}`;
-    legend.appendChild(item);
-  });
-  {% endif %}
-});
-
+  window.location.href = url.toString();
+}
 function selecionarEmpresa(id) {
   const url = new URL(window.location.href);
-  if (id) { url.searchParams.set('company_id', id); }
-  else    { url.searchParams.delete('company_id'); }
+  if (id) { url.searchParams.set('company_id', id); } else { url.searchParams.delete('company_id'); }
   url.searchParams.delete('store_id');
+  url.searchParams.delete('vendedor');
   window.location.href = url.toString();
 }
 function selecionarLoja(id) {
   const url = new URL(window.location.href);
-  if (id) { url.searchParams.set('store_id', id); }
-  else    { url.searchParams.delete('store_id'); }
+  if (id) { url.searchParams.set('store_id', id); } else { url.searchParams.delete('store_id'); }
+  url.searchParams.delete('vendedor');
   window.location.href = url.toString();
 }
 </script>

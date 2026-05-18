@@ -4,7 +4,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from routes.utils import login_required
 import db
 from people import (faturamento_diario_mes      as _faturamento_diario_mes,
-                    vendas_mensal_por_vendedor   as _vendas_mensal_por_vendedor)
+                    vendedores_mes              as _vendedores_mes,
+                    top5_clientes_vendedor      as _top5_clientes_vendedor,
+                    top5_produtos_vendedor      as _top5_produtos_vendedor)
 from metas import meta_faturamento_acum_diario as _meta_faturamento_acum_diario
 
 motor_bp = Blueprint('motor', __name__, url_prefix='/retail_analytics/motor')
@@ -291,16 +293,53 @@ def vendas():
     ano  = hoje.year
     mes  = hoje.month
 
-    vendas_data = {'meses_nomes': [], 'series': []}
+    mes_ant = mes - 1 if mes > 1 else 12
+    ano_ant = ano     if mes > 1 else ano - 1
+
+    mes_ini_cur = date_type(ano,     mes,     1)
+    mes_fim_cur = date_type(ano,     mes,     calendar.monthrange(ano,     mes)[1])
+    mes_ini_ant = date_type(ano_ant, mes_ant, 1)
+    mes_fim_ant = date_type(ano_ant, mes_ant, calendar.monthrange(ano_ant, mes_ant)[1])
+
+    mes_ini_cur_str = mes_ini_cur.strftime('%Y-%m-%d')
+    mes_fim_cur_str = mes_fim_cur.strftime('%Y-%m-%d')
+    mes_ini_ant_str = mes_ini_ant.strftime('%Y-%m-%d')
+    mes_fim_ant_str = mes_fim_ant.strftime('%Y-%m-%d')
+
+    selected_vendedor = request.args.get('vendedor')
+
+    vendedores    = []
+    top_clientes  = []
+    top_produtos  = []
+
     if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
-        vendas_data = _vendas_mensal_por_vendedor(
-            ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano)
+        portal = ctx['active_microvix_portal']
+        cnpj   = ctx['active_store_cnpj']
+
+        vendedores = _vendedores_mes(
+            portal, cnpj,
+            mes_ini_cur_str, mes_fim_cur_str,
+            mes_ini_ant_str, mes_fim_ant_str)
+
+        if selected_vendedor:
+            top_clientes = _top5_clientes_vendedor(
+                portal, cnpj, selected_vendedor,
+                mes_ini_cur_str, mes_fim_cur_str,
+                mes_ini_ant_str, mes_fim_ant_str)
+            top_produtos = _top5_produtos_vendedor(
+                portal, cnpj, selected_vendedor,
+                mes_ini_cur_str, mes_fim_cur_str,
+                mes_ini_ant_str, mes_fim_ant_str)
 
     return render_template(
         'motor/vendas.html',
         **ctx,
         mes_nome=_MESES_PT[mes - 1],
+        mes_nome_ant=_MESES_PT[mes_ant - 1],
         ano=ano,
         mes=mes,
-        vendas_data=vendas_data,
+        vendedores=vendedores,
+        selected_vendedor=selected_vendedor,
+        top_clientes=top_clientes,
+        top_produtos=top_produtos,
     )
