@@ -133,7 +133,9 @@ def meta_faturamento_acum_diario(store_id, mes_inicio, mes_fim):
 
     if rows:
         daily = {r['dia']: float(r['valor']) for r in rows}
-        return daily, sum(daily.values())
+        monthly = _goal_value(fat_tid, 'monthly', mes_inicio)
+        meta_total = float(monthly) if monthly is not None else sum(daily.values())
+        return daily, meta_total
 
     # ── 2. Distribui meta mensal pelos dias úteis com peso ───────────────────
     monthly = _goal_value(fat_tid, 'monthly', mes_inicio)

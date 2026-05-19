@@ -1,0 +1,295 @@
+{% extends 'base_web.html' %}
+{% block title %}Motor — Estoque — Retail Analytics{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --theme-primary: {{ theme.primary_color }};
+    --secondary:     {{ theme.secondary_color }};
+  }
+
+  /* ── Sub-tabs ── */
+  .gest-tabs {
+    display: flex;
+    gap: 0.375rem;
+    margin: 1.25rem 0 1.5rem;
+  }
+  .gest-tab {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.4rem 1.1rem;
+    border-radius: 20px;
+    border: 1.5px solid transparent;
+    text-decoration: none;
+    color: #6B7280;
+    background: #F3F4F6;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .gest-tab:hover { background: #E5E7EB; color: #374151; }
+  .gest-tab.active {
+    background: var(--theme-primary);
+    color: #fff;
+    border-color: var(--theme-primary);
+  }
+  .gest-tab.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+    cursor: default;
+  }
+
+  /* ── Toolbar ── */
+  .gest-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  /* ── Card base ── */
+  .gest-chart-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.08);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .gest-chart-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .gest-chart-title {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #374151;
+  }
+
+  /* ── Tabela ── */
+  .est-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .est-table th {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #F3F4F6;
+    white-space: nowrap;
+  }
+  .est-table td {
+    padding: 0.6rem 0.75rem;
+    color: #374151;
+    border-bottom: 1px solid #F9FAFB;
+    white-space: nowrap;
+  }
+  .est-table tbody tr:last-child td { border-bottom: none; }
+  .est-val {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: #111827;
+  }
+  .est-media {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--theme-primary);
+  }
+  .text-right  { text-align: right; }
+  .text-center { text-align: center; }
+  .text-muted  { color: #9CA3AF; font-style: italic; }
+
+  /* ── Overflow horizontal em tabelas largas ── */
+  .est-table-wrap { overflow-x: auto; }
+</style>
+
+<!-- ── Cabeçalho + seletor de empresa/loja ──────────────────────────── -->
+<div class="page-header">
+  <h1>Motor</h1>
+  <div class="dashboard-selectors">
+
+    {% if session.get('user_type_id') in ('adm', 'man') and companies %}
+    <div class="dashboard-company-select">
+      <label for="company-select">Empresa:</label>
+      <select id="company-select" onchange="selecionarEmpresa(this.value)">
+        <option value="">— Selecione —</option>
+        {% for c in companies %}
+        <option value="{{ c.company_id }}"
+            {% if c.company_id == selected_company_id %}selected{% endif %}>
+          {{ c.company_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    {% if stores %}
+    <div class="dashboard-company-select">
+      <label for="store-select">Loja:</label>
+      <select id="store-select" onchange="selecionarLoja(this.value)">
+        {% if stores|length > 1 %}
+        <option value="">— Selecione —</option>
+        {% endif %}
+        {% for s in stores %}
+        <option value="{{ s.store_id }}"
+            {% if s.store_id == selected_store_id %}selected{% endif %}>
+          {{ s.store_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- ── Sub-tabs ─────────────────────────────────────────────────────── -->
+<div class="gest-tabs">
+  <a class="gest-tab" href="{{ url_for('motor.faturamento', company_id=selected_company_id, store_id=selected_store_id) }}">Faturamento</a>
+  <a class="gest-tab" href="{{ url_for('motor.vendas', company_id=selected_company_id, store_id=selected_store_id) }}">Vendas</a>
+  <a class="gest-tab active" href="{{ url_for('motor.estoque', company_id=selected_company_id, store_id=selected_store_id) }}">Estoque</a>
+</div>
+
+{% if not active_store %}
+<p class="kpi-hint">Selecione uma loja para visualizar o estoque.</p>
+{% else %}
+
+<!-- ── Toolbar ──────────────────────────────────────────────────────── -->
+<div class="gest-toolbar">
+  <span style="font-size:0.9375rem; font-weight:700; color:#111827;">
+    {{ m3_nome }} — {{ m0_nome }} {{ ano }}
+  </span>
+  <span style="font-size:0.875rem; color:#6B7280;">{{ active_store.store_name }}</span>
+</div>
+
+<!-- ── Card 1: Maior Volume ─────────────────────────────────────────── -->
+<div class="gest-chart-card">
+  <div class="gest-chart-header">
+    <span class="gest-chart-title">Maior Volume</span>
+    <span style="font-size:0.75rem; color:#9CA3AF;">qtd. vendida</span>
+  </div>
+  <div class="est-table-wrap">
+    <table class="est-table">
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th class="text-right">{{ m3_nome }}</th>
+          <th class="text-right">{{ m2_nome }}</th>
+          <th class="text-right">{{ m1_nome }}</th>
+          <th class="text-right">Média</th>
+          <th class="text-right">{{ m0_nome }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in maior_volume %}
+        <tr>
+          <td>{{ p.produto }} <span style="font-size:0.72rem;color:#9CA3AF;font-weight:400;">· {{ p.cod_produto }}</span></td>
+          <td class="text-right est-val">{{ "%.0f"|format(p.qtd_m3) }}</td>
+          <td class="text-right est-val">{{ "%.0f"|format(p.qtd_m2) }}</td>
+          <td class="text-right est-val">{{ "%.0f"|format(p.qtd_m1) }}</td>
+          <td class="text-right est-media">{{ "%.1f"|format(p.media)|replace('.', ',') }}</td>
+          <td class="text-right est-val">{{ "%.0f"|format(p.qtd_m0) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted" style="padding:1rem;">Sem dados</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Card 2: Maior Faturamento ────────────────────────────────────── -->
+<div class="gest-chart-card">
+  <div class="gest-chart-header">
+    <span class="gest-chart-title">Maior Faturamento</span>
+    <span style="font-size:0.75rem; color:#9CA3AF;">R$ faturado</span>
+  </div>
+  <div class="est-table-wrap">
+    <table class="est-table">
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th class="text-right">{{ m3_nome }}</th>
+          <th class="text-right">{{ m2_nome }}</th>
+          <th class="text-right">{{ m1_nome }}</th>
+          <th class="text-right">Média</th>
+          <th class="text-right">{{ m0_nome }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in maior_fat %}
+        <tr>
+          <td>{{ p.produto }} <span style="font-size:0.72rem;color:#9CA3AF;font-weight:400;">· {{ p.cod_produto }}</span></td>
+          <td class="text-right est-val">{{ "%.1f"|format(p.fat_m3 / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right est-val">{{ "%.1f"|format(p.fat_m2 / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right est-val">{{ "%.1f"|format(p.fat_m1 / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right est-media">{{ "%.1f"|format(p.media / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right est-val">{{ "%.1f"|format(p.fat_m0 / 1000)|replace('.', ',') }}k</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted" style="padding:1rem;">Sem dados</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Card 3: Maior Valor Parado ───────────────────────────────────── -->
+<div class="gest-chart-card">
+  <div class="gest-chart-header">
+    <span class="gest-chart-title">Maior Valor Parado</span>
+    <span style="font-size:0.75rem; color:#9CA3AF;">sem venda há &gt; 3 meses</span>
+  </div>
+  <div class="est-table-wrap">
+    <table class="est-table">
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th class="text-right">Último Fat.</th>
+          <th class="text-right">Qtd.</th>
+          <th class="text-right">Preço Unit.</th>
+          <th class="text-right">Valor Parado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in valor_parado %}
+        <tr>
+          <td>{{ p.produto }} <span style="font-size:0.72rem;color:#9CA3AF;font-weight:400;">· {{ p.cod_produto }}</span></td>
+          <td class="text-right" style="color:#6B7280;">{{ p.ultimo_fat }}</td>
+          <td class="text-right est-val">{{ "%.0f"|format(p.qtd_estoque) }}</td>
+          <td class="text-right est-val">{{ p.preco_unit | br_valor }}</td>
+          <td class="text-right est-media">{{ p.valor_parado | br_valor }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted" style="padding:1rem;">Sem dados</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block head %}
+<script>
+function selecionarEmpresa(id) {
+  const url = new URL(window.location.href);
+  if (id) { url.searchParams.set('company_id', id); } else { url.searchParams.delete('company_id'); }
+  url.searchParams.delete('store_id');
+  window.location.href = url.toString();
+}
+function selecionarLoja(id) {
+  const url = new URL(window.location.href);
+  if (id) { url.searchParams.set('store_id', id); } else { url.searchParams.delete('store_id'); }
+  window.location.href = url.toString();
+}
+</script>
+{% endblock %}

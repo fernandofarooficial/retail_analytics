@@ -169,7 +169,7 @@
 <div class="gest-tabs">
   <a class="gest-tab active" href="{{ url_for('gestao.faturamento', company_id=selected_company_id, store_id=selected_store_id) }}">Faturamento</a>
   <a class="gest-tab" href="{{ url_for('gestao.vendas', company_id=selected_company_id, store_id=selected_store_id) }}">Vendas</a>
-  <span class="gest-tab disabled">Estoque</span>
+  <a class="gest-tab" href="{{ url_for('gestao.estoque', company_id=selected_company_id, store_id=selected_store_id) }}">Estoque</a>
 </div>
 
 {% if not active_store %}

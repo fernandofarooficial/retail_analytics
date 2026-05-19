@@ -364,6 +364,7 @@ def top5_clientes_vendedor(portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur,
         WHERE  m.portal               = %s
           AND  m.cnpj_emp             = %s
           AND  m.cod_vendedor::text   = %s
+          AND  m.codigo_cliente      != 1
           AND  m.cancelado           <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
           AND  (m.tipo_transacao IN ('P','V') OR m.tipo_transacao IS NULL)
           AND  m.cod_natureza_operacao = '10030'
@@ -402,6 +403,7 @@ def top5_produtos_vendedor(portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur,
         WHERE  m.portal               = %s
           AND  m.cnpj_emp             = %s
           AND  m.cod_vendedor::text   = %s
+          AND  m.codigo_cliente      != 1
           AND  m.cancelado           <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
           AND  (m.tipo_transacao IN ('P','V') OR m.tipo_transacao IS NULL)
           AND  m.cod_natureza_operacao = '10030'
@@ -418,6 +420,191 @@ def top5_produtos_vendedor(portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur,
             'nome':      r['produto'] or '(sem nome)',
             'total_ant': float(r['total_ant'] or 0),
             'total_mes': float(r['total_mes'] or 0),
+        }
+        for r in rows
+    ]
+
+
+# ── Estoque ───────────────────────────────────────────────────────────────────
+
+_ESTOQUE_BASE_FILTER = (
+    "m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S' "
+    "AND (m.tipo_transacao IN ('P','V') OR m.tipo_transacao IS NULL) "
+    "AND m.cod_natureza_operacao = '10030'"
+)
+
+
+def estoque_maior_volume(portal, cnpj,
+                         m3_ini, m3_fim, m2_ini, m2_fim,
+                         m1_ini, m1_fim, m0_ini, m0_fim):
+    """Top 5 produtos por volume médio (qtd) nos últimos 3 meses."""
+    rows = db.query_all(f"""
+        WITH sales AS (
+            SELECT
+                m.cod_produto,
+                COALESCE(NULLIF(TRIM(p.descricao_basica), ''), p.nome) AS produto,
+                SUM(CASE WHEN m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'
+                         THEN m.quantidade ELSE 0 END)  AS qtd_m3,
+                SUM(CASE WHEN m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'
+                         THEN m.quantidade ELSE 0 END)  AS qtd_m2,
+                SUM(CASE WHEN m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'
+                         THEN m.quantidade ELSE 0 END)  AS qtd_m1,
+                SUM(CASE WHEN m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'
+                         THEN m.quantidade ELSE 0 END)  AS qtd_m0
+            FROM   microvix.microvix_movimento m
+            JOIN   microvix.microvix_produtos p ON p.portal = m.portal AND p.cod_produto = m.cod_produto
+            WHERE  m.portal = %s AND m.cnpj_emp = %s AND {_ESTOQUE_BASE_FILTER}
+              AND  m.data_documento >= %s::date
+              AND  m.data_documento <  %s::date + INTERVAL '1 day'
+            GROUP  BY m.cod_produto, p.descricao_basica, p.nome
+        )
+        SELECT *, ROUND(((qtd_m3 + qtd_m2 + qtd_m1) / 3.0)::numeric, 1) AS media
+        FROM   sales
+        WHERE  (qtd_m3 + qtd_m2 + qtd_m1) > 0
+        ORDER  BY media DESC
+        LIMIT  5
+    """, (m3_ini, m3_fim, m2_ini, m2_fim, m1_ini, m1_fim, m0_ini, m0_fim,
+          portal, cnpj, m3_ini, m0_fim))
+    return [
+        {
+            'cod_produto': r['cod_produto'],
+            'produto': r['produto'] or '(sem nome)',
+            'qtd_m3':  float(r['qtd_m3'] or 0),
+            'qtd_m2':  float(r['qtd_m2'] or 0),
+            'qtd_m1':  float(r['qtd_m1'] or 0),
+            'media':   float(r['media']  or 0),
+            'qtd_m0':  float(r['qtd_m0'] or 0),
+        }
+        for r in rows
+    ]
+
+
+def estoque_maior_faturamento(portal, cnpj,
+                               m3_ini, m3_fim, m2_ini, m2_fim,
+                               m1_ini, m1_fim, m0_ini, m0_fim):
+    """Top 5 produtos por faturamento médio (valor_liquido) nos últimos 3 meses."""
+    rows = db.query_all(f"""
+        WITH sales AS (
+            SELECT
+                m.cod_produto,
+                COALESCE(NULLIF(TRIM(p.descricao_basica), ''), p.nome) AS produto,
+                SUM(CASE WHEN m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'
+                         THEN m.valor_liquido ELSE 0 END)  AS fat_m3,
+                SUM(CASE WHEN m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'
+                         THEN m.valor_liquido ELSE 0 END)  AS fat_m2,
+                SUM(CASE WHEN m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'
+                         THEN m.valor_liquido ELSE 0 END)  AS fat_m1,
+                SUM(CASE WHEN m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'
+                         THEN m.valor_liquido ELSE 0 END)  AS fat_m0
+            FROM   microvix.microvix_movimento m
+            JOIN   microvix.microvix_produtos p ON p.portal = m.portal AND p.cod_produto = m.cod_produto
+            WHERE  m.portal = %s AND m.cnpj_emp = %s AND {_ESTOQUE_BASE_FILTER}
+              AND  m.data_documento >= %s::date
+              AND  m.data_documento <  %s::date + INTERVAL '1 day'
+            GROUP  BY m.cod_produto, p.descricao_basica, p.nome
+        )
+        SELECT *, ROUND(((fat_m3 + fat_m2 + fat_m1) / 3.0)::numeric, 2) AS media
+        FROM   sales
+        WHERE  (fat_m3 + fat_m2 + fat_m1) > 0
+        ORDER  BY media DESC
+        LIMIT  5
+    """, (m3_ini, m3_fim, m2_ini, m2_fim, m1_ini, m1_fim, m0_ini, m0_fim,
+          portal, cnpj, m3_ini, m0_fim))
+    return [
+        {
+            'cod_produto': r['cod_produto'],
+            'produto': r['produto'] or '(sem nome)',
+            'fat_m3':  float(r['fat_m3'] or 0),
+            'fat_m2':  float(r['fat_m2'] or 0),
+            'fat_m1':  float(r['fat_m1'] or 0),
+            'media':   float(r['media']  or 0),
+            'fat_m0':  float(r['fat_m0'] or 0),
+        }
+        for r in rows
+    ]
+
+
+def estoque_valor_parado(portal, cnpj, corte_str):
+    """Top 5 produtos com maior valor parado (qtd_estoque * preco_venda),
+    sem faturamento desde antes de corte_str (mês-4 ou anterior)."""
+    rows = db.query_all(f"""
+        WITH ultima_venda AS (
+            SELECT m.cod_produto, MAX(m.data_documento) AS ultimo_fat
+            FROM   microvix.microvix_movimento m
+            WHERE  m.portal = %s AND m.cnpj_emp = %s AND {_ESTOQUE_BASE_FILTER}
+            GROUP  BY m.cod_produto
+        )
+        SELECT
+            uv.cod_produto,
+            COALESCE(NULLIF(TRIM(p.descricao_basica), ''), p.nome)  AS produto,
+            uv.ultimo_fat,
+            d.quantidade                                            AS qtd_estoque,
+            d.preco_venda                                           AS preco_unit,
+            ROUND((d.quantidade * d.preco_venda)::numeric, 2)       AS valor_parado
+        FROM   ultima_venda uv
+        JOIN   microvix.microvix_produtos p
+               ON p.portal = %s AND p.cod_produto = uv.cod_produto
+        JOIN   microvix.microvix_produtos_detalhes d
+               ON d.portal = %s AND d.cnpj_emp = %s AND d.cod_produto = uv.cod_produto
+        WHERE  uv.ultimo_fat < %s::date
+          AND  d.quantidade  > 0
+          AND  d.preco_venda > 0
+        ORDER  BY valor_parado DESC
+        LIMIT  5
+    """, (portal, cnpj, portal, portal, cnpj, corte_str))
+    return [
+        {
+            'cod_produto':  r['cod_produto'],
+            'produto':      r['produto'] or '(sem nome)',
+            'ultimo_fat':   r['ultimo_fat'].strftime('%d/%m/%Y') if r['ultimo_fat'] else '—',
+            'qtd_estoque':  float(r['qtd_estoque']  or 0),
+            'preco_unit':   float(r['preco_unit']   or 0),
+            'valor_parado': float(r['valor_parado'] or 0),
+        }
+        for r in rows
+    ]
+
+
+def cobertura_estoque(portal, cnpj):
+    """Top 10 produtos com menor cobertura de estoque (dias),
+    baseado nas vendas dos últimos 30 dias."""
+    rows = db.query_all("""
+        WITH vendas_30d AS (
+            SELECT m.cod_produto,
+                   SUM(m.quantidade) AS qtd_vendida
+            FROM   microvix.microvix_movimento m
+            WHERE  m.portal = %s AND m.cnpj_emp = %s
+              AND  m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
+              AND  (m.tipo_transacao IN ('P','V') OR m.tipo_transacao IS NULL)
+              AND  m.cod_natureza_operacao = '10030'
+              AND  m.data_documento >= CURRENT_DATE - INTERVAL '30 days'
+              AND  m.data_documento <  CURRENT_DATE + INTERVAL '1 day'
+            GROUP  BY m.cod_produto
+        )
+        SELECT
+            v.cod_produto,
+            COALESCE(NULLIF(TRIM(p.descricao_basica), ''), p.nome)  AS produto,
+            ROUND((v.qtd_vendida / 30.0)::numeric, 1)               AS media_diaria,
+            COALESCE(d.quantidade, 0)                                AS qtd_estoque,
+            ROUND((COALESCE(d.quantidade, 0) / (v.qtd_vendida / 30.0))::numeric, 1)
+                                                                     AS cobertura_dias
+        FROM   vendas_30d v
+        JOIN   microvix.microvix_produtos p
+               ON p.portal = %s AND p.cod_produto = v.cod_produto
+        JOIN   microvix.microvix_produtos_detalhes d
+               ON d.portal = %s AND d.cnpj_emp = %s AND d.cod_produto = v.cod_produto
+        WHERE  v.qtd_vendida > 0
+          AND  d.quantidade  > 0
+        ORDER  BY cobertura_dias ASC, qtd_estoque ASC
+        LIMIT  10
+    """, (portal, cnpj, portal, portal, cnpj))
+    return [
+        {
+            'cod_produto':   r['cod_produto'],
+            'produto':       r['produto'] or '(sem nome)',
+            'media_diaria':  float(r['media_diaria']  or 0),
+            'qtd_estoque':   float(r['qtd_estoque']   or 0),
+            'cobertura_dias': float(r['cobertura_dias'] or 0),
         }
         for r in rows
     ]

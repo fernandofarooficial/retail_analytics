@@ -13,7 +13,14 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     top5_por_tipo as _top5_por_tipo,
                     faturamento_mensal as _faturamento_mensal,
                     faturamento_diario_mes as _faturamento_diario_mes,
-                    vendas_mensal_por_vendedor as _vendas_mensal_por_vendedor)
+                    vendas_mensal_por_vendedor as _vendas_mensal_por_vendedor,
+                    vendedores_mes as _vendedores_mes,
+                    top5_clientes_vendedor as _top5_clientes_vendedor,
+                    top5_produtos_vendedor as _top5_produtos_vendedor,
+                    estoque_maior_volume as _estoque_maior_volume,
+                    estoque_maior_faturamento as _estoque_maior_faturamento,
+                    estoque_valor_parado as _estoque_valor_parado,
+                    cobertura_estoque as _cobertura_estoque)
 from routes.utils import (fmt_permanencia, kpi_tempo_loja, kpi_tempo_loja_range,
                            tempo_gauge, HEIMDALL_IMAGE_BASE)
 
@@ -1971,6 +1978,25 @@ def gestao_vendas():
     )
 
 
+@mobile_bp.route('/gestao/estoque')
+@_login_required
+def gestao_estoque():
+    ctx, redir = _gestao_mobile_ctx('mobile.gestao_estoque')
+    if redir:
+        return redir
+
+    cobertura = []
+    if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
+        cobertura = _cobertura_estoque(
+            ctx['active_microvix_portal'], ctx['active_store_cnpj'])
+
+    return render_template(
+        'mobile/gestao_estoque.html',
+        **ctx,
+        cobertura=cobertura,
+    )
+
+
 # ── Motor ─────────────────────────────────────────────────────────────────────
 
 @mobile_bp.route('/motor/faturamento')
@@ -2048,17 +2074,116 @@ def motor_vendas():
     if redir:
         return redir
 
-    ano_atual = date_type.today().year
-    vendas_data = {'meses_nomes': [], 'series': []}
+    hoje = date_type.today()
+    ano  = hoje.year
+    mes  = hoje.month
+
+    mes_ant = mes - 1 if mes > 1 else 12
+    ano_ant = ano     if mes > 1 else ano - 1
+
+    mes_ini_cur = date_type(ano,     mes,     1)
+    mes_fim_cur = date_type(ano,     mes,     calendar.monthrange(ano,     mes)[1])
+    mes_ini_ant = date_type(ano_ant, mes_ant, 1)
+    mes_fim_ant = date_type(ano_ant, mes_ant, calendar.monthrange(ano_ant, mes_ant)[1])
+
+    mes_ini_cur_str = mes_ini_cur.strftime('%Y-%m-%d')
+    mes_fim_cur_str = mes_fim_cur.strftime('%Y-%m-%d')
+    mes_ini_ant_str = mes_ini_ant.strftime('%Y-%m-%d')
+    mes_fim_ant_str = mes_fim_ant.strftime('%Y-%m-%d')
+
+    _MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+    selected_vendedor = request.args.get('vendedor')
+    vendedores   = []
+    top_clientes = []
+    top_produtos = []
+
     if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
-        vendas_data = _vendas_mensal_por_vendedor(
-            ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano_atual)
+        portal = ctx['active_microvix_portal']
+        cnpj   = ctx['active_store_cnpj']
+
+        vendedores = _vendedores_mes(
+            portal, cnpj,
+            mes_ini_cur_str, mes_fim_cur_str,
+            mes_ini_ant_str, mes_fim_ant_str)
+
+        if selected_vendedor:
+            top_clientes = _top5_clientes_vendedor(
+                portal, cnpj, selected_vendedor,
+                mes_ini_cur_str, mes_fim_cur_str,
+                mes_ini_ant_str, mes_fim_ant_str)
+            top_produtos = _top5_produtos_vendedor(
+                portal, cnpj, selected_vendedor,
+                mes_ini_cur_str, mes_fim_cur_str,
+                mes_ini_ant_str, mes_fim_ant_str)
 
     return render_template(
         'mobile/motor_vendas.html',
         **ctx,
-        ano=ano_atual,
-        vendas_data=vendas_data,
+        ano=ano,
+        mes=mes,
+        mes_nome=_MESES_PT[mes - 1],
+        mes_nome_ant=_MESES_PT[mes_ant - 1],
+        vendedores=vendedores,
+        selected_vendedor=selected_vendedor,
+        top_clientes=top_clientes,
+        top_produtos=top_produtos,
+    )
+
+
+@mobile_bp.route('/motor/estoque')
+@_login_required
+def motor_estoque():
+    ctx, redir = _gestao_mobile_ctx('mobile.motor_estoque')
+    if redir:
+        return redir
+
+    hoje = date_type.today()
+    ano  = hoje.year
+    mes  = hoje.month
+
+    _MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+    meses = []
+    y, m = ano, mes
+    for _ in range(4):
+        ini = date_type(y, m, 1)
+        fim = date_type(y, m, calendar.monthrange(y, m)[1])
+        meses.append({'ini': ini.strftime('%Y-%m-%d'),
+                      'fim': fim.strftime('%Y-%m-%d'),
+                      'nome': _MESES_PT[m - 1]})
+        m -= 1
+        if m == 0:
+            m, y = 12, y - 1
+    m0, m1, m2, m3 = meses[0], meses[1], meses[2], meses[3]
+
+    maior_volume = []
+    maior_fat    = []
+    valor_parado = []
+
+    if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
+        portal = ctx['active_microvix_portal']
+        cnpj   = ctx['active_store_cnpj']
+        args   = (portal, cnpj,
+                  m3['ini'], m3['fim'],
+                  m2['ini'], m2['fim'],
+                  m1['ini'], m1['fim'],
+                  m0['ini'], m0['fim'])
+        maior_volume = _estoque_maior_volume(*args)
+        maior_fat    = _estoque_maior_faturamento(*args)
+        valor_parado = _estoque_valor_parado(portal, cnpj, m3['ini'])
+
+    return render_template(
+        'mobile/motor_estoque.html',
+        **ctx,
+        ano=ano,
+        m0_nome=m0['nome'], m1_nome=m1['nome'],
+        m2_nome=m2['nome'], m3_nome=m3['nome'],
+        maior_volume=maior_volume,
+        maior_fat=maior_fat,
+        valor_parado=valor_parado,
     )
 
 

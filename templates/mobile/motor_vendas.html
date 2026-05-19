@@ -21,38 +21,85 @@
   .m-hdr-info-lbl { font-size: 0.6rem; color: var(--accent); white-space: nowrap; }
   .m-hdr-info-val { font-size: 0.68rem; font-weight: 700; color: var(--secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
 
-  /* ── Sub-tabs (override bar bg to match page bg) ── */
+  /* ── Sub-tabs ── */
   .m-tabs-bar { background: var(--bg); }
 
-  /* ── Gráfico ── */
+  /* ── Card base ── */
   .m-chart-card {
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
-    margin: 0.75rem 0 0.5rem;
-    padding: 1rem 0.5rem 0.75rem;
+    margin: 0.75rem 0 0;
+    padding: 0.875rem 0.75rem 0.625rem;
   }
-  .m-chart-title {
+  .m-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.625rem;
+  }
+  .m-card-title {
     font-size: 0.8rem;
     font-weight: 700;
     color: #374151;
-    text-align: center;
-    margin-bottom: 0.5rem;
   }
-  .m-chart-wrap { position: relative; height: 240px; }
-
-  /* ── Legenda personalizada ── */
-  .m-chart-legend {
-    display: flex;
-    justify-content: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    margin-top: 0.6rem;
+  .m-card-sub {
+    font-size: 0.68rem;
+    color: #9CA3AF;
   }
-  .m-leg-item { display: flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; color: #374151; }
-  .m-leg-dot { width: 10px; height: 3px; border-radius: 2px; flex-shrink: 0; }
 
-  /* ── Bottom-sheet seletor ── */
+  /* ── Tabela de vendedores ── */
+  .mv-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+  .mv-table th {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #9CA3AF;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #F3F4F6;
+    white-space: nowrap;
+  }
+  .mv-table td {
+    padding: 0.55rem 0.5rem;
+    color: #374151;
+    border-bottom: 1px solid #F9FAFB;
+  }
+  .mv-table tbody tr:last-child td { border-bottom: none; }
+  .mv-val {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: #111827;
+    white-space: nowrap;
+  }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+
+  /* ── Linha clicável ── */
+  .mv-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .mv-row:active td { background: #F3F4F6; }
+  .mv-row.selected td { background: color-mix(in srgb, var(--theme-primary) 8%, #fff); }
+  .mv-row.selected .mv-name { font-weight: 700; color: var(--theme-primary); }
+  .mv-arrow { width: 18px; color: var(--theme-primary); font-size: 0.85rem; opacity: 0; }
+  .mv-row.selected .mv-arrow { opacity: 1; }
+
+  /* ── Badge variação ── */
+  .mv-delta {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.1rem 0.3rem;
+    border-radius: 5px;
+    margin-left: 0.25rem;
+    vertical-align: middle;
+  }
+  .delta-up   { background: #DCFCE7; color: #166534; }
+  .delta-down { background: #FEE2E2; color: #991B1B; }
+
+  /* ── Bottom-sheet seletor de loja ── */
   .m-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; display: none; }
   .m-sheet-overlay.open { display: block; }
   .m-store-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-radius: 16px 16px 0 0; padding: 1rem 1.25rem calc(1.25rem + var(--safe-bottom, 0px)); z-index: 301; transform: translateY(100%); transition: transform .25s ease; }
@@ -61,6 +108,16 @@
   .m-sheet-title { font-size: 0.95rem; font-weight: 700; color: #111827; margin-bottom: 1rem; }
   .m-sheet-row { display: flex; align-items: center; gap: 0.625rem; margin-bottom: 0.75rem; }
   .m-sheet-close { width: 100%; margin-top: 0.5rem; padding: 0.75rem; background: #F3F4F6; border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 600; color: #374151; cursor: pointer; }
+
+  /* ── Link limpar seleção ── */
+  .mv-clear {
+    font-size: 0.72rem;
+    color: #9CA3AF;
+    text-decoration: none;
+    padding: 0.2rem 0.4rem;
+    border-radius: 6px;
+    border: 1px solid #E5E7EB;
+  }
 </style>
 
 <div class="m-app">
@@ -101,7 +158,7 @@
     <div class="m-tabs-l1">
       <button class="m-tab-l1" onclick="navegarMotor('faturamento')">Faturamento</button>
       <button class="m-tab-l1 active">Vendas</button>
-      <button class="m-tab-l1" style="opacity:0.45;pointer-events:none;cursor:default;">Estoque</button>
+      <button class="m-tab-l1" onclick="navegarMotor('estoque')">Estoque</button>
     </div>
   </div>
 
@@ -112,18 +169,126 @@
     <p class="m-hint" style="padding: 2rem 1rem; text-align:center; color:#9CA3AF; font-size:0.875rem;">
       Selecione uma loja para visualizar as vendas.
     </p>
+
+    {% elif not vendedores %}
+    <p class="m-hint" style="padding: 2rem 1rem; text-align:center; color:#9CA3AF; font-size:0.875rem;">
+      Sem dados de vendas para o período.
+    </p>
+
     {% else %}
 
-    <!-- Gráfico -->
+    <!-- ── Card: Lista de vendedores ──────────────────────────────────── -->
     <div class="m-chart-card">
-      <div class="m-chart-title">Vendas por Vendedor {{ ano }}</div>
-      <div class="m-chart-wrap">
-        <canvas id="chart-vendas-mensal"></canvas>
+      <div class="m-card-header">
+        <span class="m-card-title">Vendedores — {{ mes_nome_ant }} vs {{ mes_nome }}</span>
+        {% if selected_vendedor %}
+        <a href="{{ url_for('mobile.motor_vendas', company_id=selected_company_id, store_id=selected_store_id) }}"
+           class="mv-clear">&#10005; Limpar</a>
+        {% endif %}
       </div>
-      <div class="m-chart-legend" id="m-chart-legend"></div>
+      <table class="mv-table">
+        <thead>
+          <tr>
+            <th style="width:16px;"></th>
+            <th>Vendedor</th>
+            <th class="text-right">{{ mes_nome_ant }}</th>
+            <th class="text-right">{{ mes_nome }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in vendedores %}
+          {% set is_sel = (v.cod_vendedor == selected_vendedor) %}
+          <tr class="mv-row{% if is_sel %} selected{% endif %}"
+              onclick="selecionarVendedor('{{ v.cod_vendedor }}')">
+            <td class="mv-arrow">›</td>
+            <td class="mv-name">{{ v.nome.split(' ')[0] }}</td>
+            <td class="text-right mv-val">
+              {{ "%.1f"|format(v.total_ant / 1000)|replace('.', ',') }}k
+            </td>
+            <td class="text-right mv-val">
+              {{ "%.1f"|format(v.total_mes / 1000)|replace('.', ',') }}k
+              {% if v.total_ant > 0 %}
+                {% set delta = ((v.total_mes - v.total_ant) / v.total_ant * 100) %}
+                {% if delta > 0.5 %}
+                  <span class="mv-delta delta-up">+{{ "%.0f"|format(delta) }}%</span>
+                {% elif delta < -0.5 %}
+                  <span class="mv-delta delta-down">{{ "%.0f"|format(delta) }}%</span>
+                {% endif %}
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Detalhes do vendedor selecionado ───────────────────────────── -->
+    {% if selected_vendedor %}
+    {% set vend_nome = (vendedores | selectattr('cod_vendedor', 'eq', selected_vendedor) | list | first) %}
+
+    <!-- Top 5 Clientes -->
+    <div class="m-chart-card">
+      <div class="m-card-header">
+        <span class="m-card-title">
+          Top 5 Clientes{% if vend_nome %} — {{ vend_nome.nome.split(' ')[0] }}{% endif %}
+        </span>
+        <span class="m-card-sub">base: {{ mes_nome_ant }}</span>
+      </div>
+      <table class="mv-table">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th class="text-right">{{ mes_nome_ant }}</th>
+            <th class="text-right">{{ mes_nome }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in top_clientes %}
+          <tr>
+            <td>{{ c.nome }}</td>
+            <td class="text-right mv-val">{{ "%.1f"|format(c.total_ant / 1000)|replace('.', ',') }}k</td>
+            <td class="text-right mv-val">{{ "%.1f"|format(c.total_mes / 1000)|replace('.', ',') }}k</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="3" class="text-center" style="padding:0.75rem;color:#9CA3AF;font-style:italic;">Sem dados</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Top 5 Produtos -->
+    <div class="m-chart-card" style="margin-bottom: 0.75rem;">
+      <div class="m-card-header">
+        <span class="m-card-title">
+          Top 5 Produtos{% if vend_nome %} — {{ vend_nome.nome.split(' ')[0] }}{% endif %}
+        </span>
+        <span class="m-card-sub">base: {{ mes_nome_ant }}</span>
+      </div>
+      <table class="mv-table">
+        <thead>
+          <tr>
+            <th>Produto</th>
+            <th class="text-right">{{ mes_nome_ant }}</th>
+            <th class="text-right">{{ mes_nome }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in top_produtos %}
+          <tr>
+            <td>{{ p.nome }}</td>
+            <td class="text-right mv-val">{{ "%.1f"|format(p.total_ant / 1000)|replace('.', ',') }}k</td>
+            <td class="text-right mv-val">{{ "%.1f"|format(p.total_mes / 1000)|replace('.', ',') }}k</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="3" class="text-center" style="padding:0.75rem;color:#9CA3AF;font-style:italic;">Sem dados</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
 
     {% endif %}
+    {% endif %}
+
   </main>
 </div>
 
@@ -171,77 +336,19 @@
 
 {% block scripts %}
 <script>
-{% if active_store and vendas_data.series %}
-const _meses  = {{ vendas_data.meses_nomes | tojson }};
-const _series = {{ vendas_data.series | tojson }};
-const _colors = [
-  '{{ theme.graph_color_1 }}',
-  '{{ theme.graph_color_2 }}',
-  '{{ theme.graph_color_3 }}',
-  '{{ theme.graph_color_4 }}',
-];
-
-function fmtReais(v) {
-  if (v >= 1e6) return 'R$ ' + (v / 1e6).toFixed(1).replace('.', ',') + 'M';
-  if (v >= 1e3) return 'R$ ' + (v / 1e3).toFixed(0) + 'K';
-  return 'R$ ' + v.toFixed(0);
-}
-function fmtReaisTooltip(v) {
-  return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-}
-
-const datasets = _series.map((s, i) => ({
-  label: s.nome,
-  data: s.dados,
-  borderColor: _colors[i % _colors.length],
-  backgroundColor: 'transparent',
-  borderWidth: 2,
-  pointRadius: 3,
-  pointHoverRadius: 5,
-  tension: 0.3,
-  datalabels: { display: false },
-}));
-
-new Chart(document.getElementById('chart-vendas-mensal'), {
-  type: 'line',
-  plugins: [ChartDataLabels],
-  data: { labels: _meses, datasets },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: ctx => ' ' + ctx.dataset.label + ': ' + fmtReaisTooltip(ctx.parsed.y),
-        }
-      },
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-      y: {
-        grid: { color: '#F3F4F6' },
-        ticks: { font: { size: 10 }, callback: v => fmtReais(v) },
-        beginAtZero: true,
-      },
-    },
+function selecionarVendedor(cod) {
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('vendedor') === cod) {
+    url.searchParams.delete('vendedor');
+  } else {
+    url.searchParams.set('vendedor', cod);
   }
-});
-
-// Legenda dinâmica
-const legend = document.getElementById('m-chart-legend');
-_series.forEach((s, i) => {
-  const c = _colors[i % _colors.length];
-  const item = document.createElement('span');
-  item.className = 'm-leg-item';
-  item.innerHTML = `<span class="m-leg-dot" style="background:${c};"></span>${s.nome}`;
-  legend.appendChild(item);
-});
-{% endif %}
-
+  window.location.href = url.toString();
+}
 function navegarMotor(tab) {
   const url = new URL(window.location.href);
   url.pathname = url.pathname.replace(/\/motor\/\w+$/, '/motor/' + tab);
+  url.searchParams.delete('vendedor');
   window.location.href = url.toString();
 }
 function abrirSeletorLoja() {
@@ -254,15 +361,15 @@ function fecharSeletorLoja() {
 }
 function selecionarEmpresa(id) {
   const url = new URL(window.location.href);
-  if (id) { url.searchParams.set('company_id', id); }
-  else    { url.searchParams.delete('company_id'); }
+  if (id) { url.searchParams.set('company_id', id); } else { url.searchParams.delete('company_id'); }
   url.searchParams.delete('store_id');
+  url.searchParams.delete('vendedor');
   window.location.href = url.toString();
 }
 function selecionarLoja(id) {
   const url = new URL(window.location.href);
-  if (id) { url.searchParams.set('store_id', id); }
-  else    { url.searchParams.delete('store_id'); }
+  if (id) { url.searchParams.set('store_id', id); } else { url.searchParams.delete('store_id'); }
+  url.searchParams.delete('vendedor');
   window.location.href = url.toString();
 }
 </script>

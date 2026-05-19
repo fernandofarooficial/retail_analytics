@@ -3,7 +3,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from routes.utils import login_required
 import db
 from people import (faturamento_mensal as _faturamento_mensal,
-                    vendas_mensal_por_vendedor as _vendas_mensal_por_vendedor)
+                    vendas_mensal_por_vendedor as _vendas_mensal_por_vendedor,
+                    cobertura_estoque as _cobertura_estoque)
 
 gestao_bp = Blueprint('gestao', __name__, url_prefix='/retail_analytics/gestao')
 
@@ -280,4 +281,25 @@ def vendas():
         ano=ano,
         ano_atual=ano_atual,
         vendas_data=vendas_data,
+    )
+
+
+# ── Estoque ───────────────────────────────────────────────────────────────────
+
+@gestao_bp.route('/estoque')
+@login_required
+def estoque():
+    ctx, redir = _store_context('gestao.estoque')
+    if redir:
+        return redir
+
+    cobertura = []
+    if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
+        cobertura = _cobertura_estoque(
+            ctx['active_microvix_portal'], ctx['active_store_cnpj'])
+
+    return render_template(
+        'gestao/estoque.html',
+        **ctx,
+        cobertura=cobertura,
     )

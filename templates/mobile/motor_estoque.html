@@ -1,5 +1,5 @@
 {% extends 'mobile/base_mobile.html' %}
-{% block title %}Gestão — Faturamento — Retail Analytics{% endblock %}
+{% block title %}Motor — Estoque — Retail Analytics{% endblock %}
 
 {% block body %}
 <style>
@@ -21,72 +21,82 @@
   .m-hdr-info-lbl { font-size: 0.6rem; color: var(--accent); white-space: nowrap; }
   .m-hdr-info-val { font-size: 0.68rem; font-weight: 700; color: var(--secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
 
-  /* ── Sub-tabs (override bar bg to match page bg) ── */
+  /* ── Sub-tabs ── */
   .m-tabs-bar { background: var(--bg); }
 
-  /* ── Seletor de ano ── */
-  .m-ano-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    padding: 0.8rem 1rem 0.2rem;
-  }
-  .m-ano-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 1.5px solid #D1D5DB;
-    background: #fff;
-    font-size: 1rem;
-    color: #374151;
-    cursor: pointer;
-    line-height: 1;
-    transition: background .15s;
-  }
-  .m-ano-btn:active { background: #F3F4F6; }
-  .m-ano-btn:disabled { opacity: 0.35; cursor: default; }
-  .m-ano-val {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #111827;
-    min-width: 60px;
-    text-align: center;
-  }
-
-  /* ── Gráfico ── */
+  /* ── Card base ── */
   .m-chart-card {
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
-    margin: 0.75rem 0 0.5rem;
-    padding: 1rem 0.5rem 0.75rem;
+    margin: 0.75rem 0 0;
+    padding: 0.875rem 0.75rem 0.625rem;
   }
-  .m-chart-title {
+  .m-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.625rem;
+  }
+  .m-card-title {
     font-size: 0.8rem;
     font-weight: 700;
     color: #374151;
-    text-align: center;
-    margin-bottom: 0.5rem;
   }
-  .m-chart-wrap { position: relative; height: 240px; }
-
-  /* ── Legenda personalizada ── */
-  .m-chart-legend {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin-top: 0.6rem;
+  .m-card-sub {
+    font-size: 0.68rem;
+    color: #9CA3AF;
   }
-  .m-leg-item { display: flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; color: #374151; }
-  .m-leg-dot { width: 10px; height: 3px; border-radius: 2px; flex-shrink: 0; }
-  .m-leg-dot-dashed { background: repeating-linear-gradient(90deg, var(--c) 0, var(--c) 4px, transparent 4px, transparent 7px); }
 
-  /* ── Bottom-sheet seletor ── */
+  /* ── Tabela de estoque ── */
+  .me-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+  .me-table th {
+    padding: 0.35rem 0.4rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #9CA3AF;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #F3F4F6;
+    white-space: nowrap;
+  }
+  .me-table td {
+    padding: 0.2rem 0.4rem;
+    color: #374151;
+    white-space: nowrap;
+  }
+  .me-name-row td {
+    padding-top: 0.55rem;
+    padding-bottom: 0.1rem;
+    border-top: 1px solid #F3F4F6;
+    white-space: normal;
+    font-size: 0.78rem;
+    color: #374151;
+    font-weight: 500;
+  }
+  .me-name-row:first-child td { border-top: none; }
+  .me-vals-row td {
+    padding-bottom: 0.55rem;
+  }
+  .me-table tbody tr:last-child td { border-bottom: none; }
+  .me-val {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: #111827;
+  }
+  .me-media {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--theme-primary);
+  }
+  .text-right  { text-align: right; }
+  .text-center { text-align: center; }
+
+  /* ── Bottom-sheet seletor de loja ── */
   .m-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; display: none; }
   .m-sheet-overlay.open { display: block; }
   .m-store-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-radius: 16px 16px 0 0; padding: 1rem 1.25rem calc(1.25rem + var(--safe-bottom, 0px)); z-index: 301; transform: translateY(100%); transition: transform .25s ease; }
@@ -133,9 +143,9 @@
   <!-- ── Sub-tabs ─────────────────────────────────────────────────────── -->
   <div class="m-tabs-bar">
     <div class="m-tabs-l1">
-      <button class="m-tab-l1 active">Faturamento</button>
-      <button class="m-tab-l1" onclick="navegarGestao('vendas')">Vendas</button>
-      <button class="m-tab-l1" onclick="navegarGestao('estoque')">Estoque</button>
+      <button class="m-tab-l1" onclick="navegarMotor('faturamento')">Faturamento</button>
+      <button class="m-tab-l1" onclick="navegarMotor('vendas')">Vendas</button>
+      <button class="m-tab-l1 active">Estoque</button>
     </div>
   </div>
 
@@ -144,38 +154,122 @@
 
     {% if not active_store %}
     <p class="m-hint" style="padding: 2rem 1rem; text-align:center; color:#9CA3AF; font-size:0.875rem;">
-      Selecione uma loja para visualizar o faturamento.
+      Selecione uma loja para visualizar o estoque.
     </p>
+
     {% else %}
 
-    <!-- Seletor de ano -->
-    <div class="m-ano-row">
-      <button class="m-ano-btn" onclick="mudarAno({{ ano - 1 }})">&#8592;</button>
-      <span class="m-ano-val">{{ ano }}</span>
-      <button class="m-ano-btn" onclick="mudarAno({{ ano + 1 }})"
-              {% if ano >= ano_atual %}disabled{% endif %}>&#8594;</button>
+    <!-- ── Card 1: Maior Volume ──────────────────────────────────────── -->
+    <div class="m-chart-card">
+      <div class="m-card-header">
+        <span class="m-card-title">Maior Volume</span>
+        <span class="m-card-sub">qtd. vendida</span>
+      </div>
+      <table class="me-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="text-right">{{ m3_nome[:3] }}</th>
+            <th class="text-right">{{ m2_nome[:3] }}</th>
+            <th class="text-right">{{ m1_nome[:3] }}</th>
+            <th class="text-right">Méd.</th>
+            <th class="text-right">{{ m0_nome[:3] }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in maior_volume %}
+          <tr class="me-name-row">
+            <td colspan="6">{{ p.produto }} <span style="font-size:0.68rem;color:#9CA3AF;">· {{ p.cod_produto }}</span></td>
+          </tr>
+          <tr class="me-vals-row">
+            <td></td>
+            <td class="text-right me-val">{{ "%.0f"|format(p.qtd_m3) }}</td>
+            <td class="text-right me-val">{{ "%.0f"|format(p.qtd_m2) }}</td>
+            <td class="text-right me-val">{{ "%.0f"|format(p.qtd_m1) }}</td>
+            <td class="text-right me-media">{{ "%.1f"|format(p.media)|replace('.', ',') }}</td>
+            <td class="text-right me-val">{{ "%.0f"|format(p.qtd_m0) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center" style="padding:0.75rem;color:#9CA3AF;font-style:italic;">Sem dados</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
 
-    <!-- Gráfico -->
+    <!-- ── Card 2: Maior Faturamento ────────────────────────────────── -->
     <div class="m-chart-card">
-      <div class="m-chart-title">Faturamento Mensal {{ ano }}</div>
-      <div class="m-chart-wrap">
-        <canvas id="chart-fat-mensal"></canvas>
+      <div class="m-card-header">
+        <span class="m-card-title">Maior Faturamento</span>
+        <span class="m-card-sub">R$ faturado</span>
       </div>
-      <div class="m-chart-legend">
-        <span class="m-leg-item">
-          <span class="m-leg-dot" style="background:{{ theme.graph_color_1 }};"></span>Total
-        </span>
-        <span class="m-leg-item">
-          <span class="m-leg-dot" style="background:{{ theme.graph_color_2 }};"></span>Loja
-        </span>
-        <span class="m-leg-item">
-          <span class="m-leg-dot m-leg-dot-dashed" style="--c:{{ theme.graph_color_3 }}; width:14px; height:3px;"></span>Pedidos
-        </span>
+      <table class="me-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="text-right">{{ m3_nome[:3] }}</th>
+            <th class="text-right">{{ m2_nome[:3] }}</th>
+            <th class="text-right">{{ m1_nome[:3] }}</th>
+            <th class="text-right">Méd.</th>
+            <th class="text-right">{{ m0_nome[:3] }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in maior_fat %}
+          <tr class="me-name-row">
+            <td colspan="6">{{ p.produto }} <span style="font-size:0.68rem;color:#9CA3AF;">· {{ p.cod_produto }}</span></td>
+          </tr>
+          <tr class="me-vals-row">
+            <td></td>
+            <td class="text-right me-val">{{ "%.1f"|format(p.fat_m3 / 1000)|replace('.', ',') }}k</td>
+            <td class="text-right me-val">{{ "%.1f"|format(p.fat_m2 / 1000)|replace('.', ',') }}k</td>
+            <td class="text-right me-val">{{ "%.1f"|format(p.fat_m1 / 1000)|replace('.', ',') }}k</td>
+            <td class="text-right me-media">{{ "%.1f"|format(p.media / 1000)|replace('.', ',') }}k</td>
+            <td class="text-right me-val">{{ "%.1f"|format(p.fat_m0 / 1000)|replace('.', ',') }}k</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center" style="padding:0.75rem;color:#9CA3AF;font-style:italic;">Sem dados</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Card 3: Maior Valor Parado ───────────────────────────────── -->
+    <div class="m-chart-card" style="margin-bottom: 0.75rem;">
+      <div class="m-card-header">
+        <span class="m-card-title">Maior Valor Parado</span>
+        <span class="m-card-sub">sem venda &gt; 3 meses</span>
       </div>
+      <table class="me-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="text-right">Últ. Fat.</th>
+            <th class="text-right">Qtd.</th>
+            <th class="text-right">Preço</th>
+            <th class="text-right">Parado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in valor_parado %}
+          <tr class="me-name-row">
+            <td colspan="5">{{ p.produto }} <span style="font-size:0.68rem;color:#9CA3AF;">· {{ p.cod_produto }}</span></td>
+          </tr>
+          <tr class="me-vals-row">
+            <td></td>
+            <td class="text-right" style="color:#6B7280; font-size:0.72rem;">{{ p.ultimo_fat }}</td>
+            <td class="text-right me-val">{{ "%.0f"|format(p.qtd_estoque) }}</td>
+            <td class="text-right me-val">{{ p.preco_unit | br_valor }}</td>
+            <td class="text-right me-media">{{ p.valor_parado | br_valor }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-center" style="padding:0.75rem;color:#9CA3AF;font-style:italic;">Sem dados</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
 
     {% endif %}
+
   </main>
 </div>
 
@@ -223,109 +317,9 @@
 
 {% block scripts %}
 <script>
-{% if active_store and fat_mensal %}
-const _allMeses   = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-const _allLoja    = {{ fat_mensal | map(attribute='loja')    | list | tojson }};
-const _allPedidos = {{ fat_mensal | map(attribute='pedidos') | list | tojson }};
-const _allTotal   = {{ fat_mensal | map(attribute='total')   | list | tojson }};
-const _idx     = _allTotal.map((v, i) => v > 0 ? i : -1).filter(i => i >= 0);
-const _meses   = _idx.map(i => _allMeses[i]);
-const _loja    = _idx.map(i => _allLoja[i]);
-const _pedidos = _idx.map(i => _allPedidos[i]);
-const _total   = _idx.map(i => _allTotal[i]);
-
-function fmtReais(v) {
-  if (v >= 1e6)  return 'R$ ' + (v / 1e6).toFixed(1).replace('.', ',') + 'M';
-  if (v >= 1e3)  return 'R$ ' + (v / 1e3).toFixed(0) + 'K';
-  return 'R$ ' + v.toFixed(0);
-}
-function fmtReaisTooltip(v) {
-  return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-}
-
-const _c1 = '{{ theme.graph_color_1 }}';
-const _c2 = '{{ theme.graph_color_2 }}';
-const _c3 = '{{ theme.graph_color_3 }}';
-
-new Chart(document.getElementById('chart-fat-mensal'), {
-  type: 'line',
-  plugins: [ChartDataLabels],
-  data: {
-    labels: _meses,
-    datasets: [
-      {
-        label: 'Total',
-        data: _total,
-        borderColor: _c1,
-        backgroundColor: 'transparent',
-        borderWidth: 2.5,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        tension: 0.3,
-        datalabels: { display: false },
-      },
-      {
-        label: 'Loja',
-        data: _loja,
-        borderColor: _c2,
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        tension: 0.3,
-        datalabels: { display: false },
-      },
-      {
-        label: 'Pedidos',
-        data: _pedidos,
-        borderColor: _c3,
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderDash: [6, 3],
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        tension: 0.3,
-        datalabels: { display: false },
-      },
-    ]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: ctx => ' ' + ctx.dataset.label + ': ' + fmtReaisTooltip(ctx.parsed.y),
-        }
-      },
-    },
-    scales: {
-      x: {
-        grid: { display: false },
-        ticks: { font: { size: 10 } },
-      },
-      y: {
-        grid: { color: '#F3F4F6' },
-        ticks: {
-          font: { size: 10 },
-          callback: v => fmtReais(v),
-        },
-        beginAtZero: true,
-      },
-    },
-  }
-});
-{% endif %}
-
-function mudarAno(ano) {
+function navegarMotor(tab) {
   const url = new URL(window.location.href);
-  url.searchParams.set('ano', ano);
-  window.location.href = url.toString();
-}
-function navegarGestao(tab) {
-  const url = new URL(window.location.href);
-  url.pathname = url.pathname.replace(/\/gestao\/\w+$/, '/gestao/' + tab);
+  url.pathname = url.pathname.replace(/\/motor\/\w+$/, '/motor/' + tab);
   window.location.href = url.toString();
 }
 function abrirSeletorLoja() {
@@ -338,15 +332,13 @@ function fecharSeletorLoja() {
 }
 function selecionarEmpresa(id) {
   const url = new URL(window.location.href);
-  if (id) { url.searchParams.set('company_id', id); }
-  else    { url.searchParams.delete('company_id'); }
+  if (id) { url.searchParams.set('company_id', id); } else { url.searchParams.delete('company_id'); }
   url.searchParams.delete('store_id');
   window.location.href = url.toString();
 }
 function selecionarLoja(id) {
   const url = new URL(window.location.href);
-  if (id) { url.searchParams.set('store_id', id); }
-  else    { url.searchParams.delete('store_id'); }
+  if (id) { url.searchParams.set('store_id', id); } else { url.searchParams.delete('store_id'); }
   window.location.href = url.toString();
 }
 </script>

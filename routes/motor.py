@@ -6,7 +6,10 @@ import db
 from people import (faturamento_diario_mes      as _faturamento_diario_mes,
                     vendedores_mes              as _vendedores_mes,
                     top5_clientes_vendedor      as _top5_clientes_vendedor,
-                    top5_produtos_vendedor      as _top5_produtos_vendedor)
+                    top5_produtos_vendedor      as _top5_produtos_vendedor,
+                    estoque_maior_volume        as _estoque_maior_volume,
+                    estoque_maior_faturamento   as _estoque_maior_faturamento,
+                    estoque_valor_parado        as _estoque_valor_parado)
 from metas import meta_faturamento_acum_diario as _meta_faturamento_acum_diario
 
 motor_bp = Blueprint('motor', __name__, url_prefix='/retail_analytics/motor')
@@ -342,4 +345,59 @@ def vendas():
         selected_vendedor=selected_vendedor,
         top_clientes=top_clientes,
         top_produtos=top_produtos,
+    )
+
+
+# ── Estoque ───────────────────────────────────────────────────────────────────
+
+@motor_bp.route('/estoque')
+@login_required
+def estoque():
+    ctx, redir = _store_context('motor.estoque')
+    if redir:
+        return redir
+
+    hoje = date_type.today()
+    ano  = hoje.year
+    mes  = hoje.month
+
+    # Computa m0 (atual), m1, m2, m3 em ordem decrescente
+    meses = []
+    y, m = ano, mes
+    for _ in range(4):
+        ini = date_type(y, m, 1)
+        fim = date_type(y, m, calendar.monthrange(y, m)[1])
+        meses.append({'ini': ini.strftime('%Y-%m-%d'),
+                      'fim': fim.strftime('%Y-%m-%d'),
+                      'nome': _MESES_PT[m - 1]})
+        m -= 1
+        if m == 0:
+            m, y = 12, y - 1
+    m0, m1, m2, m3 = meses[0], meses[1], meses[2], meses[3]
+
+    maior_volume     = []
+    maior_fat        = []
+    valor_parado     = []
+
+    if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
+        portal = ctx['active_microvix_portal']
+        cnpj   = ctx['active_store_cnpj']
+        args   = (portal, cnpj,
+                  m3['ini'], m3['fim'],
+                  m2['ini'], m2['fim'],
+                  m1['ini'], m1['fim'],
+                  m0['ini'], m0['fim'])
+        maior_volume = _estoque_maior_volume(*args)
+        maior_fat    = _estoque_maior_faturamento(*args)
+        valor_parado = _estoque_valor_parado(portal, cnpj, m3['ini'])
+
+    return render_template(
+        'motor/estoque.html',
+        **ctx,
+        ano=ano,
+        m0_nome=m0['nome'], m1_nome=m1['nome'],
+        m2_nome=m2['nome'], m3_nome=m3['nome'],
+        maior_volume=maior_volume,
+        maior_fat=maior_fat,
+        valor_parado=valor_parado,
     )
