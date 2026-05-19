@@ -48,6 +48,19 @@ def br_valor_filter(value, symbol=''):
         return '—'
 
 
+@app.template_filter('br_valor_k')
+def br_valor_k_filter(value):
+    """Formata valor monetário em milhares com uma casa decimal (R$ X,Xk)."""
+    if value is None:
+        return '—'
+    try:
+        v = float(value) / 1000
+        fmt = f'{v:,.1f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+        return f'R$ {fmt}k'
+    except (ValueError, TypeError):
+        return '—'
+
+
 from routes.auth      import auth_bp
 from routes.cadastros import cadastros_bp
 from routes.conta     import conta_bp
