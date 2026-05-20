@@ -1632,12 +1632,19 @@ def mapa_calor():
             selected_store_id = active_store['store_id']
 
     cameras = []
+    camera_k = None
     if active_store:
         cameras = db.query_all("""
-            SELECT camera_id, camera_name, heat_camera_id
+            SELECT camera_id, camera_name
             FROM   faciais.cameras
-            WHERE  store_id = %s AND heat_camera_id IS NOT NULL
+            WHERE  store_id = %s AND camera_type_id = 'H'
             ORDER  BY camera_name
+        """, (active_store['store_id'],))
+        camera_k = db.query_one("""
+            SELECT camera_id
+            FROM   faciais.cameras
+            WHERE  store_id = %s AND camera_type_id = 'K'
+            LIMIT  1
         """, (active_store['store_id'],))
 
     today    = date_type.today().strftime('%Y-%m-%d')
@@ -1645,8 +1652,9 @@ def mapa_calor():
     date_fim = today
     hora_ini = '08:00'
     hora_fim = '18:00'
-    resultado = None
-    erro      = None
+    resultado       = None
+    erro            = None
+    pessoas_entrada = None
 
     if request.method == 'POST' and active_store and cameras:
         date_ini = request.form.get('date_ini', today)
@@ -1655,7 +1663,7 @@ def mapa_calor():
         hora_fim = request.form.get('hora_fim', '18:00')
         heat_id  = request.form.get('heat_camera_id', type=int)
         if not heat_id and len(cameras) == 1:
-            heat_id = cameras[0]['heat_camera_id']
+            heat_id = cameras[0]['camera_id']
         try:
             resp = _requests.post(
                 HEATMAP_API_URL,
@@ -1680,10 +1688,29 @@ def mapa_calor():
                 for a in r.get('resumo_por_area', []):
                     a['pct'] = round(a['quantidade'] / total * 100, 1) if total else 0
                 resultado = r
+                pessoas_entrada = r.get('resumo_geral', {}).get('entrada')
             else:
                 erro = 'A API retornou erro.'
         except Exception as e:
             erro = f'Erro ao consultar API: {e}'
+
+        if resultado and camera_k:
+            try:
+                resp_k = _requests.post(
+                    HEATMAP_API_URL,
+                    json={
+                        'camera_id': camera_k['camera_id'],
+                        'data_ini':  f"{date_ini} {hora_ini}:00",
+                        'data_fim':  f"{date_fim} {hora_fim}:00",
+                    },
+                    auth=(HEATMAP_API_USER, HEATMAP_API_PASS),
+                    timeout=30,
+                )
+                data_k = resp_k.json()
+                if data_k.get('ok'):
+                    pessoas_entrada = data_k['resultado'].get('resumo_geral', {}).get('entrada')
+            except Exception:
+                pass
 
     theme = dict(primary_color='#F47B20', secondary_color='#0057A8', accent_color='#FFFFFF',
                  text_color='#111827', background_color='#F5F5F5')
@@ -1709,6 +1736,7 @@ def mapa_calor():
         cameras=cameras,
         resultado=resultado,
         erro=erro,
+        pessoas_entrada=pessoas_entrada,
         active_store=active_store,
         stores=stores,
         companies=companies,
