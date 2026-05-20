@@ -23,6 +23,8 @@
            href="{{ url_for('auth.dashboard') }}">Dashboard</a>
         <a class="nav-link {% if request.endpoint == 'auth.visitacao' %}active{% endif %}"
            href="{{ url_for('auth.visitacao') }}">Visitação</a>
+        <a class="nav-link {% if request.endpoint == 'auth.mapa_calor' %}active{% endif %}"
+           href="{{ url_for('auth.mapa_calor') }}">Mapa de Calor</a>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('gestao.') %}active{% endif %}"
            href="{{ url_for('gestao.faturamento') }}">Gestão</a>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('motor.') %}active{% endif %}"

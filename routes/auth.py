@@ -1371,3 +1371,270 @@ def visitacao():
         theme=theme,
         clientes=clientes,
     )
+
+
+# ── Mapa de Calor ─────────────────────────────────────────────────────────────
+
+@auth_bp.route('/mapa-calor', methods=['GET', 'POST'])
+@login_required
+@screen_required('dashboard')
+def mapa_calor():
+    import requests as _requests
+    from routes.utils import (HEATMAP_API_URL, HEATMAP_API_BASE,
+                               HEATMAP_API_USER, HEATMAP_API_PASS)
+
+    user_id   = session['user_id']
+    user_type = session['user_type_id']
+    company_logo        = None
+    company_name        = None
+    companies           = []
+    selected_company_id = request.args.get('company_id', type=int)
+    stores              = []
+    selected_store_id   = request.values.get('store_id', type=int)
+
+    if user_type == 'adm':
+        companies = db.query_all("""
+            SELECT c.company_id, c.company_name, ct.logo_url
+            FROM   faciais.companies c
+            JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
+            WHERE  ct.logo_url IS NOT NULL
+            ORDER  BY c.company_name
+        """)
+        if selected_company_id:
+            match = next((c for c in companies if c['company_id'] == selected_company_id), None)
+            if match:
+                company_logo = match['logo_url']
+                company_name = match['company_name']
+            stores = db.query_all("""
+                SELECT store_id, store_name FROM faciais.stores
+                WHERE  company_id = %s ORDER BY store_name
+            """, (selected_company_id,))
+
+    elif user_type == 'man':
+        companies = db.query_all("""
+            SELECT DISTINCT c.company_id, c.company_name, ct.logo_url
+            FROM   faciais.user_company_groups ucg
+            JOIN   faciais.companies c        ON c.company_group_id = ucg.company_group_id
+            LEFT   JOIN faciais.company_themes ct ON ct.company_id  = c.company_id
+            WHERE  ucg.user_id = %s ORDER BY c.company_name
+        """, (user_id,))
+        if selected_company_id:
+            match = next((c for c in companies if c['company_id'] == selected_company_id), None)
+            if match:
+                company_logo = match['logo_url']
+                company_name = match['company_name']
+            stores = db.query_all("""
+                SELECT store_id, store_name FROM faciais.stores
+                WHERE  company_id = %s ORDER BY store_name
+            """, (selected_company_id,))
+        else:
+            first = next((c for c in companies if c.get('logo_url')), None)
+            if first:
+                company_logo = first['logo_url']
+                company_name = first['company_name']
+
+    elif user_type == 'ret':
+        row = db.query_one("""
+            SELECT c.company_name, ct.logo_url
+            FROM   faciais.user_retailer_groups urg
+            JOIN   faciais.stores s          ON s.retailer_group_id = urg.retailer_group_id
+            JOIN   faciais.companies c       ON c.company_id = s.company_id
+            JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
+            WHERE  urg.user_id = %s AND ct.logo_url IS NOT NULL LIMIT 1
+        """, (user_id,))
+        if row:
+            company_logo = row['logo_url']
+            company_name = row['company_name']
+        stores = db.query_all("""
+            SELECT DISTINCT s.store_id, s.store_name
+            FROM   faciais.user_retailer_groups urg
+            JOIN   faciais.stores s ON s.retailer_group_id = urg.retailer_group_id
+            WHERE  urg.user_id = %s ORDER BY s.store_name
+        """, (user_id,))
+
+    elif user_type == 'emp':
+        row = db.query_one("""
+            SELECT c.company_name, ct.logo_url
+            FROM   faciais.user_stores us
+            JOIN   faciais.stores s          ON s.store_id = us.store_id
+            JOIN   faciais.companies c       ON c.company_id = s.company_id
+            JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
+            WHERE  us.user_id = %s AND ct.logo_url IS NOT NULL LIMIT 1
+        """, (user_id,))
+        if row:
+            company_logo = row['logo_url']
+            company_name = row['company_name']
+        stores = db.query_all("""
+            SELECT s.store_id, s.store_name
+            FROM   faciais.user_stores us
+            JOIN   faciais.stores s ON s.store_id = us.store_id
+            WHERE  us.user_id = %s ORDER BY s.store_name
+        """, (user_id,))
+
+    active_store = None
+    if stores:
+        if selected_store_id:
+            active_store = next((s for s in stores if s['store_id'] == selected_store_id), None)
+        if active_store is None and len(stores) == 1:
+            active_store      = stores[0]
+            selected_store_id = active_store['store_id']
+
+    cameras  = []
+    camera_k = None
+    if active_store:
+        cameras = db.query_all("""
+            SELECT camera_id, camera_name
+            FROM   faciais.cameras
+            WHERE  store_id = %s AND camera_type_id = 'H'
+            ORDER  BY camera_name
+        """, (active_store['store_id'],))
+        camera_k = db.query_one("""
+            SELECT camera_id
+            FROM   faciais.cameras
+            WHERE  store_id = %s AND camera_type_id = 'K'
+            LIMIT  1
+        """, (active_store['store_id'],))
+
+    today    = date_type.today().strftime('%Y-%m-%d')
+    date_ini = today
+    date_fim = today
+    hora_ini = '08:00'
+    hora_fim = '18:00'
+    resultado       = None
+    erro            = None
+    pessoas_entrada = None
+
+    if request.method == 'POST' and active_store and cameras:
+        date_ini = request.form.get('date_ini', today)
+        date_fim = request.form.get('date_fim', today)
+        hora_ini = request.form.get('hora_ini', '08:00')
+        hora_fim = request.form.get('hora_fim', '18:00')
+        heat_id  = request.form.get('heat_camera_id', type=int)
+        if not heat_id and len(cameras) == 1:
+            heat_id = cameras[0]['camera_id']
+        try:
+            resp = _requests.post(
+                HEATMAP_API_URL,
+                json={
+                    'camera_id': heat_id,
+                    'data_ini':  f"{date_ini} {hora_ini}:00",
+                    'data_fim':  f"{date_fim} {hora_fim}:00",
+                },
+                auth=(HEATMAP_API_USER, HEATMAP_API_PASS),
+                timeout=30,
+            )
+            data = resp.json()
+            if data.get('ok'):
+                r = data['resultado']
+                for key in ('planta_heatmap', 'frame_camera_areas'):
+                    if r.get('imagens', {}).get(key):
+                        r['imagens'][key]['full_url'] = (
+                            '/retail_analytics/heatmap-imagem?path='
+                            + r['imagens'][key]['url']
+                        )
+                total = sum(a['quantidade'] for a in r.get('resumo_por_area', []))
+                for a in r.get('resumo_por_area', []):
+                    a['pct'] = round(a['quantidade'] / total * 100, 1) if total else 0
+                resultado = r
+                pessoas_entrada = r.get('resumo_geral', {}).get('entrada')
+            else:
+                erro = 'A API retornou erro.'
+        except Exception as e:
+            erro = f'Erro ao consultar API: {e}'
+
+        if resultado and camera_k:
+            try:
+                resp_k = _requests.post(
+                    HEATMAP_API_URL,
+                    json={
+                        'camera_id': camera_k['camera_id'],
+                        'data_ini':  f"{date_ini} {hora_ini}:00",
+                        'data_fim':  f"{date_fim} {hora_fim}:00",
+                    },
+                    auth=(HEATMAP_API_USER, HEATMAP_API_PASS),
+                    timeout=30,
+                )
+                data_k = resp_k.json()
+                if data_k.get('ok'):
+                    pessoas_entrada = data_k['resultado'].get('resumo_geral', {}).get('entrada')
+            except Exception:
+                pass
+
+    theme = dict(primary_color='#F47B20', secondary_color='#0057A8', accent_color='#FFFFFF',
+                 text_color='#111827', background_color='#F5F5F5',
+                 graph_color_1='#0057A8', graph_color_2='#F47B20',
+                 graph_color_3='#E65100', graph_color_4='#388E3C')
+    theme_company_id = selected_company_id
+    if not theme_company_id and active_store:
+        row = db.query_one(
+            "SELECT company_id FROM faciais.stores WHERE store_id = %s",
+            (active_store['store_id'],)
+        )
+        if row:
+            theme_company_id = row['company_id']
+    if theme_company_id:
+        row = db.query_one(
+            """SELECT primary_color, secondary_color, accent_color, text_color, background_color,
+                      graph_color_1, graph_color_2, graph_color_3, graph_color_4
+               FROM   faciais.company_themes WHERE company_id = %s""",
+            (theme_company_id,)
+        )
+        if row:
+            theme['primary_color'] = row['primary_color']
+            if row['secondary_color']:
+                theme['secondary_color'] = row['secondary_color']
+            if row['accent_color']:
+                theme['accent_color'] = row['accent_color']
+            if row['text_color']:
+                theme['text_color'] = row['text_color']
+            if row['background_color']:
+                theme['background_color'] = row['background_color']
+            for k in ('graph_color_1', 'graph_color_2', 'graph_color_3', 'graph_color_4'):
+                if row[k]:
+                    theme[k] = row[k]
+
+    return render_template(
+        'heatmap.html',
+        cameras=cameras,
+        resultado=resultado,
+        erro=erro,
+        pessoas_entrada=pessoas_entrada,
+        active_store=active_store,
+        stores=stores,
+        companies=companies,
+        company_logo=company_logo,
+        company_name=company_name,
+        selected_company_id=selected_company_id,
+        selected_store_id=selected_store_id,
+        date_ini=date_ini,
+        date_fim=date_fim,
+        hora_ini=hora_ini,
+        hora_fim=hora_fim,
+        theme=theme,
+    )
+
+
+@auth_bp.route('/heatmap-imagem')
+@login_required
+def heatmap_imagem():
+    import requests as _requests
+    from flask import Response, abort
+    from routes.utils import HEATMAP_API_BASE, HEATMAP_API_USER, HEATMAP_API_PASS
+
+    path = request.args.get('path', '')
+    allowed = ('/static/heatmaps/', '/static/cameras/')
+    if not any(path.startswith(p) for p in allowed):
+        abort(400)
+
+    try:
+        resp = _requests.get(
+            HEATMAP_API_BASE + path,
+            auth=(HEATMAP_API_USER, HEATMAP_API_PASS),
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            abort(resp.status_code)
+        content_type = resp.headers.get('Content-Type', 'image/png')
+        return Response(resp.content, content_type=content_type)
+    except Exception:
+        abort(502)

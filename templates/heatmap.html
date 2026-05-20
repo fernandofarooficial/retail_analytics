@@ -1,0 +1,452 @@
+{% extends 'base_web.html' %}
+{% block title %}Mapa de Calor — Retail Analytics{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --theme-primary: {{ theme.primary_color }};
+    --theme-secondary: {{ theme.secondary_color }};
+  }
+
+  /* ── Formulário ── */
+  .heat-form-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 5px rgba(0,0,0,.09);
+    padding: 1.25rem 1.5rem;
+    margin-top: 1.25rem;
+  }
+  .heat-form-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 1rem;
+  }
+  .heat-form-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+  .heat-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .heat-form-group label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .heat-form-group select,
+  .heat-form-group input[type="date"],
+  .heat-form-group input[type="time"] {
+    padding: 0.45rem 0.6rem;
+    border: 1px solid #D1D5DB;
+    border-radius: 7px;
+    font-size: 0.875rem;
+    color: #111827;
+    background: #F9FAFB;
+    min-width: 140px;
+  }
+  .heat-form-group input[type="time"] {
+    min-width: 100px;
+  }
+  .heat-form-period {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .heat-form-period-label {
+    font-size: 0.67rem;
+    font-weight: 700;
+    color: #9CA3AF;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .heat-form-period-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .heat-form-submit {
+    padding: 0.5rem 1.5rem;
+    background: var(--theme-primary);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    align-self: flex-end;
+  }
+  .heat-form-submit:hover { opacity: 0.88; }
+
+  /* ── Erro ── */
+  .heat-erro {
+    background: #FEF2F2;
+    border: 1px solid #FCA5A5;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: #DC2626;
+    font-size: 0.875rem;
+    margin-top: 1rem;
+  }
+
+  /* ── Resultado ── */
+  .heat-result-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 1rem;
+    margin-top: 1.25rem;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .heat-result-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── KPI pessoas ── */
+  .heat-kpi-card {
+    background: var(--theme-primary);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    padding: 1.5rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .heat-kpi-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(255,255,255,.8);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 0.5rem;
+  }
+  .heat-kpi-value {
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+  }
+  .heat-kpi-sub {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,.7);
+    margin-top: 0.5rem;
+    line-height: 1.4;
+  }
+
+  /* ── Distribuição por área ── */
+  .heat-section-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 5px rgba(0,0,0,.09);
+    padding: 1.25rem;
+  }
+  .heat-section-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 1rem;
+  }
+  .heat-area-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .heat-area-table th {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #9CA3AF;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    text-align: left;
+    padding: 0 0.5rem 0.5rem;
+    border-bottom: 2px solid #F3F4F6;
+  }
+  .heat-area-table td {
+    padding: 0.55rem 0.5rem;
+    border-bottom: 1px solid #F9FAFB;
+    font-size: 0.875rem;
+    color: #374151;
+    vertical-align: middle;
+  }
+  .heat-area-table tr:last-child td { border-bottom: none; }
+  .heat-tipo-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .heat-tipo-area  { background: #EFF6FF; color: #1D4ED8; }
+  .heat-tipo-outro { background: #F0FDF4; color: #15803D; }
+  .heat-bar-wrap {
+    width: 120px;
+  }
+  .heat-bar-bg {
+    height: 6px;
+    background: #E5E7EB;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .heat-bar {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--theme-primary);
+  }
+  .heat-pct {
+    font-size: 0.8rem;
+    color: #6B7280;
+    text-align: right;
+    min-width: 3.5rem;
+  }
+
+  /* ── Imagens ── */
+  .heat-images-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  @media (max-width: 768px) {
+    .heat-images-row { grid-template-columns: 1fr; }
+  }
+  .heat-img-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 5px rgba(0,0,0,.09);
+    padding: 1rem;
+  }
+  .heat-img-card img {
+    width: 100%;
+    border-radius: 6px;
+    display: block;
+  }
+  .heat-img-caption {
+    font-size: 0.72rem;
+    color: #9CA3AF;
+    text-align: center;
+    margin-top: 0.5rem;
+  }
+
+  /* ── Sem câmera / sem loja ── */
+  .heat-hint {
+    text-align: center;
+    color: #9CA3AF;
+    font-size: 0.9375rem;
+    padding: 3rem;
+  }
+</style>
+
+<div class="page-header">
+  <h1>Mapa de Calor</h1>
+  <div class="dashboard-selectors">
+
+    {% if session.get('user_type_id') in ('adm', 'man') and companies %}
+    <div class="dashboard-company-select">
+      <label for="company-select">Empresa:</label>
+      <select id="company-select" onchange="selecionarEmpresa(this.value)">
+        <option value="">— Selecione —</option>
+        {% for c in companies %}
+        <option value="{{ c.company_id }}"
+            {% if c.company_id == selected_company_id %}selected{% endif %}>
+          {{ c.company_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    {% if stores %}
+    <div class="dashboard-company-select">
+      <label for="store-select">Loja:</label>
+      <select id="store-select" onchange="selecionarLoja(this.value)">
+        {% if stores|length > 1 %}
+        <option value="">— Selecione —</option>
+        {% endif %}
+        {% for s in stores %}
+        <option value="{{ s.store_id }}"
+            {% if s.store_id == selected_store_id %}selected{% endif %}>
+          {{ s.store_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% if not active_store %}
+<p class="heat-hint">Selecione uma loja para visualizar o mapa de calor.</p>
+
+{% elif not cameras %}
+<p class="heat-hint">Nenhuma câmera de mapa de calor (tipo H) configurada para esta loja.</p>
+
+{% else %}
+
+<!-- ── Formulário ────────────────────────────────────────────────────────── -->
+<div class="heat-form-card">
+  <div class="heat-form-title">Consultar Mapa de Calor</div>
+  <form method="POST">
+    <input type="hidden" name="store_id" value="{{ active_store.store_id }}">
+    {% if selected_company_id %}
+    <input type="hidden" name="company_id" value="{{ selected_company_id }}">
+    {% endif %}
+
+    <div class="heat-form-row">
+
+      {% if cameras|length > 1 %}
+      <div class="heat-form-group">
+        <label>Câmera</label>
+        <select name="heat_camera_id">
+          {% for cam in cameras %}
+          <option value="{{ cam.camera_id }}">{{ cam.camera_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% else %}
+      <input type="hidden" name="heat_camera_id" value="{{ cameras[0].camera_id }}">
+      {% endif %}
+
+      <div class="heat-form-period">
+        <div class="heat-form-period-label">Início</div>
+        <div class="heat-form-period-row">
+          <div class="heat-form-group">
+            <label>Data</label>
+            <input type="date" name="date_ini" value="{{ date_ini }}">
+          </div>
+          <div class="heat-form-group">
+            <label>Hora</label>
+            <input type="time" name="hora_ini" value="{{ hora_ini }}">
+          </div>
+        </div>
+      </div>
+
+      <div class="heat-form-period">
+        <div class="heat-form-period-label">Fim</div>
+        <div class="heat-form-period-row">
+          <div class="heat-form-group">
+            <label>Data</label>
+            <input type="date" name="date_fim" value="{{ date_fim }}">
+          </div>
+          <div class="heat-form-group">
+            <label>Hora</label>
+            <input type="time" name="hora_fim" value="{{ hora_fim }}">
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="heat-form-submit">Consultar</button>
+    </div>
+  </form>
+</div>
+
+{% if erro %}
+<div class="heat-erro">{{ erro }}</div>
+{% endif %}
+
+{% if resultado %}
+
+<div class="heat-result-grid">
+
+  <!-- KPI Pessoas -->
+  <div class="heat-kpi-card">
+    <div class="heat-kpi-label">Pessoas</div>
+    <div class="heat-kpi-value">{{ pessoas_entrada if pessoas_entrada is not none else '—' }}</div>
+    <div class="heat-kpi-sub">
+      {{ date_ini }} – {{ date_fim }}<br>
+      {{ hora_ini }} – {{ hora_fim }}
+    </div>
+  </div>
+
+  <!-- Distribuição por área -->
+  {% if resultado.resumo_por_area %}
+  <div class="heat-section-card">
+    <div class="heat-section-title">Distribuição por Área</div>
+    <table class="heat-area-table">
+      <thead>
+        <tr>
+          <th>Área</th>
+          <th>Tipo</th>
+          <th style="text-align:right">Qtd.</th>
+          <th></th>
+          <th style="text-align:right">%</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for area in resultado.resumo_por_area %}
+        <tr>
+          <td>{{ area.area_nome }}</td>
+          <td>
+            <span class="heat-tipo-badge {% if area.tipo_contagem == 'area' %}heat-tipo-area{% else %}heat-tipo-outro{% endif %}">
+              {{ area.tipo_contagem }}
+            </span>
+          </td>
+          <td style="text-align:right;font-weight:700">{{ area.quantidade }}</td>
+          <td class="heat-bar-wrap">
+            <div class="heat-bar-bg">
+              <div class="heat-bar" style="width:{{ area.pct }}%"></div>
+            </div>
+          </td>
+          <td class="heat-pct">{{ area.pct }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div></div>
+  {% endif %}
+
+</div>
+
+<!-- Imagens -->
+{% if resultado.imagens.planta_heatmap or resultado.imagens.frame_camera_areas %}
+<div class="heat-images-row">
+
+  {% if resultado.imagens.planta_heatmap %}
+  <div class="heat-img-card">
+    <div class="heat-section-title">Planta — Mapa de Calor</div>
+    <img src="{{ resultado.imagens.planta_heatmap.full_url }}"
+         alt="Planta Mapa de Calor">
+    <div class="heat-img-caption">
+      {{ resultado.periodo.data_ini }} — {{ resultado.periodo.data_fim }}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if resultado.imagens.frame_camera_areas %}
+  <div class="heat-img-card">
+    <div class="heat-section-title">Frame com Áreas</div>
+    <img src="{{ resultado.imagens.frame_camera_areas.full_url }}"
+         alt="Frame com Áreas">
+  </div>
+  {% endif %}
+
+</div>
+{% endif %}
+
+{% endif %}{# resultado #}
+{% endif %}{# active_store / cameras #}
+
+<script>
+function selecionarEmpresa(id) {
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set('company_id', id);
+  else    url.searchParams.delete('company_id');
+  url.searchParams.delete('store_id');
+  window.location.href = url.toString();
+}
+function selecionarLoja(id) {
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set('store_id', id);
+  else    url.searchParams.delete('store_id');
+  window.location.href = url.toString();
+}
+</script>
+{% endblock %}
