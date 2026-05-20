@@ -174,8 +174,8 @@
             <td></td>
             <td class="text-right cob-val">{{ "%.1f"|format(p.media_diaria)|replace('.', ',') }}</td>
             <td class="text-right cob-val">{{ "%.0f"|format(p.qtd_estoque) }}</td>
-            <td class="text-right {% if p.cobertura_dias > 0 %}cob-pos{% else %}cob-neg{% endif %}">
-              {{ "%.1f"|format(p.cobertura_dias)|replace('.', ',') }}d
+            <td class="text-right cob-pos">
+              {{ p.cobertura_dias }}d
             </td>
           </tr>
           {% endfor %}

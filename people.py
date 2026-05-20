@@ -1,3 +1,4 @@
+import math
 import db
 
 
@@ -584,10 +585,8 @@ def cobertura_estoque(portal, cnpj):
         SELECT
             v.cod_produto,
             COALESCE(NULLIF(TRIM(p.descricao_basica), ''), p.nome)  AS produto,
-            ROUND((v.qtd_vendida / 30.0)::numeric, 1)               AS media_diaria,
-            COALESCE(d.quantidade, 0)                                AS qtd_estoque,
-            ROUND((COALESCE(d.quantidade, 0) / (v.qtd_vendida / 30.0))::numeric, 1)
-                                                                     AS cobertura_dias
+            (v.qtd_vendida / 30.0)                                   AS media_diaria,
+            COALESCE(d.quantidade, 0)                                AS qtd_estoque
         FROM   vendas_30d v
         JOIN   microvix.microvix_produtos p
                ON p.portal = %s AND p.cod_produto = v.cod_produto
@@ -595,16 +594,28 @@ def cobertura_estoque(portal, cnpj):
                ON d.portal = %s AND d.cnpj_emp = %s AND d.cod_produto = v.cod_produto
         WHERE  v.qtd_vendida > 0
           AND  d.quantidade  > 0
-        ORDER  BY cobertura_dias ASC, qtd_estoque ASC
-        LIMIT  10
+        ORDER  BY d.quantidade ASC
+        LIMIT  50
     """, (portal, cnpj, portal, portal, cnpj))
-    return [
-        {
-            'cod_produto':   r['cod_produto'],
-            'produto':       r['produto'] or '(sem nome)',
-            'media_diaria':  float(r['media_diaria']  or 0),
-            'qtd_estoque':   float(r['qtd_estoque']   or 0),
-            'cobertura_dias': float(r['cobertura_dias'] or 0),
-        }
-        for r in rows
-    ]
+
+    result = []
+    for r in rows:
+        qtd = float(r['qtd_estoque'] or 0)
+        med = float(r['media_diaria'] or 0)
+        if qtd <= 0 or med <= 0:
+            continue
+        if qtd <= 1:
+            cob = 1
+        else:
+            formula = math.floor(qtd / med)
+            cob = min(formula, math.floor(qtd))
+        result.append({
+            'cod_produto':    r['cod_produto'],
+            'produto':        r['produto'] or '(sem nome)',
+            'media_diaria':   round(med, 1),
+            'qtd_estoque':    qtd,
+            'cobertura_dias': cob,
+        })
+
+    result.sort(key=lambda x: x['cobertura_dias'])
+    return result[:10]
