@@ -594,7 +594,9 @@ def cobertura_estoque(portal, cnpj):
                ON d.portal = %s AND d.cnpj_emp = %s AND d.cod_produto = v.cod_produto
         WHERE  v.qtd_vendida > 0
           AND  d.quantidade  > 0
-        ORDER  BY d.quantidade ASC
+          AND  (v.qtd_vendida / 30.0) >= 0.45
+        ORDER  BY (COALESCE(d.quantidade, 0) / (v.qtd_vendida / 30.0)) ASC,
+                  d.quantidade ASC
         LIMIT  50
     """, (portal, cnpj, portal, portal, cnpj))
 
