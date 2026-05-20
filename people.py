@@ -602,7 +602,7 @@ def cobertura_estoque(portal, cnpj):
     for r in rows:
         qtd = float(r['qtd_estoque'] or 0)
         med = float(r['media_diaria'] or 0)
-        if qtd <= 0 or med <= 0:
+        if qtd <= 0 or round(med, 1) <= 0:
             continue
         if qtd <= 1:
             cob = 1
