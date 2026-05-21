@@ -175,6 +175,27 @@
       </div>
     </div>
 
+    {% if fat_periodos %}
+    {% set _pc = [theme.graph_color_1, theme.graph_color_2, theme.graph_color_3] %}
+    <!-- Gráfico Distribuição Intra-Mensal -->
+    <div class="m-chart-card">
+      <div class="m-chart-title">Distribuição por Período (3 meses anteriores)</div>
+      <div class="m-chart-wrap">
+        <canvas id="chart-fat-periodos"></canvas>
+      </div>
+      <div class="m-chart-legend">
+        {% for fp in fat_periodos %}
+        <span class="m-leg-item">
+          <span class="m-leg-dot" style="background:{{ _pc[loop.index0] }};"></span>{{ fp.label }}
+        </span>
+        {% endfor %}
+        <span class="m-leg-item">
+          <span class="m-leg-dot m-leg-dot-dashed" style="--c:{{ theme.graph_color_4 }}; width:14px; height:3px;"></span>Média
+        </span>
+      </div>
+    </div>
+    {% endif %}
+
     {% endif %}
   </main>
 </div>
@@ -311,6 +332,64 @@ new Chart(document.getElementById('chart-fat-mensal'), {
           font: { size: 10 },
           callback: v => fmtReais(v),
         },
+        beginAtZero: true,
+      },
+    },
+  }
+});
+{% endif %}
+
+{% if fat_periodos %}
+const _pLabels = ['01-05','06-10','11-15','16-20','21-25','26-31'];
+const _pData   = {{ fat_periodos | tojson }};
+const _pMedia  = {{ fat_periodos_media | tojson }};
+const _pColors = ['{{ theme.graph_color_1 }}','{{ theme.graph_color_2 }}','{{ theme.graph_color_3 }}'];
+const _c4p     = '{{ theme.graph_color_4 }}';
+
+const _pDatasets = _pData.map((fp, i) => ({
+  label: fp.label,
+  data: fp.data,
+  borderColor: _pColors[i],
+  backgroundColor: 'transparent',
+  borderWidth: 2,
+  pointRadius: 3,
+  pointHoverRadius: 5,
+  tension: 0.3,
+  datalabels: { display: false },
+}));
+_pDatasets.push({
+  label: 'Média',
+  data: _pMedia,
+  borderColor: _c4p,
+  backgroundColor: 'transparent',
+  borderWidth: 2.5,
+  borderDash: [6, 3],
+  pointRadius: 3,
+  pointHoverRadius: 5,
+  tension: 0.3,
+  datalabels: { display: false },
+});
+
+new Chart(document.getElementById('chart-fat-periodos'), {
+  type: 'line',
+  plugins: [ChartDataLabels],
+  data: { labels: _pLabels, datasets: _pDatasets },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + '%',
+        }
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: {
+        grid: { color: '#F3F4F6' },
+        ticks: { font: { size: 10 }, callback: v => v.toFixed(0) + '%' },
         beginAtZero: true,
       },
     },

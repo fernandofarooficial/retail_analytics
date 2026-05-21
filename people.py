@@ -201,6 +201,34 @@ def faturamento_diario_mes(portal, cnpj, ano, mes):
     return {row['dia']: round(float(row['total'] or 0), 2) for row in rows}
 
 
+def faturamento_periodos_mes(portal, cnpj, ano, mes):
+    """Percentual do faturamento por período de 5 dias para o mês/ano.
+    Períodos: 1-5, 6-10, 11-15, 16-20, 21-25, 26-31.
+    Retorna lista de 6 floats (0-100).
+    """
+    rows = db.query_all("""
+        SELECT EXTRACT(DAY FROM data_documento)::int AS dia,
+               SUM(valor_total) AS total
+        FROM   microvix.microvix_movimento
+        WHERE  portal                = %s
+          AND  cnpj_emp              = %s
+          AND  EXTRACT(YEAR  FROM data_documento) = %s
+          AND  EXTRACT(MONTH FROM data_documento) = %s
+          AND  cancelado            <> 'S'
+          AND  excluido             <> 'S'
+          AND  soma_relatorio        = 'S'
+          AND  (tipo_transacao IN ('P','V') OR tipo_transacao IS NULL)
+          AND  cod_natureza_operacao = '10030'
+        GROUP  BY dia
+        ORDER  BY dia
+    """, (portal, cnpj, ano, mes))
+    diario = {row['dia']: float(row['total'] or 0) for row in rows}
+    periodos = [(1, 5), (6, 10), (11, 15), (16, 20), (21, 25), (26, 31)]
+    totais = [sum(diario.get(d, 0) for d in range(di, df + 1)) for di, df in periodos]
+    total_mes = sum(totais)
+    return [round(t / total_mes * 100, 1) if total_mes > 0 else 0.0 for t in totais]
+
+
 def vendas_mensal_por_vendedor(portal, cnpj, ano):
     """Faturamento mensal por vendedor (tipo_transacao='V') para um dado ano.
     Retorna dict com meses_nomes e series=[{nome, dados}]."""

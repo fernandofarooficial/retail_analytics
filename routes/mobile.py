@@ -7,11 +7,27 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import os
 import db
 from metas import get_metas as _get_metas, meta_faturamento_acum_diario as _meta_faturamento_acum_diario
+_MESES_PT_M = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
+
+def _tres_meses_anteriores_m():
+    from datetime import date as _d
+    hoje = _d.today()
+    result, m, a = [], hoje.month, hoje.year
+    for _ in range(3):
+        m -= 1
+        if m == 0:
+            m, a = 12, a - 1
+        result.append((a, m))
+    return result
+
+
 from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     kpi_microvix as _kpi_microvix, faixa_horaria as _faixa_horaria,
                     ticket_por_tipo as _ticket_por_tipo,
                     top5_por_tipo as _top5_por_tipo,
                     faturamento_mensal as _faturamento_mensal,
+                    faturamento_periodos_mes as _faturamento_periodos_mes,
                     faturamento_diario_mes as _faturamento_diario_mes,
                     vendas_mensal_por_vendedor as _vendas_mensal_por_vendedor,
                     vendedores_mes as _vendedores_mes,
@@ -1966,9 +1982,23 @@ def gestao_faturamento():
         ano = ano_atual
 
     fat_mensal = []
+    fat_periodos = []
+    fat_periodos_media = []
     if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
         fat_mensal = _faturamento_mensal(
             ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano)
+        for ano_m, mes_m in _tres_meses_anteriores_m():
+            pcts = _faturamento_periodos_mes(
+                ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano_m, mes_m)
+            fat_periodos.append({
+                'label': f"{_MESES_PT_M[mes_m - 1]}/{str(ano_m)[2:]}",
+                'data': pcts,
+            })
+        if fat_periodos:
+            fat_periodos_media = [
+                round(sum(fp['data'][i] for fp in fat_periodos) / len(fat_periodos), 1)
+                for i in range(6)
+            ]
 
     return render_template(
         'mobile/gestao_faturamento.html',
@@ -1976,6 +2006,8 @@ def gestao_faturamento():
         ano=ano,
         ano_atual=ano_atual,
         fat_mensal=fat_mensal,
+        fat_periodos=fat_periodos,
+        fat_periodos_media=fat_periodos_media,
     )
 
 

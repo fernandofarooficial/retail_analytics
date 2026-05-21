@@ -3,8 +3,23 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from routes.utils import login_required
 import db
 from people import (faturamento_mensal as _faturamento_mensal,
+                    faturamento_periodos_mes as _faturamento_periodos_mes,
                     vendas_mensal_por_vendedor as _vendas_mensal_por_vendedor,
                     cobertura_estoque as _cobertura_estoque)
+
+_MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
+
+def _tres_meses_anteriores():
+    from datetime import date as _d
+    hoje = _d.today()
+    result, m, a = [], hoje.month, hoje.year
+    for _ in range(3):
+        m -= 1
+        if m == 0:
+            m, a = 12, a - 1
+        result.append((a, m))
+    return result
 
 gestao_bp = Blueprint('gestao', __name__, url_prefix='/retail_analytics/gestao')
 
@@ -240,10 +255,24 @@ def faturamento():
         ano = ano_atual
 
     fat_mensal = []
+    fat_periodos = []
+    fat_periodos_media = []
     if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
         fat_mensal = _faturamento_mensal(
             ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano
         )
+        for ano_m, mes_m in _tres_meses_anteriores():
+            pcts = _faturamento_periodos_mes(
+                ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano_m, mes_m)
+            fat_periodos.append({
+                'label': f"{_MESES_PT[mes_m - 1]}/{str(ano_m)[2:]}",
+                'data': pcts,
+            })
+        if fat_periodos:
+            fat_periodos_media = [
+                round(sum(fp['data'][i] for fp in fat_periodos) / len(fat_periodos), 1)
+                for i in range(6)
+            ]
 
     return render_template(
         'gestao/faturamento.html',
@@ -251,6 +280,8 @@ def faturamento():
         ano=ano,
         ano_atual=ano_atual,
         fat_mensal=fat_mensal,
+        fat_periodos=fat_periodos,
+        fat_periodos_media=fat_periodos_media,
     )
 
 
