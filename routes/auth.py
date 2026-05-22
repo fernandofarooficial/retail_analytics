@@ -1863,6 +1863,16 @@ def ranking_pessoa(person_id):
             ORDER  BY total_qty DESC
         """, (cnpj, portal, person_id, store_id, days))
 
+    visit_days = []
+    if store_ext:
+        visit_days = db.query_all("""
+            SELECT DISTINCT DATE(created_at) AS visit_date
+            FROM   faciais.detection_records
+            WHERE  person_id = %s AND store_id = %s
+              AND  created_at >= CURRENT_DATE - (%s || ' days')::interval
+            ORDER  BY visit_date DESC
+        """, (person_id, store_id, store_ext['analysis_period_days']))
+
     theme = {'primary_color': '#F47B20'}
     company_logo = None
     company_name = None
@@ -1884,6 +1894,7 @@ def ranking_pessoa(person_id):
                            ranking_row=ranking_row,
                            img_url=img_url,
                            products=products,
+                           visit_days=visit_days,
                            store_id=store_id,
                            theme=theme,
                            company_logo=company_logo,
