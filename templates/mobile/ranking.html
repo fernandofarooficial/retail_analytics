@@ -1,0 +1,281 @@
+{% extends 'mobile/base_mobile.html' %}
+{% block title %}Ranking — Retail Analytics{% endblock %}
+
+{% block body %}
+<style>
+  :root { --theme-primary: {{ theme.primary_color }}; }
+
+  .m-rk-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .875rem 1rem .5rem;
+    background: #fff;
+    border-bottom: 1px solid #E5E7EB;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .m-rk-header-logos { display: flex; align-items: center; gap: .5rem; }
+  .m-rk-header-logos img { height: 28px; }
+  .m-rk-store-btn {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    background: none;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    padding: .35rem .65rem;
+    font-size: .8125rem;
+    color: #374151;
+    cursor: pointer;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-rk-store-btn svg { flex-shrink: 0; }
+
+  .m-rk-meta {
+    font-size: .75rem;
+    color: #9CA3AF;
+    padding: .5rem 1rem;
+    text-align: center;
+  }
+
+  .m-rk-list { padding: .5rem .75rem 90px; display: flex; flex-direction: column; gap: .5rem; }
+
+  .m-rk-item {
+    display: flex;
+    align-items: center;
+    gap: .875rem;
+    background: #fff;
+    border-radius: 10px;
+    padding: .75rem .875rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    text-decoration: none;
+    color: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .m-rk-item:active { opacity: .8; }
+
+  .m-rk-pos {
+    width: 32px;
+    text-align: center;
+    font-size: .9375rem;
+    font-weight: 700;
+    color: #9CA3AF;
+    flex-shrink: 0;
+  }
+  .m-rk-pos-1 { color: #D97706; font-size: 1.125rem; }
+  .m-rk-pos-2 { color: #6B7280; font-size: 1rem; }
+  .m-rk-pos-3 { color: #B45309; font-size: 1rem; }
+
+  .m-rk-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--theme-primary);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    text-transform: uppercase;
+  }
+  .m-rk-avatar-1 { background: #D97706; }
+  .m-rk-avatar-2 { background: #9CA3AF; }
+  .m-rk-avatar-3 { background: #B45309; }
+
+  .m-rk-name { flex: 1; min-width: 0; }
+  .m-rk-name-main {
+    font-size: .9rem;
+    font-weight: 600;
+    color: #111827;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .m-rk-score {
+    font-size: .9375rem;
+    font-weight: 700;
+    color: var(--theme-primary);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .m-rk-empty {
+    text-align: center;
+    color: #9CA3AF;
+    font-size: .9rem;
+    padding: 3rem 1rem;
+  }
+  .m-rk-no-rule {
+    background: #FEF3C7;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: .75rem;
+    color: #92400E;
+    font-size: .8125rem;
+  }
+
+  /* Bottom sheet */
+  .m-bs-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 100;
+  }
+  .m-bs-overlay.open { display: block; }
+  .m-bs {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #fff;
+    border-radius: 16px 16px 0 0;
+    padding: 1.25rem 1rem 2rem;
+    z-index: 101;
+    transform: translateY(100%);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    max-height: 75vh;
+    overflow-y: auto;
+  }
+  .m-bs.open { transform: translateY(0); }
+  .m-bs-handle {
+    width: 40px; height: 4px;
+    background: #D1D5DB;
+    border-radius: 2px;
+    margin: 0 auto .875rem;
+  }
+  .m-bs-title { font-size: .9375rem; font-weight: 700; margin-bottom: 1rem; color: #111827; }
+  .m-bs select {
+    width: 100%;
+    padding: .65rem .75rem;
+    border: 1px solid #D1D5DB;
+    border-radius: 8px;
+    font-size: .9rem;
+    margin-bottom: .75rem;
+    background: #fff;
+    -webkit-appearance: none;
+  }
+  .m-bs-close {
+    width: 100%;
+    padding: .75rem;
+    border: none;
+    border-radius: 8px;
+    background: #F3F4F6;
+    font-size: .9rem;
+    color: #374151;
+    cursor: pointer;
+    margin-top: .25rem;
+  }
+</style>
+
+<!-- Header -->
+<div class="m-rk-header">
+  <div class="m-rk-header-logos">
+    {% if company_logo %}
+    <img src="{{ url_for('static', filename=company_logo) }}" alt="{{ company_name }}">
+    <span style="width:1px; height:20px; background:#E5E7EB;"></span>
+    {% endif %}
+    <span style="font-size:.9375rem; font-weight:700; color:#111827;">Ranking</span>
+  </div>
+  <button class="m-rk-store-btn" onclick="abrirSeletor()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    {{ active_store.store_short_name or active_store.store_name if active_store else 'Selecionar loja' }}
+  </button>
+</div>
+
+{% if active_store %}
+  {% if not ranking_rule %}
+  <div class="m-rk-no-rule">
+    Esta loja não possui regra de ranking configurada.
+    Acesse <strong>Cadastros → Regras de Ranking</strong> e vincule uma regra à loja.
+  </div>
+  {% elif not ranking_data %}
+  <div class="m-rk-meta">Últimos {{ ranking_rule.analysis_period_days }} dias &mdash; nenhum cliente</div>
+  <div class="m-rk-empty">Nenhum cliente no ranking ainda.</div>
+  {% else %}
+  <div class="m-rk-meta">
+    Últimos {{ ranking_rule.analysis_period_days }} dias &mdash; {{ ranking_data | length }} cliente{{ 's' if ranking_data | length != 1 else '' }}
+  </div>
+  <div class="m-rk-list">
+    {% for r in ranking_data %}
+    {% set pos = r.ranking_position %}
+    <a class="m-rk-item"
+       href="{{ url_for('mobile.ranking_pessoa', person_id=r.person_id, store_id=active_store.store_id) }}">
+      <div class="m-rk-pos {% if pos == 1 %}m-rk-pos-1{% elif pos == 2 %}m-rk-pos-2{% elif pos == 3 %}m-rk-pos-3{% endif %}">
+        {% if pos == 1 %}🥇{% elif pos == 2 %}🥈{% elif pos == 3 %}🥉{% else %}{{ pos }}{% endif %}
+      </div>
+      <div class="m-rk-avatar {% if pos == 1 %}m-rk-avatar-1{% elif pos == 2 %}m-rk-avatar-2{% elif pos == 3 %}m-rk-avatar-3{% endif %}">
+        {{ (r.nickname or r.full_name or '?')[0] }}
+      </div>
+      <div class="m-rk-name">
+        <div class="m-rk-name-main">{{ r.nickname or r.full_name or '(sem nome)' }}</div>
+      </div>
+      <div class="m-rk-score">{{ r.score | int }} pts</div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% else %}
+<div class="m-rk-empty">Selecione uma loja para ver o ranking.</div>
+{% endif %}
+
+<!-- Bottom sheet seletor de loja -->
+<div class="m-bs-overlay" id="bs-overlay" onclick="fecharSeletor()"></div>
+<div class="m-bs" id="bs">
+  <div class="m-bs-handle"></div>
+  <div class="m-bs-title">Selecionar Loja</div>
+
+  {% if companies %}
+  <select onchange="selecionarEmpresa(this.value)">
+    <option value="">— Empresa —</option>
+    {% for c in companies %}
+    <option value="{{ c.company_id }}" {% if c.company_id == selected_company_id %}selected{% endif %}>
+      {{ c.company_name }}
+    </option>
+    {% endfor %}
+  </select>
+  {% endif %}
+
+  {% if stores %}
+  <select onchange="selecionarLoja(this.value)">
+    <option value="">— Loja —</option>
+    {% for s in stores %}
+    <option value="{{ s.store_id }}" {% if s.store_id == selected_store_id %}selected{% endif %}>
+      {{ s.store_name }}
+    </option>
+    {% endfor %}
+  </select>
+  {% endif %}
+
+  <button class="m-bs-close" onclick="fecharSeletor()">Fechar</button>
+</div>
+
+<script>
+function abrirSeletor() {
+  document.getElementById('bs').classList.add('open');
+  document.getElementById('bs-overlay').classList.add('open');
+}
+function fecharSeletor() {
+  document.getElementById('bs').classList.remove('open');
+  document.getElementById('bs-overlay').classList.remove('open');
+}
+function selecionarEmpresa(id) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('company_id', id);
+  url.searchParams.delete('store_id');
+  window.location.href = url.toString();
+}
+function selecionarLoja(id) {
+  const url = new URL(window.location.href);
+  if (id) { url.searchParams.set('store_id', id); fecharSeletor(); window.location.href = url.toString(); }
+}
+</script>
+{% endblock %}

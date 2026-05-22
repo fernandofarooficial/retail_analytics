@@ -1,0 +1,205 @@
+{% extends 'base_web.html' %}
+{% block title %}Ranking — Retail Analytics{% endblock %}
+
+{% block content %}
+<style>
+  :root { --theme-primary: {{ theme.primary_color }}; }
+
+  .rk-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+  .rk-header h1 { margin: 0; font-size: 1.375rem; }
+  .rk-selectors { display: flex; gap: .75rem; flex-wrap: wrap; }
+  .rk-selectors select {
+    padding: .45rem .75rem;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    font-size: .875rem;
+    background: #fff;
+    cursor: pointer;
+  }
+  .rk-meta {
+    font-size: .8125rem;
+    color: #6B7280;
+    margin-bottom: 1.25rem;
+  }
+  .rk-list { display: flex; flex-direction: column; gap: .5rem; max-width: 680px; }
+
+  .rk-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: #fff;
+    border-radius: 10px;
+    padding: .75rem 1rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow .15s;
+  }
+  .rk-item:hover { box-shadow: 0 3px 10px rgba(0,0,0,.13); }
+
+  .rk-pos {
+    width: 36px;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #6B7280;
+    flex-shrink: 0;
+  }
+  .rk-pos-1 { color: #D97706; font-size: 1.25rem; }
+  .rk-pos-2 { color: #6B7280; font-size: 1.1rem; }
+  .rk-pos-3 { color: #B45309; font-size: 1.05rem; }
+
+  .rk-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--theme-primary);
+    color: #fff;
+    font-size: 1.125rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    text-transform: uppercase;
+  }
+  .rk-avatar-1 { background: #D97706; }
+  .rk-avatar-2 { background: #9CA3AF; }
+  .rk-avatar-3 { background: #B45309; }
+
+  .rk-name {
+    flex: 1;
+    min-width: 0;
+  }
+  .rk-name-main {
+    font-size: .9375rem;
+    font-weight: 600;
+    color: #111827;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .rk-name-sub {
+    font-size: .75rem;
+    color: #9CA3AF;
+    margin-top: .1rem;
+  }
+  .rk-score {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--theme-primary);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .rk-arrow {
+    color: #D1D5DB;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+  }
+  .rk-empty {
+    color: #6B7280;
+    font-size: .9375rem;
+    padding: 2rem 0;
+  }
+  .rk-no-rule {
+    background: #FEF3C7;
+    border: 1px solid #FDE68A;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    color: #92400E;
+    font-size: .875rem;
+    max-width: 560px;
+  }
+</style>
+
+<div class="rk-header">
+  <h1>Ranking de Clientes</h1>
+
+  <div class="rk-selectors">
+    {% if companies %}
+    <select onchange="selecionarEmpresa(this.value)">
+      <option value="">— Empresa —</option>
+      {% for c in companies %}
+      <option value="{{ c.company_id }}" {% if c.company_id == selected_company_id %}selected{% endif %}>
+        {{ c.company_name }}
+      </option>
+      {% endfor %}
+    </select>
+    {% endif %}
+
+    {% if stores %}
+    <select onchange="selecionarLoja(this.value)">
+      <option value="">— Loja —</option>
+      {% for s in stores %}
+      <option value="{{ s.store_id }}" {% if s.store_id == selected_store_id %}selected{% endif %}>
+        {{ s.store_name }}
+      </option>
+      {% endfor %}
+    </select>
+    {% endif %}
+  </div>
+</div>
+
+{% if active_store %}
+  {% if not ranking_rule %}
+  <div class="rk-no-rule">
+    Esta loja não possui regra de ranking configurada. Acesse <strong>Cadastros → Regras de Ranking</strong>
+    e vincule uma regra à loja.
+  </div>
+  {% elif not ranking_data %}
+  <div class="rk-meta">
+    {{ active_store.store_name }} &mdash; Últimos {{ ranking_rule.analysis_period_days }} dias
+  </div>
+  <div class="rk-empty">Nenhum cliente no ranking ainda.</div>
+  {% else %}
+  <div class="rk-meta">
+    {{ active_store.store_name }} &mdash; Últimos {{ ranking_rule.analysis_period_days }} dias
+    &mdash; {{ ranking_data | length }} cliente{{ 's' if ranking_data | length != 1 else '' }}
+  </div>
+  <div class="rk-list">
+    {% for r in ranking_data %}
+    {% set pos = r.ranking_position %}
+    <a class="rk-item" href="{{ url_for('auth.ranking_pessoa', person_id=r.person_id, store_id=active_store.store_id) }}">
+      <div class="rk-pos {% if pos == 1 %}rk-pos-1{% elif pos == 2 %}rk-pos-2{% elif pos == 3 %}rk-pos-3{% endif %}">
+        {% if pos == 1 %}🥇{% elif pos == 2 %}🥈{% elif pos == 3 %}🥉{% else %}{{ pos }}{% endif %}
+      </div>
+      <div class="rk-avatar {% if pos == 1 %}rk-avatar-1{% elif pos == 2 %}rk-avatar-2{% elif pos == 3 %}rk-avatar-3{% endif %}">
+        {{ (r.nickname or r.full_name or '?')[0] }}
+      </div>
+      <div class="rk-name">
+        <div class="rk-name-main">{{ r.nickname or r.full_name or '(sem nome)' }}</div>
+        {% if r.nickname and r.full_name %}
+        <div class="rk-name-sub">{{ r.full_name }}</div>
+        {% endif %}
+      </div>
+      <div class="rk-score">{{ r.score | int }} pts</div>
+      <div class="rk-arrow">›</div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% else %}
+  <div class="rk-empty">Selecione uma loja para ver o ranking.</div>
+{% endif %}
+
+<script>
+function selecionarEmpresa(id) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('company_id', id);
+  url.searchParams.delete('store_id');
+  window.location.href = url.toString();
+}
+function selecionarLoja(id) {
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set('store_id', id);
+  else url.searchParams.delete('store_id');
+  window.location.href = url.toString();
+}
+</script>
+{% endblock %}

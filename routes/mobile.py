@@ -1538,6 +1538,286 @@ def visitacao():
     )
 
 
+# ── Ranking de Clientes ───────────────────────────────────────────────────────
+
+@mobile_bp.route('/ranking')
+@_login_required
+def ranking():
+    user_id   = session['user_id']
+    user_type = session['user_type_id']
+    company_logo        = None
+    company_name        = None
+    companies           = []
+    selected_company_id = None
+    stores              = []
+    selected_store_id   = request.args.get('store_id', type=int)
+
+    if not selected_store_id and 'company_id' not in request.args:
+        saved = db.query_one("SELECT last_store_id FROM faciais.users WHERE user_id = %s", (user_id,))
+        if saved and saved['last_store_id']:
+            last_sid = saved['last_store_id']
+            if user_type == 'adm':
+                row = db.query_one("SELECT company_id FROM faciais.stores WHERE store_id = %s", (last_sid,))
+                if row:
+                    return redirect(url_for('mobile.ranking', company_id=row['company_id'], store_id=last_sid))
+            elif user_type == 'man':
+                row = db.query_one("""
+                    SELECT s.company_id FROM faciais.stores s
+                    JOIN   faciais.companies c ON c.company_id = s.company_id
+                    JOIN   faciais.user_company_groups ucg ON ucg.company_group_id = c.company_group_id
+                    WHERE  s.store_id = %s AND ucg.user_id = %s
+                """, (last_sid, user_id))
+                if row:
+                    return redirect(url_for('mobile.ranking', company_id=row['company_id'], store_id=last_sid))
+            elif user_type == 'ret':
+                row = db.query_one("""
+                    SELECT s.store_id FROM faciais.stores s
+                    JOIN   faciais.user_retailer_groups urg ON urg.retailer_group_id = s.retailer_group_id
+                    WHERE  s.store_id = %s AND urg.user_id = %s
+                """, (last_sid, user_id))
+                if row:
+                    return redirect(url_for('mobile.ranking', store_id=last_sid))
+            elif user_type == 'emp':
+                row = db.query_one(
+                    "SELECT store_id FROM faciais.user_stores WHERE store_id = %s AND user_id = %s",
+                    (last_sid, user_id))
+                if row:
+                    return redirect(url_for('mobile.ranking', store_id=last_sid))
+
+    if user_type == 'adm':
+        companies = db.query_all("""
+            SELECT c.company_id, c.company_name, ct.logo_url
+            FROM   faciais.companies c
+            JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
+            WHERE  ct.logo_url IS NOT NULL ORDER BY c.company_name
+        """)
+        selected_company_id = request.args.get('company_id', type=int)
+        if selected_company_id:
+            match = next((c for c in companies if c['company_id'] == selected_company_id), None)
+            if match:
+                company_logo = match['logo_url']
+                company_name = match['company_name']
+            stores = db.query_all(
+                "SELECT store_id, store_name, store_short_name FROM faciais.stores WHERE company_id = %s ORDER BY store_name",
+                (selected_company_id,))
+    elif user_type == 'man':
+        companies = db.query_all("""
+            SELECT DISTINCT c.company_id, c.company_name, ct.logo_url
+            FROM   faciais.user_company_groups ucg
+            JOIN   faciais.companies c        ON c.company_group_id = ucg.company_group_id
+            LEFT   JOIN faciais.company_themes ct ON ct.company_id  = c.company_id
+            WHERE  ucg.user_id = %s ORDER BY c.company_name
+        """, (user_id,))
+        selected_company_id = request.args.get('company_id', type=int)
+        if selected_company_id:
+            match = next((c for c in companies if c['company_id'] == selected_company_id), None)
+            if match:
+                company_logo = match['logo_url']
+                company_name = match['company_name']
+            stores = db.query_all(
+                "SELECT store_id, store_name, store_short_name FROM faciais.stores WHERE company_id = %s ORDER BY store_name",
+                (selected_company_id,))
+        else:
+            first = next((c for c in companies if c.get('logo_url')), None)
+            if first:
+                company_logo = first['logo_url']
+                company_name = first['company_name']
+    elif user_type == 'ret':
+        row = db.query_one("""
+            SELECT c.company_name, ct.logo_url
+            FROM   faciais.user_retailer_groups urg
+            JOIN   faciais.stores s          ON s.retailer_group_id = urg.retailer_group_id
+            JOIN   faciais.companies c       ON c.company_id = s.company_id
+            JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
+            WHERE  urg.user_id = %s AND ct.logo_url IS NOT NULL LIMIT 1
+        """, (user_id,))
+        if row:
+            company_logo = row['logo_url']
+            company_name = row['company_name']
+        stores = db.query_all("""
+            SELECT DISTINCT s.store_id, s.store_name, s.store_short_name
+            FROM   faciais.user_retailer_groups urg
+            JOIN   faciais.stores s ON s.retailer_group_id = urg.retailer_group_id
+            WHERE  urg.user_id = %s ORDER BY s.store_name
+        """, (user_id,))
+    elif user_type == 'emp':
+        row = db.query_one("""
+            SELECT c.company_name, ct.logo_url
+            FROM   faciais.user_stores us
+            JOIN   faciais.stores s          ON s.store_id = us.store_id
+            JOIN   faciais.companies c       ON c.company_id = s.company_id
+            JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
+            WHERE  us.user_id = %s AND ct.logo_url IS NOT NULL LIMIT 1
+        """, (user_id,))
+        if row:
+            company_logo = row['logo_url']
+            company_name = row['company_name']
+        stores = db.query_all("""
+            SELECT s.store_id, s.store_name, s.store_short_name
+            FROM   faciais.user_stores us
+            JOIN   faciais.stores s ON s.store_id = us.store_id
+            WHERE  us.user_id = %s ORDER BY s.store_name
+        """, (user_id,))
+
+    active_store = None
+    if stores:
+        if selected_store_id:
+            active_store = next((s for s in stores if s['store_id'] == selected_store_id), None)
+        if active_store is None and len(stores) == 1:
+            active_store      = stores[0]
+            selected_store_id = active_store['store_id']
+
+    if active_store:
+        db.execute("UPDATE faciais.users SET last_store_id = %s WHERE user_id = %s",
+                   (active_store['store_id'], user_id))
+
+    theme = {'primary_color': '#F47B20'}
+    theme_cid = selected_company_id
+    if not theme_cid and active_store:
+        r = db.query_one("SELECT company_id FROM faciais.stores WHERE store_id = %s", (active_store['store_id'],))
+        if r:
+            theme_cid = r['company_id']
+    if theme_cid:
+        r = db.query_one("SELECT primary_color FROM faciais.company_themes WHERE company_id = %s", (theme_cid,))
+        if r:
+            theme['primary_color'] = r['primary_color']
+
+    ranking_data = []
+    ranking_rule = None
+    if active_store:
+        rule_row = db.query_one("""
+            SELECT s.ranking_rule_id, rr.rule_name, rr.analysis_period_days
+            FROM   faciais.stores s
+            LEFT   JOIN faciais.ranking_rules rr ON rr.ranking_rule_id = s.ranking_rule_id
+            WHERE  s.store_id = %s
+        """, (active_store['store_id'],))
+        if rule_row and rule_row['ranking_rule_id']:
+            ranking_rule = rule_row
+            ranking_data = db.query_all("""
+                SELECT ranking_position, person_id, full_name, nickname, score,
+                       total_visits, visits_with_purchase, total_spent, last_visit_at
+                FROM   faciais.vw_customer_ranking
+                WHERE  store_id = %s
+                ORDER  BY ranking_position
+            """, (active_store['store_id'],))
+
+    return render_template('mobile/ranking.html',
+                           company_logo=company_logo,
+                           company_name=company_name,
+                           companies=companies,
+                           stores=stores,
+                           selected_company_id=selected_company_id,
+                           selected_store_id=selected_store_id,
+                           active_store=active_store,
+                           theme=theme,
+                           ranking_data=ranking_data,
+                           ranking_rule=ranking_rule)
+
+
+@mobile_bp.route('/ranking/<int:person_id>')
+@_login_required
+def ranking_pessoa(person_id):
+    user_id   = session['user_id']
+    user_type = session['user_type_id']
+    store_id  = request.args.get('store_id', type=int)
+
+    if not store_id:
+        return redirect(url_for('mobile.ranking'))
+
+    store = db.query_one("""
+        SELECT s.store_id, s.store_name
+        FROM   faciais.vw_user_store_access vsa
+        JOIN   faciais.stores s ON s.store_id = vsa.store_id
+        WHERE  vsa.user_id = %s AND vsa.store_id = %s
+    """, (user_id, store_id))
+    if not store:
+        return redirect(url_for('mobile.ranking'))
+
+    ranking_row = db.query_one("""
+        SELECT * FROM faciais.vw_customer_ranking
+        WHERE  store_id = %s AND person_id = %s
+    """, (store_id, person_id))
+    if not ranking_row:
+        return redirect(url_for('mobile.ranking', store_id=store_id))
+
+    person = db.query_one("""
+        SELECT p.*, g.gender_name
+        FROM   faciais.people p
+        LEFT   JOIN faciais.genders g ON g.gender_id = p.gender_id
+        WHERE  p.person_id = %s
+    """, (person_id,))
+
+    img_row = db.query_one("""
+        SELECT image_path FROM faciais.detection_records
+        WHERE  person_id = %s AND store_id = %s AND image_path IS NOT NULL
+        ORDER  BY created_at DESC LIMIT 1
+    """, (person_id, store_id))
+    img_url = (HEIMDALL_IMAGE_BASE + img_row['image_path']) if img_row and img_row['image_path'] else None
+
+    products = []
+    store_ext = db.query_one("""
+        SELECT s.cnpj, s.microvix_portal, rr.analysis_period_days
+        FROM   faciais.stores s
+        JOIN   faciais.ranking_rules rr ON rr.ranking_rule_id = s.ranking_rule_id
+        WHERE  s.store_id = %s
+    """, (store_id,))
+    if store_ext and store_ext['cnpj'] and store_ext['microvix_portal']:
+        cnpj   = str(store_ext['cnpj']).zfill(14)
+        portal = store_ext['microvix_portal']
+        days   = store_ext['analysis_period_days']
+        products = db.query_all("""
+            SELECT mp.nome AS product_name, mp.referencia, mp.desc_linha,
+                   SUM(mm.quantidade)  AS total_qty,
+                   SUM(mm.valor_total) AS total_value
+            FROM   faciais.person_purchases pp
+            JOIN   microvix.microvix_movimento mm
+                   ON  mm.cnpj_emp              = %s
+                   AND mm.documento             = pp.bill
+                   AND mm.cancelado            <> 'S'
+                   AND mm.excluido             <> 'S'
+                   AND mm.soma_relatorio        = 'S'
+                   AND (mm.tipo_transacao IN ('P','V') OR mm.tipo_transacao IS NULL)
+                   AND mm.cod_natureza_operacao  = '10030'
+            JOIN   microvix.microvix_produtos mp
+                   ON  mp.portal      = %s
+                   AND mp.cod_produto = mm.cod_produto
+            WHERE  pp.person_id    = %s
+              AND  pp.store_id     = %s
+              AND  pp.is_identified = TRUE
+              AND  pp.is_cancelled  = FALSE
+              AND  pp.created_at   >= CURRENT_DATE - (%s || ' days')::interval
+            GROUP  BY mp.nome, mp.referencia, mp.desc_linha
+            ORDER  BY total_qty DESC
+        """, (cnpj, portal, person_id, store_id, days))
+
+    theme = {'primary_color': '#F47B20'}
+    company_logo = None
+    company_name = None
+    r = db.query_one("""
+        SELECT c.company_name, ct.logo_url, ct.primary_color
+        FROM   faciais.stores s
+        JOIN   faciais.companies c       ON c.company_id = s.company_id
+        LEFT   JOIN faciais.company_themes ct ON ct.company_id = c.company_id
+        WHERE  s.store_id = %s
+    """, (store_id,))
+    if r:
+        company_logo = r['logo_url']
+        company_name = r['company_name']
+        if r['primary_color']:
+            theme['primary_color'] = r['primary_color']
+
+    return render_template('mobile/ranking_pessoa.html',
+                           person=person,
+                           ranking_row=ranking_row,
+                           img_url=img_url,
+                           products=products,
+                           store_id=store_id,
+                           store_name=store['store_name'],
+                           theme=theme,
+                           company_logo=company_logo,
+                           company_name=company_name)
+
+
 # ── Mapa de Calor ─────────────────────────────────────────────────────────────
 
 @mobile_bp.route('/mapa-calor', methods=['GET', 'POST'])

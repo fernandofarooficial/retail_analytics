@@ -1,0 +1,271 @@
+{% extends 'mobile/base_mobile.html' %}
+{% block title %}{{ person.nickname or person.full_name or 'Cliente' }} — Ranking{% endblock %}
+
+{% block body %}
+<style>
+  :root { --theme-primary: {{ theme.primary_color }}; }
+
+  .m-rp-header {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .875rem 1rem .75rem;
+    background: #fff;
+    border-bottom: 1px solid #E5E7EB;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .m-rp-back {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: #F3F4F6;
+    color: #374151;
+    text-decoration: none;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+  }
+  .m-rp-header-title {
+    font-size: .9375rem;
+    font-weight: 700;
+    color: #111827;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .m-rp-content { padding: .75rem .75rem 90px; display: flex; flex-direction: column; gap: .75rem; }
+
+  .m-rp-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    padding: 1rem;
+  }
+  .m-rp-card-title {
+    font-size: .6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #9CA3AF;
+    margin-bottom: .75rem;
+  }
+
+  /* Perfil */
+  .m-rp-profile { display: flex; gap: .875rem; align-items: flex-start; }
+  .m-rp-photo {
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #E5E7EB;
+  }
+  .m-rp-photo-placeholder {
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
+    background: var(--theme-primary);
+    color: #fff;
+    font-size: 1.875rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    text-transform: uppercase;
+  }
+  .m-rp-profile-info { flex: 1; min-width: 0; }
+  .m-rp-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: .05rem;
+  }
+  .m-rp-nick { font-size: .8125rem; color: #6B7280; margin-bottom: .5rem; }
+  .m-rp-field { font-size: .8125rem; margin-bottom: .3rem; color: #374151; }
+  .m-rp-field-label { color: #9CA3AF; }
+
+  /* Posição badge */
+  .m-rp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    background: var(--theme-primary);
+    color: #fff;
+    border-radius: 8px;
+    padding: .45rem .875rem;
+    font-size: .9375rem;
+    font-weight: 700;
+    margin-bottom: .875rem;
+  }
+
+  /* Stats grid */
+  .m-rp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+  .m-rp-stat {
+    background: #F9FAFB;
+    border-radius: 8px;
+    padding: .625rem .5rem;
+    text-align: center;
+  }
+  .m-rp-stat-full { grid-column: 1 / -1; }
+  .m-rp-stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--theme-primary);
+    line-height: 1.2;
+  }
+  .m-rp-stat-label { font-size: .6875rem; color: #6B7280; margin-top: .15rem; }
+
+  .m-rp-last-visit { font-size: .75rem; color: #9CA3AF; margin-top: .625rem; }
+
+  /* Produtos */
+  .m-rp-prod-item {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .6rem 0;
+    border-bottom: 1px solid #F3F4F6;
+  }
+  .m-rp-prod-item:last-child { border-bottom: none; }
+  .m-rp-prod-info { flex: 1; min-width: 0; }
+  .m-rp-prod-name {
+    font-size: .875rem;
+    font-weight: 500;
+    color: #111827;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .m-rp-prod-ref { font-size: .75rem; color: #9CA3AF; margin-top: .05rem; }
+  .m-rp-prod-qty {
+    font-size: .875rem;
+    font-weight: 700;
+    color: #111827;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-align: center;
+    min-width: 32px;
+  }
+  .m-rp-prod-val {
+    font-size: .875rem;
+    font-weight: 600;
+    color: #059669;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-align: right;
+    min-width: 80px;
+  }
+  .m-rp-empty { color: #9CA3AF; font-size: .875rem; padding: .5rem 0; }
+</style>
+
+<!-- Header -->
+<div class="m-rp-header">
+  <a class="m-rp-back" href="{{ url_for('mobile.ranking', store_id=store_id) }}">‹</a>
+  <div class="m-rp-header-title">{{ person.nickname or person.full_name or 'Cliente' }}</div>
+</div>
+
+<div class="m-rp-content">
+
+  <!-- Perfil -->
+  <div class="m-rp-card">
+    <div class="m-rp-card-title">Perfil</div>
+    <div class="m-rp-profile">
+      {% if img_url %}
+      <img class="m-rp-photo" src="{{ img_url }}" alt="{{ person.nickname or person.full_name }}"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      <div class="m-rp-photo-placeholder" style="display:none;">
+        {{ (person.nickname or person.full_name or '?')[0] | upper }}
+      </div>
+      {% else %}
+      <div class="m-rp-photo-placeholder">
+        {{ (person.nickname or person.full_name or '?')[0] | upper }}
+      </div>
+      {% endif %}
+
+      <div class="m-rp-profile-info">
+        <div class="m-rp-name">{{ person.full_name or '(sem nome)' }}</div>
+        {% if person.nickname %}
+        <div class="m-rp-nick">"{{ person.nickname }}"</div>
+        {% endif %}
+        {% if person.age %}
+        <div class="m-rp-field"><span class="m-rp-field-label">Idade: </span>{{ person.age }} anos</div>
+        {% endif %}
+        {% if person.gender_name %}
+        <div class="m-rp-field"><span class="m-rp-field-label">Gênero: </span>{{ person.gender_name }}</div>
+        {% endif %}
+        {% if person.document %}
+        <div class="m-rp-field"><span class="m-rp-field-label">Doc.: </span>{{ person.document }}</div>
+        {% endif %}
+        {% if person.birth_date %}
+        <div class="m-rp-field"><span class="m-rp-field-label">Nasc.: </span>{{ person.birth_date.strftime('%d/%m/%Y') }}</div>
+        {% endif %}
+        {% if person.notes %}
+        <div class="m-rp-field"><span class="m-rp-field-label">Obs.: </span>{{ person.notes }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Posição no Ranking -->
+  <div class="m-rp-card">
+    <div class="m-rp-card-title">Posição no Ranking</div>
+    <div class="m-rp-badge">
+      {% if ranking_row.ranking_position == 1 %}🥇
+      {% elif ranking_row.ranking_position == 2 %}🥈
+      {% elif ranking_row.ranking_position == 3 %}🥉
+      {% else %}#{% endif %}
+      {{ ranking_row.ranking_position }}º lugar
+    </div>
+    <div class="m-rp-stats">
+      <div class="m-rp-stat m-rp-stat-full">
+        <div class="m-rp-stat-value">{{ ranking_row.score | int }} pts</div>
+        <div class="m-rp-stat-label">Pontuação total</div>
+      </div>
+      <div class="m-rp-stat">
+        <div class="m-rp-stat-value">{{ ranking_row.total_visits }}</div>
+        <div class="m-rp-stat-label">Visitas no período</div>
+      </div>
+      <div class="m-rp-stat">
+        <div class="m-rp-stat-value">{{ ranking_row.visits_with_purchase }}</div>
+        <div class="m-rp-stat-label">c/ compra</div>
+      </div>
+      <div class="m-rp-stat m-rp-stat-full">
+        <div class="m-rp-stat-value">{{ ranking_row.total_spent | br_valor('R$') }}</div>
+        <div class="m-rp-stat-label">Total comprado no período</div>
+      </div>
+    </div>
+    {% if ranking_row.last_visit_at %}
+    <div class="m-rp-last-visit">Última visita: {{ ranking_row.last_visit_at.strftime('%d/%m/%Y') }}</div>
+    {% endif %}
+  </div>
+
+  <!-- Produtos -->
+  <div class="m-rp-card">
+    <div class="m-rp-card-title">Produtos comprados no período</div>
+    {% if products %}
+    {% for p in products %}
+    <div class="m-rp-prod-item">
+      <div class="m-rp-prod-info">
+        <div class="m-rp-prod-name">{{ p.product_name or '(sem nome)' }}</div>
+        {% if p.referencia %}
+        <div class="m-rp-prod-ref">Ref: {{ p.referencia }}{% if p.desc_linha %} — {{ p.desc_linha }}{% endif %}</div>
+        {% endif %}
+      </div>
+      <div class="m-rp-prod-qty">{{ p.total_qty | int }}x</div>
+      <div class="m-rp-prod-val">{{ p.total_value | br_valor('R$') }}</div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="m-rp-empty">Nenhum produto registrado no período.</div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,277 @@
+{% extends 'base_web.html' %}
+{% block title %}{{ person.nickname or person.full_name or 'Cliente' }} — Ranking{% endblock %}
+
+{% block content %}
+<style>
+  :root { --theme-primary: {{ theme.primary_color }}; }
+
+  .rk-back {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    font-size: .875rem;
+    color: #6B7280;
+    text-decoration: none;
+    margin-bottom: 1.25rem;
+  }
+  .rk-back:hover { color: var(--theme-primary); }
+
+  .rk-detail-grid {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 1.25rem;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .rk-detail-grid { grid-template-columns: 1fr; }
+  }
+
+  .rk-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 5px rgba(0,0,0,.09);
+    padding: 1.25rem;
+  }
+  .rk-card-title {
+    font-size: .75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #9CA3AF;
+    margin-bottom: 1rem;
+  }
+
+  /* Perfil */
+  .rk-profile { display: flex; gap: 1rem; align-items: flex-start; }
+  .rk-photo {
+    width: 96px;
+    height: 96px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #E5E7EB;
+  }
+  .rk-photo-placeholder {
+    width: 96px;
+    height: 96px;
+    border-radius: 10px;
+    background: var(--theme-primary);
+    color: #fff;
+    font-size: 2.5rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    text-transform: uppercase;
+  }
+  .rk-profile-info { flex: 1; min-width: 0; }
+  .rk-profile-name {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: .1rem;
+  }
+  .rk-profile-nick {
+    font-size: .875rem;
+    color: #6B7280;
+    margin-bottom: .75rem;
+  }
+  .rk-field { margin-bottom: .5rem; font-size: .8125rem; }
+  .rk-field-label { color: #9CA3AF; display: block; margin-bottom: .05rem; }
+  .rk-field-value { color: #111827; font-weight: 500; }
+
+  /* Stats */
+  .rk-stats { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+  .rk-stat {
+    background: #F9FAFB;
+    border-radius: 8px;
+    padding: .75rem;
+    text-align: center;
+  }
+  .rk-stat-value {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--theme-primary);
+  }
+  .rk-stat-label { font-size: .75rem; color: #6B7280; margin-top: .15rem; }
+  .rk-stat-full { grid-column: 1 / -1; }
+
+  /* Posição */
+  .rk-position-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    background: var(--theme-primary);
+    color: #fff;
+    border-radius: 8px;
+    padding: .5rem 1rem;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+
+  /* Produtos */
+  .rk-products-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .875rem;
+  }
+  .rk-products-table th {
+    text-align: left;
+    padding: .5rem .75rem;
+    font-size: .75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #6B7280;
+    border-bottom: 2px solid #E5E7EB;
+  }
+  .rk-products-table td {
+    padding: .625rem .75rem;
+    border-bottom: 1px solid #F3F4F6;
+    color: #374151;
+  }
+  .rk-products-table tr:last-child td { border-bottom: none; }
+  .rk-products-table td:last-child,
+  .rk-products-table th:last-child { text-align: right; }
+  .rk-prod-ref { font-size: .75rem; color: #9CA3AF; margin-top: .1rem; }
+  .rk-prod-qty { font-weight: 700; color: #111827; }
+  .rk-prod-value { color: #059669; font-weight: 600; }
+  .rk-empty-products { color: #9CA3AF; font-size: .875rem; padding: .75rem 0; }
+</style>
+
+<a class="rk-back" href="{{ url_for('auth.ranking', store_id=store_id) }}">
+  ← Voltar ao Ranking
+</a>
+
+<div class="rk-detail-grid">
+
+  <!-- Coluna esquerda: perfil + posição -->
+  <div style="display:flex; flex-direction:column; gap:1.25rem;">
+
+    <div class="rk-card">
+      <div class="rk-card-title">Perfil</div>
+      <div class="rk-profile">
+        {% if img_url %}
+        <img class="rk-photo" src="{{ img_url }}" alt="{{ person.nickname or person.full_name }}"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="rk-photo-placeholder" style="display:none;">
+          {{ (person.nickname or person.full_name or '?')[0] | upper }}
+        </div>
+        {% else %}
+        <div class="rk-photo-placeholder">
+          {{ (person.nickname or person.full_name or '?')[0] | upper }}
+        </div>
+        {% endif %}
+
+        <div class="rk-profile-info">
+          <div class="rk-profile-name">{{ person.full_name or '(sem nome)' }}</div>
+          {% if person.nickname %}
+          <div class="rk-profile-nick">"{{ person.nickname }}"</div>
+          {% endif %}
+
+          {% if person.age %}
+          <div class="rk-field">
+            <span class="rk-field-label">Idade</span>
+            <span class="rk-field-value">{{ person.age }} anos</span>
+          </div>
+          {% endif %}
+          {% if person.gender_name %}
+          <div class="rk-field">
+            <span class="rk-field-label">Gênero</span>
+            <span class="rk-field-value">{{ person.gender_name }}</span>
+          </div>
+          {% endif %}
+          {% if person.document %}
+          <div class="rk-field">
+            <span class="rk-field-label">Documento</span>
+            <span class="rk-field-value">{{ person.document }}</span>
+          </div>
+          {% endif %}
+          {% if person.birth_date %}
+          <div class="rk-field">
+            <span class="rk-field-label">Nascimento</span>
+            <span class="rk-field-value">{{ person.birth_date.strftime('%d/%m/%Y') }}</span>
+          </div>
+          {% endif %}
+          {% if person.notes %}
+          <div class="rk-field">
+            <span class="rk-field-label">Obs.</span>
+            <span class="rk-field-value">{{ person.notes }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="rk-card">
+      <div class="rk-card-title">Posição no Ranking</div>
+      <div class="rk-position-badge">
+        {% if ranking_row.ranking_position == 1 %}🥇
+        {% elif ranking_row.ranking_position == 2 %}🥈
+        {% elif ranking_row.ranking_position == 3 %}🥉
+        {% else %}#{% endif %}
+        {{ ranking_row.ranking_position }}º lugar
+      </div>
+      <div class="rk-stats">
+        <div class="rk-stat rk-stat-full">
+          <div class="rk-stat-value">{{ ranking_row.score | int }} pts</div>
+          <div class="rk-stat-label">Pontuação total</div>
+        </div>
+        <div class="rk-stat">
+          <div class="rk-stat-value">{{ ranking_row.total_visits }}</div>
+          <div class="rk-stat-label">Visitas no período</div>
+        </div>
+        <div class="rk-stat">
+          <div class="rk-stat-value">{{ ranking_row.visits_with_purchase }}</div>
+          <div class="rk-stat-label">Visitas c/ compra</div>
+        </div>
+        <div class="rk-stat rk-stat-full">
+          <div class="rk-stat-value">{{ ranking_row.total_spent | br_valor('R$') }}</div>
+          <div class="rk-stat-label">Total comprado no período</div>
+        </div>
+      </div>
+      {% if ranking_row.last_visit_at %}
+      <div style="font-size:.75rem; color:#9CA3AF; margin-top:.75rem;">
+        Última visita: {{ ranking_row.last_visit_at.strftime('%d/%m/%Y') }}
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- Coluna direita: produtos -->
+  <div class="rk-card">
+    <div class="rk-card-title">Produtos comprados no período</div>
+    {% if products %}
+    <table class="rk-products-table">
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th style="width:80px; text-align:center;">Qtd.</th>
+          <th style="width:120px;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr>
+          <td>
+            <div>{{ p.product_name or '(sem nome)' }}</div>
+            {% if p.referencia %}
+            <div class="rk-prod-ref">Ref: {{ p.referencia }}{% if p.desc_linha %} &mdash; {{ p.desc_linha }}{% endif %}</div>
+            {% endif %}
+          </td>
+          <td class="rk-prod-qty" style="text-align:center;">{{ p.total_qty | int }}</td>
+          <td class="rk-prod-value">{{ p.total_value | br_valor('R$') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="rk-empty-products">Nenhum produto registrado no período.</div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
