@@ -309,6 +309,78 @@ def temas():
     return render_template('cadastros/company_themes.html', registros=registros, companies=companies)
 
 
+# ── Regras de Ranking ─────────────────────────────────────────────────────────
+
+@cadastros_bp.route('/ranking-regras', methods=['GET', 'POST'])
+@login_required
+@screen_required('cad_ranking_regras')
+def ranking_regras():
+    if request.method == 'POST':
+        action = request.form.get('_action')
+        try:
+            if action == 'criar':
+                db.execute(
+                    """INSERT INTO faciais.ranking_rules
+                       (rule_name, rule_description, analysis_period_days, min_visits_required,
+                        points_per_visit_with_purchase, points_per_visit_no_purchase,
+                        points_per_currency_unit, is_active)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    (
+                        request.form['rule_name'].strip(),
+                        request.form.get('rule_description', '').strip() or None,
+                        request.form['analysis_period_days'],
+                        request.form.get('min_visits_required') or 1,
+                        request.form.get('points_per_visit_with_purchase') or 100,
+                        request.form.get('points_per_visit_no_purchase') or 20,
+                        request.form.get('points_per_currency_unit') or 0.5,
+                        'is_active' in request.form,
+                    )
+                )
+                flash('Regra criada com sucesso.', 'success')
+
+            elif action == 'editar':
+                db.execute(
+                    """UPDATE faciais.ranking_rules SET
+                       rule_name=%s, rule_description=%s, analysis_period_days=%s,
+                       min_visits_required=%s, points_per_visit_with_purchase=%s,
+                       points_per_visit_no_purchase=%s, points_per_currency_unit=%s, is_active=%s
+                       WHERE ranking_rule_id=%s""",
+                    (
+                        request.form['rule_name'].strip(),
+                        request.form.get('rule_description', '').strip() or None,
+                        request.form['analysis_period_days'],
+                        request.form.get('min_visits_required') or 1,
+                        request.form.get('points_per_visit_with_purchase') or 100,
+                        request.form.get('points_per_visit_no_purchase') or 20,
+                        request.form.get('points_per_currency_unit') or 0.5,
+                        'is_active' in request.form,
+                        request.form['_id'],
+                    )
+                )
+                flash('Regra atualizada com sucesso.', 'success')
+
+            elif action == 'excluir':
+                db.execute(
+                    "DELETE FROM faciais.ranking_rules WHERE ranking_rule_id=%s",
+                    (request.form['_id'],)
+                )
+                flash('Regra excluída com sucesso.', 'success')
+
+        except Exception as e:
+            err = str(e).lower()
+            if 'foreign key' in err or 'violates' in err:
+                flash('Não é possível excluir: existem lojas vinculadas a esta regra.', 'error')
+            else:
+                flash(f'Erro: {e}', 'error')
+
+        return redirect(url_for('cadastros.ranking_regras'))
+
+    registros = db.query_all(
+        "SELECT * FROM faciais.ranking_rules ORDER BY rule_name"
+    )
+    return render_template('cadastros/ranking_rules.html', registros=registros)
+
+
 # ── Lojas ─────────────────────────────────────────────────────────────────────
 
 @cadastros_bp.route('/lojas', methods=['GET', 'POST'])
@@ -323,8 +395,8 @@ def lojas():
                     """INSERT INTO faciais.stores
                        (company_id, retailer_group_id, store_name, store_short_name,
                         cnpj, microvix_portal, cep, address_number, address_complement,
-                        uf, city, neighborhood, calendar_profile_id)
-                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                        uf, city, neighborhood, calendar_profile_id, ranking_rule_id)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                     (
                         request.form.get('company_id') or None,
                         request.form.get('retailer_group_id') or None,
@@ -339,6 +411,7 @@ def lojas():
                         request.form.get('city', '').strip() or None,
                         request.form.get('neighborhood', '').strip() or None,
                         request.form.get('calendar_profile_id') or None,
+                        request.form.get('ranking_rule_id') or None,
                     )
                 )
                 flash('Loja criada com sucesso.', 'success')
@@ -348,7 +421,7 @@ def lojas():
                     """UPDATE faciais.stores SET
                        company_id=%s, retailer_group_id=%s, store_name=%s, store_short_name=%s,
                        cnpj=%s, microvix_portal=%s, cep=%s, address_number=%s, address_complement=%s,
-                       uf=%s, city=%s, neighborhood=%s, calendar_profile_id=%s
+                       uf=%s, city=%s, neighborhood=%s, calendar_profile_id=%s, ranking_rule_id=%s
                        WHERE store_id=%s""",
                     (
                         request.form.get('company_id') or None,
@@ -364,6 +437,7 @@ def lojas():
                         request.form.get('city', '').strip() or None,
                         request.form.get('neighborhood', '').strip() or None,
                         request.form.get('calendar_profile_id') or None,
+                        request.form.get('ranking_rule_id') or None,
                         request.form['_id'],
                     )
                 )
@@ -383,11 +457,13 @@ def lojas():
         return redirect(url_for('cadastros.lojas'))
 
     registros = db.query_all("""
-        SELECT s.*, c.company_name, rg.retailer_group_name, bcp.profile_name
+        SELECT s.*, c.company_name, rg.retailer_group_name, bcp.profile_name,
+               rr.rule_name AS ranking_rule_name
         FROM   faciais.stores s
         LEFT JOIN faciais.companies                  c   ON s.company_id         = c.company_id
         LEFT JOIN faciais.retailer_groups            rg  ON s.retailer_group_id  = rg.retailer_group_id
         LEFT JOIN faciais.business_calendar_profiles bcp ON bcp.profile_id       = s.calendar_profile_id
+        LEFT JOIN faciais.ranking_rules              rr  ON rr.ranking_rule_id   = s.ranking_rule_id
         ORDER BY s.store_name
     """)
     companies = db.query_all(
@@ -399,9 +475,12 @@ def lojas():
     perfis = db.query_all(
         "SELECT profile_id, profile_name FROM faciais.business_calendar_profiles WHERE is_active = TRUE ORDER BY profile_name"
     )
+    regras = db.query_all(
+        "SELECT ranking_rule_id, rule_name FROM faciais.ranking_rules WHERE is_active = TRUE ORDER BY rule_name"
+    )
     return render_template('cadastros/stores.html',
                            registros=registros, companies=companies,
-                           lojistas=lojistas, perfis=perfis)
+                           lojistas=lojistas, perfis=perfis, regras=regras)
 
 
 # ── Câmeras ───────────────────────────────────────────────────────────────────

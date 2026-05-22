@@ -1,0 +1,190 @@
+{% extends 'base_web.html' %}
+{% block title %}Regras de Ranking — Retail Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <a class="back-link" href="{{ url_for('cadastros.index') }}">Cadastros</a>
+        <span class="breadcrumb-sep">/</span>
+        <h1>Regras de Ranking</h1>
+    </div>
+    <button class="btn-primary" onclick="abrirNovo()">+ Nova Regra</button>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:60px">ID</th>
+                <th>Nome</th>
+                <th style="width:130px">Período (dias)</th>
+                <th style="width:110px">Min. Visitas</th>
+                <th style="width:120px">Pts c/Compra</th>
+                <th style="width:120px">Pts s/Compra</th>
+                <th style="width:110px">Pts/R$ Gasto</th>
+                <th style="width:80px">Ativo</th>
+                <th class="col-actions">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in registros %}
+            <tr>
+                <td><span class="badge">{{ r.ranking_rule_id }}</span></td>
+                <td>
+                    {{ r.rule_name }}
+                    {% if r.rule_description %}
+                    <div style="font-size:.75rem; color:#6B7280; margin-top:.1rem;">{{ r.rule_description }}</div>
+                    {% endif %}
+                </td>
+                <td>{{ r.analysis_period_days }} dias</td>
+                <td>{{ r.min_visits_required }}</td>
+                <td>{{ r.points_per_visit_with_purchase | int if r.points_per_visit_with_purchase == r.points_per_visit_with_purchase | int else r.points_per_visit_with_purchase }}</td>
+                <td>{{ r.points_per_visit_no_purchase | int if r.points_per_visit_no_purchase == r.points_per_visit_no_purchase | int else r.points_per_visit_no_purchase }}</td>
+                <td>{{ r.points_per_currency_unit }}</td>
+                <td>
+                    {% if r.is_active %}
+                    <span style="color:#059669; font-weight:600;">Sim</span>
+                    {% else %}
+                    <span style="color:#9CA3AF;">Não</span>
+                    {% endif %}
+                </td>
+                <td class="col-actions">
+                    <button class="btn-edit"
+                        data-id="{{ r.ranking_rule_id }}"
+                        data-nome="{{ r.rule_name | e }}"
+                        data-desc="{{ r.rule_description or '' | e }}"
+                        data-periodo="{{ r.analysis_period_days }}"
+                        data-minvisitas="{{ r.min_visits_required }}"
+                        data-ptscompra="{{ r.points_per_visit_with_purchase }}"
+                        data-ptssemcompra="{{ r.points_per_visit_no_purchase }}"
+                        data-ptscurrency="{{ r.points_per_currency_unit }}"
+                        data-ativo="{{ 'true' if r.is_active else 'false' }}"
+                        onclick="abrirEditar(this)">Editar</button>
+                    <form method="POST" style="display:inline"
+                          onsubmit="return confirm('Confirma a exclusão desta regra?')">
+                        <input type="hidden" name="_action" value="excluir">
+                        <input type="hidden" name="_id"    value="{{ r.ranking_rule_id }}">
+                        <button type="submit" class="btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="9" class="table-empty">Nenhuma regra cadastrada.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<dialog id="modal">
+    <form method="POST">
+        <div class="modal-header">
+            <h2 id="modal-titulo">Nova Regra de Ranking</h2>
+            <button type="button" class="modal-close" onclick="fecharModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="_action" id="form-action">
+            <input type="hidden" name="_id"     id="form-id">
+
+            <div class="form-row">
+                <div class="form-group" style="flex:2">
+                    <label>Nome da Regra <span style="color:#EF4444">*</span></label>
+                    <input type="text" id="f-nome" name="rule_name" required maxlength="100"
+                           placeholder="ex: Regra Padrão, Regra VIP">
+                </div>
+                <div class="form-group" style="flex:0 0 160px">
+                    <label>Período de Análise <span style="color:#EF4444">*</span></label>
+                    <div style="display:flex; align-items:center; gap:.5rem;">
+                        <input type="number" id="f-periodo" name="analysis_period_days"
+                               required min="1" placeholder="30" style="width:80px;">
+                        <span style="font-size:.8125rem; color:#6B7280; white-space:nowrap;">dias</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Descrição <small>(opcional)</small></label>
+                    <input type="text" id="f-desc" name="rule_description" maxlength="255"
+                           placeholder="Descrição da regra de ranking">
+                </div>
+            </div>
+
+            <hr style="border:none; border-top:1px solid #E5E7EB; margin:.75rem 0;">
+            <div style="font-size:.8125rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6B7280; margin-bottom:.75rem;">Pontuação</div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Pts por visita <em>com</em> compra <span style="color:#EF4444">*</span></label>
+                    <input type="number" id="f-ptscompra" name="points_per_visit_with_purchase"
+                           required min="0" step="0.0001" value="100" placeholder="100">
+                </div>
+                <div class="form-group">
+                    <label>Pts por visita <em>sem</em> compra <span style="color:#EF4444">*</span></label>
+                    <input type="number" id="f-ptssemcompra" name="points_per_visit_no_purchase"
+                           required min="0" step="0.0001" value="20" placeholder="20">
+                </div>
+                <div class="form-group">
+                    <label>Pts por R$ gasto <span style="color:#EF4444">*</span></label>
+                    <input type="number" id="f-ptscurrency" name="points_per_currency_unit"
+                           required min="0" step="0.0001" value="0.5" placeholder="0.5">
+                </div>
+                <div class="form-group" style="flex:0 0 140px">
+                    <label>Mín. de visitas <span style="color:#EF4444">*</span></label>
+                    <input type="number" id="f-minvisitas" name="min_visits_required"
+                           required min="1" value="1" placeholder="1">
+                </div>
+            </div>
+
+            <div class="form-row" style="align-items:center; margin-top:.25rem;">
+                <label style="display:flex; align-items:center; gap:.5rem; cursor:pointer; font-size:.875rem; color:#374151;">
+                    <input type="checkbox" id="f-ativo" name="is_active" checked
+                           style="width:1rem; height:1rem; cursor:pointer;">
+                    Regra ativa (disponível para seleção nas lojas)
+                </label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="fecharModal()">Cancelar</button>
+            <button type="submit" class="btn-primary">Salvar</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+const modal = document.getElementById('modal');
+
+function abrirNovo() {
+    document.getElementById('modal-titulo').textContent   = 'Nova Regra de Ranking';
+    document.getElementById('form-action').value          = 'criar';
+    document.getElementById('form-id').value              = '';
+    document.getElementById('f-nome').value               = '';
+    document.getElementById('f-desc').value               = '';
+    document.getElementById('f-periodo').value            = '';
+    document.getElementById('f-minvisitas').value         = '1';
+    document.getElementById('f-ptscompra').value          = '100';
+    document.getElementById('f-ptssemcompra').value       = '20';
+    document.getElementById('f-ptscurrency').value        = '0.5';
+    document.getElementById('f-ativo').checked            = true;
+    modal.showModal();
+}
+
+function abrirEditar(btn) {
+    const d = btn.dataset;
+    document.getElementById('modal-titulo').textContent   = 'Editar Regra de Ranking';
+    document.getElementById('form-action').value          = 'editar';
+    document.getElementById('form-id').value              = d.id;
+    document.getElementById('f-nome').value               = d.nome;
+    document.getElementById('f-desc').value               = d.desc;
+    document.getElementById('f-periodo').value            = d.periodo;
+    document.getElementById('f-minvisitas').value         = d.minvisitas;
+    document.getElementById('f-ptscompra').value          = d.ptscompra;
+    document.getElementById('f-ptssemcompra').value       = d.ptssemcompra;
+    document.getElementById('f-ptscurrency').value        = d.ptscurrency;
+    document.getElementById('f-ativo').checked            = d.ativo === 'true';
+    modal.showModal();
+}
+
+function fecharModal() { modal.close(); }
+modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
+</script>
+{% endblock %}

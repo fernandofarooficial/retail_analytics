@@ -23,6 +23,7 @@
                 <th style="width:110px">Portal Microvix</th>
                 <th>Cidade / UF</th>
                 <th>Perfil Calendário</th>
+                <th>Regra de Ranking</th>
                 <th class="col-actions">Ações</th>
             </tr>
         </thead>
@@ -49,6 +50,7 @@
                     {% else %}—{% endif %}
                 </td>
                 <td>{{ r.profile_name or '—' }}</td>
+                <td>{{ r.ranking_rule_name or '—' }}</td>
                 <td class="col-actions">
                     <button class="btn-edit"
                         data-id="{{ r.store_id }}"
@@ -65,6 +67,7 @@
                         data-city="{{ r.city or '' | e }}"
                         data-neighborhood="{{ r.neighborhood or '' | e }}"
                         data-perfil="{{ r.calendar_profile_id or '' }}"
+                        data-ranking="{{ r.ranking_rule_id or '' }}"
                         onclick="abrirEditar(this)">Editar</button>
                     <form method="POST" style="display:inline"
                           onsubmit="return confirm('Confirma a exclusão desta loja?')">
@@ -75,7 +78,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="9" class="table-empty">Nenhuma loja cadastrada.</td></tr>
+            <tr><td colspan="10" class="table-empty">Nenhuma loja cadastrada.</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -132,12 +135,24 @@
                     <label>Portal Microvix <small>(opcional)</small></label>
                     <input type="number" id="f-portal" name="microvix_portal" min="1" placeholder="ex: 123456">
                 </div>
+            </div>
+
+            <div class="form-row">
                 <div class="form-group">
                     <label>Perfil de Calendário</label>
                     <select id="f-perfil" name="calendar_profile_id">
                         <option value="">— Padrão —</option>
                         {% for p in perfis %}
                         <option value="{{ p.profile_id }}">{{ p.profile_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Regra de Ranking</label>
+                    <select id="f-ranking" name="ranking_rule_id">
+                        <option value="">— Nenhuma —</option>
+                        {% for r in regras %}
+                        <option value="{{ r.ranking_rule_id }}">{{ r.rule_name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -243,7 +258,8 @@ function abrirNovo() {
     CLEAR_FIELDS.forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('f-company').value = '';
     document.getElementById('f-lojista').value = '';
-    document.getElementById('f-perfil').value  = '';
+    document.getElementById('f-perfil').value   = '';
+    document.getElementById('f-ranking').value  = '';
     document.getElementById('cep-status').textContent = '';
     modal.showModal();
 }
@@ -266,6 +282,7 @@ function abrirEditar(btn) {
     document.getElementById('f-number').value           = d.number;
     document.getElementById('f-complement').value       = d.complement;
     document.getElementById('f-perfil').value           = d.perfil;
+    document.getElementById('f-ranking').value          = d.ranking;
     document.getElementById('cep-status').textContent   = '';
     modal.showModal();
 }
