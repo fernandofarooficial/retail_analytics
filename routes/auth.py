@@ -1877,14 +1877,16 @@ def ranking_pessoa(person_id):
     theme = {'primary_color': '#F47B20'}
     company_logo = None
     company_name = None
+    company_id = None
     r = db.query_one("""
-        SELECT c.company_name, ct.logo_url, ct.primary_color
+        SELECT c.company_id, c.company_name, ct.logo_url, ct.primary_color
         FROM   faciais.stores s
         JOIN   faciais.companies c       ON c.company_id = s.company_id
         LEFT   JOIN faciais.company_themes ct ON ct.company_id = c.company_id
         WHERE  s.store_id = %s
     """, (store_id,))
     if r:
+        company_id   = r['company_id']
         company_logo = r['logo_url']
         company_name = r['company_name']
         if r['primary_color']:
@@ -1897,6 +1899,7 @@ def ranking_pessoa(person_id):
                            products=products,
                            visit_days=visit_days,
                            store_id=store_id,
+                           company_id=company_id,
                            theme=theme,
                            company_logo=company_logo,
                            company_name=company_name)
