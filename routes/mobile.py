@@ -1697,7 +1697,7 @@ def ranking():
             ranking_data = db.query_all("""
                 SELECT ranking_position, person_id, full_name, nickname, score,
                        total_visits, visits_with_purchase, total_spent, last_visit_at
-                FROM   faciais.vw_customer_ranking
+                FROM   faciais.customer_ranking
                 WHERE  store_id = %s
                 ORDER  BY ranking_position
             """, (active_store['store_id'],))
@@ -1735,7 +1735,7 @@ def ranking_pessoa(person_id):
         return redirect(url_for('mobile.ranking'))
 
     ranking_row = db.query_one("""
-        SELECT * FROM faciais.vw_customer_ranking
+        SELECT * FROM faciais.customer_ranking
         WHERE  store_id = %s AND person_id = %s
     """, (store_id, person_id))
     if not ranking_row:

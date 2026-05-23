@@ -116,7 +116,39 @@
     font-size: .875rem;
     max-width: 560px;
   }
+  .rk-btn-recalc {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .4rem .9rem;
+    font-size: .8125rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--theme-primary);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: opacity .15s;
+    margin-left: auto;
+  }
+  .rk-btn-recalc:hover { opacity: .85; }
+  .rk-btn-recalc:disabled { opacity: .55; cursor: not-allowed; }
+  .rk-flash {
+    padding: .6rem 1rem;
+    border-radius: 6px;
+    font-size: .875rem;
+    margin-bottom: 1rem;
+    max-width: 680px;
+  }
+  .rk-flash-success { background: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; }
+  .rk-flash-danger  { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
 </style>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="rk-flash rk-flash-{{ category }}">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
 
 <div class="rk-header">
   <h1>Ranking de Clientes</h1>
@@ -144,6 +176,14 @@
     </select>
     {% endif %}
   </div>
+
+  {% if session.user_type_id == 'adm' %}
+  <form method="post"
+        action="{{ url_for('auth.ranking_recalcular', store_id=selected_store_id, company_id=selected_company_id) }}"
+        onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Recalculando…'">
+    <button type="submit" class="rk-btn-recalc">&#8635; Recalcular ranking</button>
+  </form>
+  {% endif %}
 </div>
 
 {% if active_store %}

@@ -1774,7 +1774,7 @@ def ranking():
             ranking_data = db.query_all("""
                 SELECT ranking_position, person_id, full_name, nickname, score,
                        total_visits, visits_with_purchase, total_spent, last_visit_at
-                FROM   faciais.vw_customer_ranking
+                FROM   faciais.customer_ranking
                 WHERE  store_id = %s
                 ORDER  BY ranking_position
             """, (active_store['store_id'],))
@@ -1790,6 +1790,41 @@ def ranking():
                            theme=theme,
                            ranking_data=ranking_data,
                            ranking_rule=ranking_rule)
+
+
+@auth_bp.route('/ranking/recalcular', methods=['POST'])
+@login_required
+def ranking_recalcular():
+    if session.get('user_type_id') != 'adm':
+        return ('', 403)
+    conn = db._pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("TRUNCATE TABLE faciais.customer_ranking RESTART IDENTITY")
+            cur.execute("""
+                INSERT INTO faciais.customer_ranking (
+                    store_id, store_name, ranking_rule_id, analysis_period_days,
+                    ranking_position, person_id, full_name, nickname, person_type_id,
+                    total_visits, visits_with_purchase, visits_no_purchase,
+                    total_spent, score, first_visit_at, last_visit_at, calculated_at
+                )
+                SELECT
+                    store_id, store_name, ranking_rule_id, analysis_period_days,
+                    ranking_position, person_id, full_name, nickname, person_type_id,
+                    total_visits, visits_with_purchase, visits_no_purchase,
+                    total_spent, score, first_visit_at, last_visit_at, NOW()
+                FROM faciais.vw_customer_ranking
+            """)
+        conn.commit()
+        flash('Ranking recalculado com sucesso.', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Erro ao recalcular o ranking: {e}', 'danger')
+    finally:
+        db._pool.putconn(conn)
+    store_id   = request.args.get('store_id', type=int)
+    company_id = request.args.get('company_id', type=int)
+    return redirect(url_for('auth.ranking', store_id=store_id, company_id=company_id))
 
 
 @auth_bp.route('/ranking/<int:person_id>')
@@ -1808,7 +1843,7 @@ def ranking_pessoa(person_id):
         return redirect(url_for('auth.ranking'))
 
     ranking_row = db.query_one("""
-        SELECT * FROM faciais.vw_customer_ranking
+        SELECT * FROM faciais.customer_ranking
         WHERE  store_id = %s AND person_id = %s
     """, (store_id, person_id))
     if not ranking_row:
