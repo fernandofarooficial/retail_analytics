@@ -1,6 +1,6 @@
 ﻿import calendar
 from datetime import date as date_type, timedelta
-from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, flash
 from werkzeug.security import check_password_hash
 from routes.utils import (login_required, screen_required,
                            fmt_permanencia, kpi_tempo_loja, kpi_tempo_loja_range,
