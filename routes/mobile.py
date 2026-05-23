@@ -1771,7 +1771,8 @@ def ranking_pessoa(person_id):
                    SUM(mm.valor_total) AS total_value
             FROM   faciais.person_purchases pp
             JOIN   microvix.microvix_movimento mm
-                   ON  mm.cnpj_emp              = %s
+                   ON  mm.portal                = %s
+                   AND mm.cnpj_emp              = %s
                    AND mm.documento             = pp.bill
                    AND mm.cancelado            <> 'S'
                    AND mm.excluido             <> 'S'
@@ -1788,7 +1789,7 @@ def ranking_pessoa(person_id):
               AND  pp.created_at   >= CURRENT_DATE - (%s || ' days')::interval
             GROUP  BY mp.nome, mp.referencia, mp.desc_linha
             ORDER  BY total_qty DESC
-        """, (cnpj, portal, person_id, store_id, days))
+        """, (portal, cnpj, portal, person_id, store_id, days))
 
     visit_days = []
     if store_ext:
