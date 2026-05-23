@@ -1761,35 +1761,31 @@ def ranking_pessoa(person_id):
         JOIN   faciais.ranking_rules rr ON rr.ranking_rule_id = s.ranking_rule_id
         WHERE  s.store_id = %s
     """, (store_id,))
-    if store_ext and store_ext['cnpj'] and store_ext['microvix_portal']:
-        cnpj   = str(store_ext['cnpj']).zfill(14)
-        portal = store_ext['microvix_portal']
+    if store_ext and store_ext['cnpj']:
         days   = store_ext['analysis_period_days']
         products = db.query_all("""
             SELECT mp.nome AS product_name, mp.referencia, mp.desc_linha,
                    SUM(mm.quantidade)  AS total_qty,
                    SUM(mm.valor_total) AS total_value
             FROM   faciais.person_purchases pp
-            JOIN   microvix.microvix_movimento mm
-                   ON  mm.portal                = %s
-                   AND mm.cnpj_emp              = %s
-                   AND mm.documento             = pp.bill
-                   AND mm.cancelado            <> 'S'
-                   AND mm.excluido             <> 'S'
-                   AND mm.soma_relatorio        = 'S'
-                   AND (mm.tipo_transacao IN ('P','V') OR mm.tipo_transacao IS NULL)
-                   AND mm.cod_natureza_operacao  = '10030'
+            JOIN   microvix.microvix_movimento mm ON mm.documento = pp.bill
             JOIN   microvix.microvix_produtos mp
-                   ON  mp.portal      = %s
+                   ON  mp.portal      = mm.portal
                    AND mp.cod_produto = mm.cod_produto
-            WHERE  pp.person_id    = %s
+            WHERE  mm.cnpj_emp::bigint   = %s
+              AND  mm.cancelado         <> 'S'
+              AND  mm.excluido          <> 'S'
+              AND  mm.soma_relatorio     = 'S'
+              AND  (mm.tipo_transacao IN ('P','V') OR mm.tipo_transacao IS NULL)
+              AND  mm.cod_natureza_operacao = '10030'
+              AND  pp.person_id    = %s
               AND  pp.store_id     = %s
               AND  pp.is_identified = TRUE
               AND  pp.is_cancelled  = FALSE
               AND  pp.created_at   >= CURRENT_DATE - (%s || ' days')::interval
             GROUP  BY mp.nome, mp.referencia, mp.desc_linha
             ORDER  BY total_qty DESC
-        """, (portal, cnpj, portal, person_id, store_id, days))
+        """, (store_ext['cnpj'], person_id, store_id, days))
 
     visit_days = []
     if store_ext:
