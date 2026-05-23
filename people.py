@@ -649,3 +649,29 @@ def cobertura_estoque(portal, cnpj):
 
     result.sort(key=lambda x: x['cobertura_dias'])
     return result[:10]
+
+
+def produtos_por_pessoa(store_id, person_id, cnpj, days):
+    """Produtos comprados por uma pessoa identificada no período de análise do ranking."""
+    return db.query_all("""
+        SELECT mp.nome AS product_name, mp.referencia, mp.desc_linha,
+               SUM(mm.quantidade)  AS total_qty,
+               SUM(mm.valor_total) AS total_value
+        FROM   faciais.person_purchases pp
+        JOIN   microvix.microvix_movimento mm ON mm.documento = pp.bill
+        JOIN   microvix.microvix_produtos mp
+               ON  mp.portal      = mm.portal
+               AND mp.cod_produto = mm.cod_produto
+        WHERE  mm.cnpj_emp::bigint      = %s
+          AND  mm.cancelado            <> 'S'
+          AND  mm.excluido             <> 'S'
+          AND  mm.soma_relatorio        = 'S'
+          AND  (mm.tipo_transacao IN ('P','V') OR mm.tipo_transacao IS NULL)
+          AND  mm.cod_natureza_operacao  = '10030'
+          AND  pp.person_id    = %s
+          AND  pp.store_id     = %s
+          AND  pp.is_cancelled  = FALSE
+          AND  mm.data_documento   >= CURRENT_DATE - (%s || ' days')::interval
+        GROUP  BY mp.nome, mp.referencia, mp.desc_linha
+        ORDER  BY total_qty DESC
+    """, (cnpj, person_id, store_id, days))

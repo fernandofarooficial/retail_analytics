@@ -11,7 +11,8 @@ from metas import get_metas as _get_metas
 from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     kpi_microvix as _kpi_microvix, faixa_horaria as _faixa_horaria,
                     ticket_por_tipo as _ticket_por_tipo,
-                    top5_por_tipo as _top5_por_tipo)
+                    top5_por_tipo as _top5_por_tipo,
+                    produtos_por_pessoa as _produtos_por_pessoa)
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -1835,30 +1836,8 @@ def ranking_pessoa(person_id):
         WHERE  s.store_id = %s
     """, (store_id,))
     if store_ext and store_ext['cnpj']:
-        days   = store_ext['analysis_period_days']
-        products = db.query_all("""
-            SELECT mp.nome AS product_name, mp.referencia, mp.desc_linha,
-                   SUM(mm.quantidade)  AS total_qty,
-                   SUM(mm.valor_total) AS total_value
-            FROM   faciais.person_purchases pp
-            JOIN   microvix.microvix_movimento mm ON mm.documento = pp.bill
-            JOIN   microvix.microvix_produtos mp
-                   ON  mp.portal      = mm.portal
-                   AND mp.cod_produto = mm.cod_produto
-            WHERE  mm.cnpj_emp::bigint   = %s
-              AND  mm.cancelado         <> 'S'
-              AND  mm.excluido          <> 'S'
-              AND  mm.soma_relatorio     = 'S'
-              AND  (mm.tipo_transacao IN ('P','V') OR mm.tipo_transacao IS NULL)
-              AND  mm.cod_natureza_operacao = '10030'
-              AND  pp.person_id    = %s
-              AND  pp.store_id     = %s
-              AND  pp.is_identified = TRUE
-              AND  pp.is_cancelled  = FALSE
-              AND  pp.created_at   >= CURRENT_DATE - (%s || ' days')::interval
-            GROUP  BY mp.nome, mp.referencia, mp.desc_linha
-            ORDER  BY total_qty DESC
-        """, (store_ext['cnpj'], person_id, store_id, days))
+        days     = store_ext['analysis_period_days']
+        products = _produtos_por_pessoa(store_id, person_id, store_ext['cnpj'], days)
 
     visit_days = []
     if store_ext:
