@@ -1800,6 +1800,7 @@ def ranking_recalcular():
     conn = db._pool.getconn()
     try:
         with conn.cursor() as cur:
+            cur.execute("REFRESH MATERIALIZED VIEW faciais.mv_microvix_vendas")
             cur.execute("TRUNCATE TABLE faciais.customer_ranking RESTART IDENTITY")
             cur.execute("""
                 INSERT INTO faciais.customer_ranking (

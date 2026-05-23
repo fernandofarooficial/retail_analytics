@@ -6,10 +6,8 @@ Agendado via cron do VPS: 45 23 * * * ...
 import os
 import sys
 import logging
-from datetime import datetime
 from pathlib import Path
 
-# garante que o .env do projeto seja carregado
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -28,11 +26,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-SQL = """
-BEGIN;
-
-    TRUNCATE TABLE faciais.customer_ranking RESTART IDENTITY;
-
+INSERT_SQL = """
     INSERT INTO faciais.customer_ranking (
         store_id, store_name, ranking_rule_id, analysis_period_days,
         ranking_position, person_id, full_name, nickname, person_type_id,
@@ -44,9 +38,7 @@ BEGIN;
         ranking_position, person_id, full_name, nickname, person_type_id,
         total_visits, visits_with_purchase, visits_no_purchase,
         total_spent, score, first_visit_at, last_visit_at, NOW()
-    FROM faciais.vw_customer_ranking;
-
-COMMIT;
+    FROM faciais.vw_customer_ranking
 """
 
 
@@ -60,7 +52,12 @@ def main():
     try:
         with psycopg2.connect(dsn) as conn:
             with conn.cursor() as cur:
-                cur.execute(SQL)
+                log.info('Atualizando mv_microvix_vendas...')
+                cur.execute("REFRESH MATERIALIZED VIEW faciais.mv_microvix_vendas")
+                log.info('Zerando customer_ranking...')
+                cur.execute("TRUNCATE TABLE faciais.customer_ranking RESTART IDENTITY")
+                log.info('Recalculando ranking...')
+                cur.execute(INSERT_SQL)
             conn.commit()
         log.info('Ranking recalculado com sucesso')
     except Exception:
