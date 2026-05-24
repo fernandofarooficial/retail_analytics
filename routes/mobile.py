@@ -1696,11 +1696,14 @@ def ranking():
             ranking_rule = rule_row
             ranking_data = db.query_all("""
                 SELECT ranking_position, person_id, full_name, nickname, score,
-                       total_visits, visits_with_purchase, total_spent, last_visit_at
+                       total_visits, visits_with_purchase, total_spent, last_visit_at,
+                       calculated_at
                 FROM   faciais.customer_ranking
                 WHERE  store_id = %s
                 ORDER  BY ranking_position
             """, (active_store['store_id'],))
+
+    ranking_calculated_at = ranking_data[0]['calculated_at'] if ranking_data else None
 
     return render_template('mobile/ranking.html',
                            company_logo=company_logo,
@@ -1712,7 +1715,8 @@ def ranking():
                            active_store=active_store,
                            theme=theme,
                            ranking_data=ranking_data,
-                           ranking_rule=ranking_rule)
+                           ranking_rule=ranking_rule,
+                           ranking_calculated_at=ranking_calculated_at)
 
 
 @mobile_bp.route('/ranking/<int:person_id>')

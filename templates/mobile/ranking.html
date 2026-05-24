@@ -319,11 +319,15 @@
     Acesse <strong>Cadastros → Regras de Ranking</strong> e vincule uma regra à loja.
   </div>
   {% elif not ranking_data %}
-  <div class="m-rk-meta">Últimos {{ ranking_rule.analysis_period_days }} dias &mdash; nenhum cliente</div>
+  <div class="m-rk-meta">
+    Últimos {{ ranking_rule.analysis_period_days }} dias &mdash; nenhum cliente
+    {% if ranking_calculated_at %}<br><span style="font-size:.7rem;">calculado em {{ ranking_calculated_at.strftime('%d/%m/%Y às %H:%M') }}</span>{% endif %}
+  </div>
   <div class="m-rk-empty">Nenhum cliente no ranking ainda.</div>
   {% else %}
   <div class="m-rk-meta">
     Últimos {{ ranking_rule.analysis_period_days }} dias &mdash; {{ ranking_data | length }} cliente{{ 's' if ranking_data | length != 1 else '' }}
+    {% if ranking_calculated_at %}<br><span style="font-size:.7rem;">calculado em {{ ranking_calculated_at.strftime('%d/%m/%Y às %H:%M') }}</span>{% endif %}
   </div>
   <div class="m-rk-list" id="rk-list">
     {% for r in ranking_data %}

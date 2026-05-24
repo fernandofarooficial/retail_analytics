@@ -195,12 +195,14 @@
   {% elif not ranking_data %}
   <div class="rk-meta">
     {{ active_store.store_name }} &mdash; Últimos {{ ranking_rule.analysis_period_days }} dias
+    {% if ranking_calculated_at %}&mdash; calculado em {{ ranking_calculated_at.strftime('%d/%m/%Y às %H:%M') }}{% endif %}
   </div>
   <div class="rk-empty">Nenhum cliente no ranking ainda.</div>
   {% else %}
   <div class="rk-meta">
     {{ active_store.store_name }} &mdash; Últimos {{ ranking_rule.analysis_period_days }} dias
     &mdash; {{ ranking_data | length }} cliente{{ 's' if ranking_data | length != 1 else '' }}
+    {% if ranking_calculated_at %}&mdash; calculado em {{ ranking_calculated_at.strftime('%d/%m/%Y às %H:%M') }}{% endif %}
   </div>
   <div class="rk-list">
     {% for r in ranking_data %}
