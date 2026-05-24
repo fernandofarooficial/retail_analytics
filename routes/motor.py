@@ -326,11 +326,11 @@ def vendas():
 
         if selected_vendedor:
             top_clientes = _top5_clientes_vendedor(
-                portal, cnpj, selected_vendedor,
+                ctx['active_store']['store_id'], portal, cnpj, selected_vendedor,
                 mes_ini_cur_str, mes_fim_cur_str,
                 mes_ini_ant_str, mes_fim_ant_str)
             top_produtos = _top5_produtos_vendedor(
-                portal, cnpj, selected_vendedor,
+                ctx['active_store']['store_id'], portal, cnpj, selected_vendedor,
                 mes_ini_cur_str, mes_fim_cur_str,
                 mes_ini_ant_str, mes_fim_ant_str)
 

@@ -259,7 +259,7 @@ def faturamento():
     fat_periodos_media = []
     if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
         fat_mensal = _faturamento_mensal(
-            ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano
+            ctx['active_store']['store_id'], ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano
         )
         for ano_m, mes_m in _tres_meses_anteriores():
             pcts = _faturamento_periodos_mes(
