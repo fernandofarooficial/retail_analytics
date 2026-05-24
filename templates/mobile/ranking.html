@@ -3,13 +3,17 @@
 
 {% block body %}
 <style>
-  :root { --theme-primary: {{ theme.primary_color }}; }
+  :root {
+    --theme-primary: {{ theme.primary_color }};
+    --rk-bg: {{ theme.background_color or '#F5F5F5' }};
+  }
+  body { background: var(--rk-bg) !important; }
 
   .m-rk-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: .875rem 1rem .5rem;
+    padding: calc(.875rem + env(safe-area-inset-top, 0px)) 1rem .5rem;
     background: #fff;
     border-bottom: 1px solid #E5E7EB;
     position: sticky;
@@ -43,7 +47,7 @@
     text-align: center;
   }
 
-  .m-rk-list { padding: .5rem .75rem 90px; display: flex; flex-direction: column; gap: .5rem; }
+  .m-rk-list { padding: .5rem .75rem calc(80px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: .5rem; }
 
   /* Wrap para item + expand ficarem juntos */
   .m-rk-wrap { display: flex; flex-direction: column; }
@@ -242,13 +246,13 @@
     font-size: .8125rem;
   }
 
-  /* Bottom sheet seletor */
+  /* Bottom sheet seletor — z-index acima da bottom nav (200) */
   .m-bs-overlay {
     display: none;
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,.4);
-    z-index: 100;
+    z-index: 210;
   }
   .m-bs-overlay.open { display: block; }
   .m-bs {
@@ -256,8 +260,8 @@
     bottom: 0; left: 0; right: 0;
     background: #fff;
     border-radius: 16px 16px 0 0;
-    padding: 1.25rem 1rem 2rem;
-    z-index: 101;
+    padding: 1.25rem 1rem calc(2rem + env(safe-area-inset-bottom, 0px));
+    z-index: 211;
     transform: translateY(100%);
     transition: transform .28s cubic-bezier(.4,0,.2,1);
     max-height: 75vh;

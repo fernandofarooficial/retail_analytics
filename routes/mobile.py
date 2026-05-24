@@ -1679,9 +1679,12 @@ def ranking():
         if r:
             theme_cid = r['company_id']
     if theme_cid:
-        r = db.query_one("SELECT primary_color FROM faciais.company_themes WHERE company_id = %s", (theme_cid,))
+        r = db.query_one("SELECT primary_color, background_color FROM faciais.company_themes WHERE company_id = %s", (theme_cid,))
         if r:
-            theme['primary_color'] = r['primary_color']
+            if r['primary_color']:
+                theme['primary_color'] = r['primary_color']
+            if r['background_color']:
+                theme['background_color'] = r['background_color']
 
     ranking_data = []
     ranking_rule = None
