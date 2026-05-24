@@ -12,7 +12,8 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     kpi_microvix as _kpi_microvix, faixa_horaria as _faixa_horaria,
                     ticket_por_tipo as _ticket_por_tipo,
                     top5_por_tipo as _top5_por_tipo,
-                    produtos_por_pessoa as _produtos_por_pessoa)
+                    produtos_por_pessoa as _produtos_por_pessoa,
+                    get_store_series as _get_store_series)
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -407,7 +408,7 @@ def dashboard():
         kpi['visitantes']  = kpi['recorrentes'] + kpi['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, data_str, data_str)
+            _com = _kpi_microvix(sid, active_microvix_portal, active_store_cnpj, data_str, data_str)
             kpi['vendas'] = _com['vendas']
             kpi_com.update(_com)
         else:
@@ -425,7 +426,7 @@ def dashboard():
         kpi_sem['visitantes']  = kpi_sem['recorrentes'] + kpi_sem['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str)
+            _com = _kpi_microvix(sid, active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str)
             kpi_sem['vendas'] = _com['vendas']
             kpi_com_sem.update(_com)
         else:
@@ -443,7 +444,7 @@ def dashboard():
         kpi_mes['visitantes']  = kpi_mes['recorrentes'] + kpi_mes['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str)
+            _com = _kpi_microvix(sid, active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str)
             kpi_mes['vendas'] = _com['vendas']
             kpi_com_mes.update(_com)
         else:
@@ -461,7 +462,7 @@ def dashboard():
         kpi_ytd['visitantes']  = kpi_ytd['recorrentes'] + kpi_ytd['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str)
+            _com = _kpi_microvix(sid, active_microvix_portal, active_store_cnpj, ytd_inicio_str, ytd_fim_str)
             kpi_ytd['vendas'] = _com['vendas']
             kpi_com_ytd.update(_com)
         else:
@@ -549,7 +550,7 @@ def dashboard():
         kpi_ant['visitantes']  = kpi_ant['recorrentes'] + kpi_ant['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, _ps, _ps)
+            _com = _kpi_microvix(sid, active_microvix_portal, active_store_cnpj, _ps, _ps)
             kpi_ant['vendas'] = _com['vendas']
             kpi_ant_com.update(_com)
 
@@ -576,7 +577,7 @@ def dashboard():
         kpi_ant_sem['visitantes']  = kpi_ant_sem['recorrentes'] + kpi_ant_sem['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, semana_ant_inicio_str, semana_ant_fim_str)
+            _com = _kpi_microvix(sid, active_microvix_portal, active_store_cnpj, semana_ant_inicio_str, semana_ant_fim_str)
             kpi_ant_sem['vendas'] = _com['vendas']
             kpi_ant_com_sem.update(_com)
 
@@ -603,7 +604,7 @@ def dashboard():
         kpi_ant_mes['visitantes']  = kpi_ant_mes['recorrentes'] + kpi_ant_mes['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, mes_ant_inicio_str, mes_ant_fim_str)
+            _com = _kpi_microvix(sid, active_microvix_portal, active_store_cnpj, mes_ant_inicio_str, mes_ant_fim_str)
             kpi_ant_mes['vendas'] = _com['vendas']
             kpi_ant_com_mes.update(_com)
 
@@ -630,7 +631,7 @@ def dashboard():
         kpi_ant_ytd['visitantes']  = kpi_ant_ytd['recorrentes'] + kpi_ant_ytd['novos']
 
         if active_microvix_portal and active_store_cnpj:
-            _com = _kpi_microvix(active_microvix_portal, active_store_cnpj, ytd_ant_inicio_str, ytd_ant_fim_str)
+            _com = _kpi_microvix(sid, active_microvix_portal, active_store_cnpj, ytd_ant_inicio_str, ytd_ant_fim_str)
             kpi_ant_ytd['vendas'] = _com['vendas']
             kpi_ant_com_ytd.update(_com)
 
@@ -871,7 +872,7 @@ def _compute_charts_data(store_id, data_str, active_store_cnpj, active_microvix_
             periodo['clientes'][int(row['hora'])] = int(row['clientes'] or 0)
 
     if active_microvix_portal and active_store_cnpj:
-        for row in _faixa_horaria(active_microvix_portal, active_store_cnpj, data_str, data_str):
+        for row in _faixa_horaria(sid, active_microvix_portal, active_store_cnpj, data_str, data_str):
             chart_faixa_dia['vendas'][int(row['hora'])]      = int(row['vendas'] or 0)
             chart_faixa_dia['faturamento'][int(row['hora'])] = float(row['faturamento'] or 0)
         for cf, di, df in [
@@ -879,7 +880,7 @@ def _compute_charts_data(store_id, data_str, active_store_cnpj, active_microvix_
             (chart_faixa_mes, mes_inicio_str,    mes_fim_str),
             (chart_faixa_ytd, ytd_inicio_str,    ytd_fim_str),
         ]:
-            for row in _faixa_horaria(active_microvix_portal, active_store_cnpj, di, df):
+            for row in _faixa_horaria(sid, active_microvix_portal, active_store_cnpj, di, df):
                 cf['vendas'][int(row['hora'])]      = int(row['vendas'] or 0)
                 cf['faturamento'][int(row['hora'])] = float(row['faturamento'] or 0)
 
@@ -999,17 +1000,18 @@ def _compute_charts_data(store_id, data_str, active_store_cnpj, active_microvix_
     top5_tipo_ytd = {'novos': [], 'recorrentes': []}
 
     if active_microvix_portal and active_store_cnpj:
+        series_pf, _ = _get_store_series(sid)
         _FILTRO_MV = (
             "m.portal = %s AND m.cnpj_emp = %s "
             "AND m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S' "
-            "AND (m.tipo_transacao IN ('P','V') OR m.tipo_transacao IS NULL) AND m.codigo_cliente = 1 AND m.cod_natureza_operacao = '10030'"
+            "AND (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL) AND m.serie = ANY(%s::varchar[]) AND m.cod_natureza_operacao = '10030'"
         )
         _JOIN_PROD = (
             "JOIN microvix.microvix_produtos p "
             "ON p.portal = m.portal AND p.cod_produto = m.cod_produto"
         )
         _NOME_PROD = "COALESCE(NULLIF(TRIM(p.descricao_basica),''), p.nome)"
-        _p = (active_microvix_portal, active_store_cnpj)
+        _p = (active_microvix_portal, active_store_cnpj, series_pf)
         _date_range = "m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'"
 
         def _top_query(params, order_expr):
@@ -1036,9 +1038,9 @@ def _compute_charts_data(store_id, data_str, active_store_cnpj, active_microvix_
                 JOIN microvix.microvix_produtos pb ON pb.portal = b.portal AND pb.cod_produto = b.cod_produto
                 WHERE a.portal = %s AND a.cnpj_emp = %s
                   AND a.cancelado <> 'S' AND a.excluido <> 'S' AND a.soma_relatorio = 'S'
-                  AND (a.tipo_transacao IN ('P','V') OR a.tipo_transacao IS NULL) AND a.codigo_cliente = 1 AND a.cod_natureza_operacao = '10030'
+                  AND (a.tipo_transacao IN ('P','V','S') OR a.tipo_transacao IS NULL) AND a.serie = ANY(%s::varchar[]) AND a.cod_natureza_operacao = '10030'
                   AND b.cancelado <> 'S' AND b.excluido <> 'S' AND b.soma_relatorio = 'S'
-                  AND (b.tipo_transacao IN ('P','V') OR b.tipo_transacao IS NULL) AND b.codigo_cliente = 1 AND b.cod_natureza_operacao = '10030'
+                  AND (b.tipo_transacao IN ('P','V','S') OR b.tipo_transacao IS NULL) AND b.serie = ANY(%s::varchar[]) AND b.cod_natureza_operacao = '10030'
                   AND a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'
                 GROUP BY nome_a, nome_b ORDER BY qtd DESC LIMIT 10
             """
@@ -1054,13 +1056,13 @@ def _compute_charts_data(store_id, data_str, active_store_cnpj, active_microvix_
             tq[:] = _top_query(_p + (di, df), "SUM(m.quantidade)")
             tf[:] = _top_query(_p + (di, df), "SUM(m.valor_liquido)")
             if comb == 'dia':
-                combinacoes_dia = _comb_query(_p + (di, df))
+                combinacoes_dia = _comb_query(_p + (series_pf, di, df))
             elif comb == 'sem':
-                combinacoes_sem = _comb_query(_p + (di, df))
+                combinacoes_sem = _comb_query(_p + (series_pf, di, df))
             elif comb == 'mes':
-                combinacoes_mes = _comb_query(_p + (di, df))
+                combinacoes_mes = _comb_query(_p + (series_pf, di, df))
             else:
-                combinacoes_ytd = _comb_query(_p + (di, df))
+                combinacoes_ytd = _comb_query(_p + (series_pf, di, df))
             resultado = _top5_por_tipo(sid, active_microvix_portal, active_store_cnpj, di, df)
             t5['novos']       = resultado['novos']
             t5['recorrentes'] = resultado['recorrentes']

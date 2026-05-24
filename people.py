@@ -2,10 +2,30 @@ import math
 import db
 
 
-def kpi_microvix(portal, cnpj, dia_i, dia_f):
+# ── Helpers de série ──────────────────────────────────────────────────────────
+
+def get_store_series(store_id):
+    """Retorna (series_pf, series_pj) para a loja a partir de faciais.store_serie_rules."""
+    rows = db.query_all("""
+        SELECT person_kind, serie
+        FROM   faciais.store_serie_rules
+        WHERE  store_id = %s
+        ORDER  BY person_kind, serie
+    """, (store_id,))
+    pf = [r['serie'] for r in rows if r['person_kind'] == 'PF']
+    pj = [r['serie'] for r in rows if r['person_kind'] == 'PJ']
+    return pf, pj
+
+
+# ── KPIs / Operacional ────────────────────────────────────────────────────────
+
+def kpi_microvix(store_id, portal, cnpj, dia_i, dia_f):
+    series_pf, _ = get_store_series(store_id)
+    if not series_pf:
+        return {'vendas': 0, 'faturamento': 0.0, 'ticket_medio': 0.0, 'itens_venda': 0.0}
     row = db.query_one("""
         SELECT COUNT(DISTINCT documento) AS vendas,
-               SUM(valor_total)        AS faturamento,
+               SUM(valor_total)          AS faturamento,
                SUM(quantidade)           AS total_itens
         FROM   microvix.microvix_movimento
         WHERE  portal                = %s
@@ -14,9 +34,10 @@ def kpi_microvix(portal, cnpj, dia_i, dia_f):
           AND  cancelado           <> 'S'
           AND  excluido            <> 'S'
           AND  soma_relatorio       = 'S'
-          AND  (tipo_transacao IN ('P','V') OR tipo_transacao IS NULL) AND codigo_cliente = 1
+          AND  (tipo_transacao IN ('P','V','S') OR tipo_transacao IS NULL)
           AND  cod_natureza_operacao = '10030'
-    """, (portal, cnpj, dia_i, dia_f))
+          AND  serie                 = ANY(%s::varchar[])
+    """, (portal, cnpj, dia_i, dia_f, series_pf))
     if row and row['vendas']:
         v = int(row['vendas'])
         f = float(row['faturamento'] or 0)
@@ -44,7 +65,10 @@ def qtd_recorrentes(loja, dia_i, dia_f):
     return row['total'] if row else 0
 
 
-def faixa_horaria(portal, cnpj, dia_i, dia_f):
+def faixa_horaria(store_id, portal, cnpj, dia_i, dia_f):
+    series_pf, _ = get_store_series(store_id)
+    if not series_pf:
+        return []
     return db.query_all("""
         SELECT SPLIT_PART(hora_lancamento, ':', 1)::int AS hora,
                COUNT(DISTINCT documento)  AS vendas,
@@ -55,11 +79,12 @@ def faixa_horaria(portal, cnpj, dia_i, dia_f):
           AND  cancelado           <> 'S'
           AND  excluido            <> 'S'
           AND  soma_relatorio       = 'S'
-          AND  (tipo_transacao IN ('P','V') OR tipo_transacao IS NULL) AND codigo_cliente = 1
+          AND  (tipo_transacao IN ('P','V','S') OR tipo_transacao IS NULL)
           AND  cod_natureza_operacao = '10030'
+          AND  serie                 = ANY(%s::varchar[])
           AND  hora_lancamento IS NOT NULL AND hora_lancamento <> ''
         GROUP  BY hora ORDER BY hora
-    """, (portal, cnpj, dia_i, dia_f))
+    """, (portal, cnpj, dia_i, dia_f, series_pf))
 
 
 def qtd_novos(loja, dia_i, dia_f):
@@ -97,6 +122,7 @@ def qtd_novos_recorrentes(loja, dia_i, dia_f):
 
 def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
     """Ticket médio por nota, separado em novo/recorrente, via faciais.person_purchases."""
+    series_pf, _ = get_store_series(sid)
     rows = db.query_all("""
         WITH base AS (
             SELECT
@@ -119,8 +145,8 @@ def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
               AND mm.cancelado            <> 'S'
               AND mm.excluido             <> 'S'
               AND mm.soma_relatorio        = 'S'
-              AND (mm.tipo_transacao IN ('P','V') OR mm.tipo_transacao IS NULL) AND mm.codigo_cliente = 1
-              AND mm.soma_relatorio        = 'S'
+              AND (mm.tipo_transacao IN ('P','V','S') OR mm.tipo_transacao IS NULL)
+              AND mm.serie                 = ANY(%s::varchar[])
             GROUP BY pp.person_id
         )
         SELECT
@@ -129,7 +155,7 @@ def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
             SUM(total_valor) AS faturamento
         FROM base
         GROUP BY (estreia IS NOT NULL AND estreia < data_nota_fiscal)
-    """, (data_inicio, data_fim, sid, portal, cnpj))
+    """, (data_inicio, data_fim, sid, portal, cnpj, series_pf))
     result = {'ticket_novo': None, 'ticket_rec': None}
     for row in rows:
         n = int(row['num_bills'] or 0)
@@ -149,14 +175,15 @@ def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
     return result
 
 
-def faturamento_mensal(portal, cnpj, ano):
-    """Faturamento mensal por tipo de transação (V=Loja, P=Pedidos) para um dado ano."""
+def faturamento_mensal(store_id, portal, cnpj, ano):
+    """Faturamento mensal separado em loja (PF) e pedidos (PJ) para um dado ano."""
+    series_pf, series_pj = get_store_series(store_id)
     rows = db.query_all("""
         SELECT
             EXTRACT(MONTH FROM data_documento)::int AS mes,
-            SUM(CASE WHEN (tipo_transacao IN ('P','V') OR tipo_transacao IS NULL) AND codigo_cliente = 1  THEN valor_total ELSE 0 END) AS loja,
-            SUM(CASE WHEN (tipo_transacao IN ('P','V') OR tipo_transacao IS NULL) AND codigo_cliente != 1 THEN valor_total ELSE 0 END) AS pedidos,
-            SUM(valor_total)                                                 AS total
+            SUM(CASE WHEN serie = ANY(%s::varchar[]) THEN valor_total ELSE 0 END) AS loja,
+            SUM(CASE WHEN serie = ANY(%s::varchar[]) THEN valor_total ELSE 0 END) AS pedidos,
+            SUM(valor_total) AS total
         FROM microvix.microvix_movimento
         WHERE portal                = %s
           AND cnpj_emp              = %s
@@ -164,11 +191,11 @@ def faturamento_mensal(portal, cnpj, ano):
           AND cancelado            <> 'S'
           AND excluido             <> 'S'
           AND soma_relatorio        = 'S'
-          AND (tipo_transacao IN ('P','V') OR tipo_transacao IS NULL)
+          AND (tipo_transacao IN ('P','V','S') OR tipo_transacao IS NULL)
           AND cod_natureza_operacao = '10030'
         GROUP BY mes
         ORDER BY mes
-    """, (portal, cnpj, ano))
+    """, (series_pf, series_pj, portal, cnpj, ano))
     base = {m: {'loja': 0.0, 'pedidos': 0.0, 'total': 0.0} for m in range(1, 13)}
     for row in rows:
         m = row['mes']
@@ -193,7 +220,7 @@ def faturamento_diario_mes(portal, cnpj, ano, mes):
           AND  cancelado            <> 'S'
           AND  excluido             <> 'S'
           AND  soma_relatorio        = 'S'
-          AND  (tipo_transacao IN ('P','V') OR tipo_transacao IS NULL)
+          AND  (tipo_transacao IN ('P','V','S') OR tipo_transacao IS NULL)
           AND  cod_natureza_operacao = '10030'
         GROUP  BY dia
         ORDER  BY dia
@@ -217,7 +244,7 @@ def faturamento_periodos_mes(portal, cnpj, ano, mes):
           AND  cancelado            <> 'S'
           AND  excluido             <> 'S'
           AND  soma_relatorio        = 'S'
-          AND  (tipo_transacao IN ('P','V') OR tipo_transacao IS NULL)
+          AND  (tipo_transacao IN ('P','V','S') OR tipo_transacao IS NULL)
           AND  cod_natureza_operacao = '10030'
         GROUP  BY dia
         ORDER  BY dia
@@ -230,8 +257,7 @@ def faturamento_periodos_mes(portal, cnpj, ano, mes):
 
 
 def vendas_mensal_por_vendedor(portal, cnpj, ano):
-    """Faturamento mensal por vendedor (tipo_transacao='V') para um dado ano.
-    Retorna dict com meses_nomes e series=[{nome, dados}]."""
+    """Faturamento mensal por vendedor para um dado ano."""
     rows = db.query_all("""
         SELECT EXTRACT(MONTH FROM mm.data_documento)::int AS mes,
                COALESCE(NULLIF(TRIM(mv.nome_vendedor), ''), mm.cod_vendedor::text) AS vendedor,
@@ -245,16 +271,16 @@ def vendas_mensal_por_vendedor(portal, cnpj, ano):
           AND  mm.cancelado            <> 'S'
           AND  mm.excluido             <> 'S'
           AND  mm.soma_relatorio        = 'S'
-          AND  (mm.tipo_transacao IN ('P','V') OR mm.tipo_transacao IS NULL)
+          AND  (mm.tipo_transacao IN ('P','V','S') OR mm.tipo_transacao IS NULL)
           AND  mm.cod_natureza_operacao = '10030'
           AND  mm.cod_vendedor IS NOT NULL
         GROUP  BY mes, vendedor
         ORDER  BY mes, vendedor
     """, (portal, cnpj, ano))
 
-    meses_set     = set()
+    meses_set      = set()
     vendedores_set = set()
-    grid          = {}
+    grid           = {}
     for row in rows:
         m = row['mes']
         v = row['vendedor']
@@ -265,8 +291,8 @@ def vendas_mensal_por_vendedor(portal, cnpj, ano):
 
     _nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
               'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-    meses_sorted     = sorted(meses_set)
-    meses_nomes      = [_nomes[m - 1] for m in meses_sorted]
+    meses_sorted      = sorted(meses_set)
+    meses_nomes       = [_nomes[m - 1] for m in meses_sorted]
     vendedores_sorted = sorted(vendedores_set)
     series = [
         {'nome': v, 'dados': [grid.get((m, v), 0.0) for m in meses_sorted]}
@@ -277,6 +303,7 @@ def vendas_mensal_por_vendedor(portal, cnpj, ano):
 
 def top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
     """Top 5 produtos por faturamento, separado em novo/recorrente, via faciais.person_purchases."""
+    series_pf, _ = get_store_series(sid)
     rows = db.query_all("""
         WITH bills AS (
             SELECT pp.bill,
@@ -300,8 +327,10 @@ def top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
                    ON mp.portal = mm.portal AND mp.cod_produto = mm.cod_produto
             WHERE  mm.portal = %s AND mm.cnpj_emp = %s
               AND  mm.cancelado <> 'S' AND mm.excluido <> 'S'
-              AND  mm.soma_relatorio = 'S' AND (mm.tipo_transacao IN ('P','V') OR mm.tipo_transacao IS NULL) AND mm.codigo_cliente = 1
+              AND  mm.soma_relatorio = 'S'
+              AND  (mm.tipo_transacao IN ('P','V','S') OR mm.tipo_transacao IS NULL)
               AND  mm.cod_natureza_operacao = '10030'
+              AND  mm.serie = ANY(%s::varchar[])
         ),
         totais AS (
             SELECT is_rec, produto, SUM(valor_liquido) AS total_fat
@@ -320,7 +349,7 @@ def top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
                ROUND(total_fat * 100.0 / NULLIF(grand_total, 0), 1) AS pct
         FROM   ranked WHERE rn <= 5
         ORDER  BY is_rec, rn
-    """, (sid, sid, data_inicio, data_fim, portal, cnpj))
+    """, (sid, sid, data_inicio, data_fim, portal, cnpj, series_pf))
     result = {'novos': [], 'recorrentes': []}
     for row in rows:
         item = {'nome': row['produto'], 'total': round(float(row['total_fat'] or 0), 2), 'pct': float(row['pct'] or 0)}
@@ -349,7 +378,7 @@ def vendedores_mes(portal, cnpj, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_
         WHERE  m.portal    = %s
           AND  m.cnpj_emp  = %s
           AND  m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
-          AND  (m.tipo_transacao IN ('P','V') OR m.tipo_transacao IS NULL)
+          AND  (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL)
           AND  m.cod_natureza_operacao = '10030'
           AND  m.cod_vendedor IS NOT NULL
           AND  m.data_documento >= %s::date
@@ -374,8 +403,9 @@ def vendedores_mes(portal, cnpj, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_
     ]
 
 
-def top5_clientes_vendedor(portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_ant):
-    """Top 5 clientes por faturamento no mês anterior para um vendedor, com comparativo mês atual."""
+def top5_clientes_vendedor(store_id, portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_ant):
+    """Top 5 clientes PJ por faturamento no mês anterior para um vendedor, com comparativo mês atual."""
+    _, series_pj = get_store_series(store_id)
     rows = db.query_all("""
         SELECT
             m.codigo_cliente,
@@ -393,9 +423,9 @@ def top5_clientes_vendedor(portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur,
         WHERE  m.portal               = %s
           AND  m.cnpj_emp             = %s
           AND  m.cod_vendedor::text   = %s
-          AND  m.codigo_cliente      != 1
+          AND  m.serie                = ANY(%s::varchar[])
           AND  m.cancelado           <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
-          AND  (m.tipo_transacao IN ('P','V') OR m.tipo_transacao IS NULL)
+          AND  (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL)
           AND  m.cod_natureza_operacao = '10030'
           AND  m.data_documento >= %s::date
           AND  m.data_documento <  %s::date + INTERVAL '1 day'
@@ -403,7 +433,7 @@ def top5_clientes_vendedor(portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur,
         ORDER  BY total_ant DESC
         LIMIT  5
     """, (mes_ini_ant, mes_fim_ant, mes_ini_cur, mes_fim_cur,
-          portal, cnpj, cod_vendedor,
+          portal, cnpj, cod_vendedor, series_pj,
           mes_ini_ant, mes_fim_cur))
     return [
         {
@@ -415,8 +445,9 @@ def top5_clientes_vendedor(portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur,
     ]
 
 
-def top5_produtos_vendedor(portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_ant):
-    """Top 5 produtos por faturamento no mês anterior para um vendedor, com comparativo mês atual."""
+def top5_produtos_vendedor(store_id, portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_ant):
+    """Top 5 produtos PJ por faturamento no mês anterior para um vendedor, com comparativo mês atual."""
+    _, series_pj = get_store_series(store_id)
     rows = db.query_all("""
         SELECT
             COALESCE(NULLIF(TRIM(mp.descricao_basica), ''), mp.nome)            AS produto,
@@ -432,9 +463,9 @@ def top5_produtos_vendedor(portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur,
         WHERE  m.portal               = %s
           AND  m.cnpj_emp             = %s
           AND  m.cod_vendedor::text   = %s
-          AND  m.codigo_cliente      != 1
+          AND  m.serie                = ANY(%s::varchar[])
           AND  m.cancelado           <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
-          AND  (m.tipo_transacao IN ('P','V') OR m.tipo_transacao IS NULL)
+          AND  (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL)
           AND  m.cod_natureza_operacao = '10030'
           AND  m.data_documento >= %s::date
           AND  m.data_documento <  %s::date + INTERVAL '1 day'
@@ -442,7 +473,7 @@ def top5_produtos_vendedor(portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur,
         ORDER  BY total_ant DESC
         LIMIT  5
     """, (mes_ini_ant, mes_fim_ant, mes_ini_cur, mes_fim_cur,
-          portal, cnpj, cod_vendedor,
+          portal, cnpj, cod_vendedor, series_pj,
           mes_ini_ant, mes_fim_cur))
     return [
         {
@@ -458,7 +489,7 @@ def top5_produtos_vendedor(portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur,
 
 _ESTOQUE_BASE_FILTER = (
     "m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S' "
-    "AND (m.tipo_transacao IN ('P','V') OR m.tipo_transacao IS NULL) "
+    "AND (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL) "
     "AND m.cod_natureza_operacao = '10030'"
 )
 
@@ -604,7 +635,7 @@ def cobertura_estoque(portal, cnpj):
             FROM   microvix.microvix_movimento m
             WHERE  m.portal = %s AND m.cnpj_emp = %s
               AND  m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
-              AND  (m.tipo_transacao IN ('P','V') OR m.tipo_transacao IS NULL)
+              AND  (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL)
               AND  m.cod_natureza_operacao = '10030'
               AND  m.data_documento >= CURRENT_DATE - INTERVAL '30 days'
               AND  m.data_documento <  CURRENT_DATE + INTERVAL '1 day'
@@ -666,7 +697,7 @@ def produtos_por_pessoa(store_id, person_id, cnpj, days):
           AND  mm.cancelado            <> 'S'
           AND  mm.excluido             <> 'S'
           AND  mm.soma_relatorio        = 'S'
-          AND  (mm.tipo_transacao IN ('P','V') OR mm.tipo_transacao IS NULL)
+          AND  (mm.tipo_transacao IN ('P','V','S') OR mm.tipo_transacao IS NULL)
           AND  mm.cod_natureza_operacao  = '10030'
           AND  pp.person_id    = %s
           AND  pp.store_id     = %s
