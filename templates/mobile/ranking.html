@@ -45,6 +45,9 @@
 
   .m-rk-list { padding: .5rem .75rem 90px; display: flex; flex-direction: column; gap: .5rem; }
 
+  /* Wrap para item + expand ficarem juntos */
+  .m-rk-wrap { display: flex; flex-direction: column; }
+
   .m-rk-item {
     display: flex;
     align-items: center;
@@ -53,11 +56,12 @@
     border-radius: 10px;
     padding: .75rem .875rem;
     box-shadow: 0 1px 4px rgba(0,0,0,.07);
-    text-decoration: none;
-    color: inherit;
+    cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    transition: border-radius .18s;
   }
   .m-rk-item:active { opacity: .8; }
+  .m-rk-item.open { border-radius: 10px 10px 0 0; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
 
   .m-rk-pos {
     width: 32px;
@@ -105,6 +109,123 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
+  .m-rk-chevron {
+    flex-shrink: 0;
+    color: #9CA3AF;
+    transition: transform .2s;
+  }
+  .m-rk-item.open .m-rk-chevron { transform: rotate(90deg); }
+
+  /* Painel de expansão */
+  .m-rk-expand {
+    display: none;
+    background: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    overflow: hidden;
+  }
+  .m-rk-expand.open { display: block; }
+
+  .m-rk-ep-loading {
+    padding: 1.25rem;
+    text-align: center;
+    color: #9CA3AF;
+    font-size: .875rem;
+  }
+
+  /* Dentro do painel */
+  .m-rk-ep { padding: .875rem; display: flex; flex-direction: column; gap: .75rem; }
+
+  .m-rk-ep-section-title {
+    font-size: .6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #9CA3AF;
+    margin-bottom: .5rem;
+  }
+
+  .m-rk-ep-profile { display: flex; gap: .75rem; align-items: flex-start; }
+  .m-rk-ep-photo {
+    width: 56px; height: 56px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .m-rk-ep-photo-ph {
+    width: 56px; height: 56px;
+    border-radius: 8px;
+    background: var(--theme-primary);
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    text-transform: uppercase;
+  }
+  .m-rk-ep-info { flex: 1; min-width: 0; }
+  .m-rk-ep-name { font-size: .9rem; font-weight: 700; color: #111827; }
+  .m-rk-ep-nick { font-size: .8rem; color: #6B7280; }
+  .m-rk-ep-field { font-size: .8rem; color: #374151; margin-top: .2rem; }
+  .m-rk-ep-field-lbl { color: #9CA3AF; }
+
+  .m-rk-ep-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    background: var(--theme-primary);
+    color: #fff;
+    border-radius: 6px;
+    padding: .35rem .75rem;
+    font-size: .875rem;
+    font-weight: 700;
+    margin-bottom: .5rem;
+  }
+
+  .m-rk-ep-stats { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
+  .m-rk-ep-stat {
+    background: #fff;
+    border-radius: 8px;
+    padding: .5rem;
+    text-align: center;
+    border: 1px solid #E5E7EB;
+  }
+  .m-rk-ep-stat-full { grid-column: 1 / -1; }
+  .m-rk-ep-stat-val { font-size: 1.125rem; font-weight: 700; color: var(--theme-primary); }
+  .m-rk-ep-stat-lbl { font-size: .6875rem; color: #6B7280; margin-top: .1rem; }
+  .m-rk-ep-last { font-size: .75rem; color: #9CA3AF; margin-top: .4rem; }
+
+  .m-rk-ep-days { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .m-rk-ep-day-chip {
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    padding: .25rem .5rem;
+    font-size: .75rem;
+    color: #374151;
+  }
+
+  .m-rk-ep-prod {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .45rem 0;
+    border-bottom: 1px solid #E5E7EB;
+  }
+  .m-rk-ep-prod:last-child { border-bottom: none; }
+  .m-rk-ep-prod-info { flex: 1; min-width: 0; }
+  .m-rk-ep-prod-name {
+    font-size: .8125rem; font-weight: 500; color: #111827;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .m-rk-ep-prod-ref { font-size: .75rem; color: #9CA3AF; }
+  .m-rk-ep-prod-qty { font-size: .8125rem; font-weight: 700; color: #111827; white-space: nowrap; }
+  .m-rk-ep-prod-val { font-size: .8125rem; font-weight: 600; color: #059669; white-space: nowrap; min-width: 70px; text-align: right; }
+
+  .m-rk-ep-empty { font-size: .8125rem; color: #9CA3AF; }
 
   .m-rk-empty {
     text-align: center;
@@ -121,7 +242,7 @@
     font-size: .8125rem;
   }
 
-  /* Bottom sheet */
+  /* Bottom sheet seletor */
   .m-bs-overlay {
     display: none;
     position: fixed;
@@ -204,22 +325,32 @@
   <div class="m-rk-meta">
     Últimos {{ ranking_rule.analysis_period_days }} dias &mdash; {{ ranking_data | length }} cliente{{ 's' if ranking_data | length != 1 else '' }}
   </div>
-  <div class="m-rk-list">
+  <div class="m-rk-list" id="rk-list">
     {% for r in ranking_data %}
     {% set pos = r.ranking_position %}
-    <a class="m-rk-item"
-       href="{{ url_for('mobile.ranking_pessoa', person_id=r.person_id, store_id=active_store.store_id) }}">
-      <div class="m-rk-pos {% if pos == 1 %}m-rk-pos-1{% elif pos == 2 %}m-rk-pos-2{% elif pos == 3 %}m-rk-pos-3{% endif %}">
-        {% if pos == 1 %}🥇{% elif pos == 2 %}🥈{% elif pos == 3 %}🥉{% else %}{{ pos }}{% endif %}
+    <div class="m-rk-wrap">
+      <div class="m-rk-item"
+           id="item-{{ r.person_id }}"
+           onclick="togglePessoa(event, {{ r.person_id }}, {{ active_store.store_id }})">
+        <div class="m-rk-pos {% if pos == 1 %}m-rk-pos-1{% elif pos == 2 %}m-rk-pos-2{% elif pos == 3 %}m-rk-pos-3{% endif %}">
+          {% if pos == 1 %}🥇{% elif pos == 2 %}🥈{% elif pos == 3 %}🥉{% else %}{{ pos }}{% endif %}
+        </div>
+        <div class="m-rk-avatar {% if pos == 1 %}m-rk-avatar-1{% elif pos == 2 %}m-rk-avatar-2{% elif pos == 3 %}m-rk-avatar-3{% endif %}">
+          {{ (r.nickname or r.full_name or '?')[0] }}
+        </div>
+        <div class="m-rk-name">
+          <div class="m-rk-name-main">{{ r.nickname or r.full_name or '(sem nome)' }}</div>
+        </div>
+        <div class="m-rk-score">{{ r.score | int }} pts</div>
+        <svg class="m-rk-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
       </div>
-      <div class="m-rk-avatar {% if pos == 1 %}m-rk-avatar-1{% elif pos == 2 %}m-rk-avatar-2{% elif pos == 3 %}m-rk-avatar-3{% endif %}">
-        {{ (r.nickname or r.full_name or '?')[0] }}
+      <div class="m-rk-expand" id="expand-{{ r.person_id }}" onclick="event.stopPropagation()">
+        <div class="m-rk-ep-loading">Carregando…</div>
       </div>
-      <div class="m-rk-name">
-        <div class="m-rk-name-main">{{ r.nickname or r.full_name or '(sem nome)' }}</div>
-      </div>
-      <div class="m-rk-score">{{ r.score | int }} pts</div>
-    </a>
+    </div>
     {% endfor %}
   </div>
   {% endif %}
@@ -259,6 +390,7 @@
 </div>
 
 <script>
+/* ---- Seletor de loja ---- */
 function abrirSeletor() {
   document.getElementById('bs').classList.add('open');
   document.getElementById('bs-overlay').classList.add('open');
@@ -274,8 +406,140 @@ function selecionarEmpresa(id) {
   window.location.href = url.toString();
 }
 function selecionarLoja(id) {
+  if (!id) return;
   const url = new URL(window.location.href);
-  if (id) { url.searchParams.set('store_id', id); fecharSeletor(); window.location.href = url.toString(); }
+  url.searchParams.set('store_id', id);
+  fecharSeletor();
+  window.location.href = url.toString();
+}
+
+/* ---- Expansão inline ---- */
+let _openId = null;
+
+function togglePessoa(evt, personId, storeId) {
+  evt.stopPropagation();
+
+  if (_openId === personId) {
+    _fechar(_openId);
+    return;
+  }
+  if (_openId !== null) _fechar(_openId);
+
+  _openId = personId;
+  const item   = document.getElementById('item-'   + personId);
+  const expand = document.getElementById('expand-' + personId);
+
+  item.classList.add('open');
+  expand.classList.add('open');
+  expand.innerHTML = '<div class="m-rk-ep-loading">Carregando…</div>';
+
+  fetch('/retail_analytics/m/ranking/' + personId + '/dados?store_id=' + storeId)
+    .then(r => r.json())
+    .then(d => { expand.innerHTML = _renderPessoa(d); })
+    .catch(() => { expand.innerHTML = '<div class="m-rk-ep-loading">Erro ao carregar dados.</div>'; });
+}
+
+function _fechar(personId) {
+  const item   = document.getElementById('item-'   + personId);
+  const expand = document.getElementById('expand-' + personId);
+  if (item)   item.classList.remove('open');
+  if (expand) expand.classList.remove('open');
+  _openId = null;
+}
+
+/* Fecha ao clicar fora */
+document.addEventListener('click', function() {
+  if (_openId !== null) _fechar(_openId);
+});
+
+/* ---- Render do painel ---- */
+function _esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function _brl(v) {
+  return 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function _renderPessoa(d) {
+  const p  = d.person  || {};
+  const rk = d.ranking || {};
+  let html = '<div class="m-rk-ep">';
+
+  /* Perfil */
+  html += '<div>';
+  html += '<div class="m-rk-ep-section-title">Perfil</div>';
+  html += '<div class="m-rk-ep-profile">';
+  if (d.img_url) {
+    html += '<img class="m-rk-ep-photo" src="' + _esc(d.img_url) + '" alt=""'
+          + ' onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">';
+    html += '<div class="m-rk-ep-photo-ph" style="display:none;">'
+          + _esc((p.nickname || p.full_name || '?')[0].toUpperCase()) + '</div>';
+  } else {
+    html += '<div class="m-rk-ep-photo-ph">'
+          + _esc((p.nickname || p.full_name || '?')[0].toUpperCase()) + '</div>';
+  }
+  html += '<div class="m-rk-ep-info">';
+  html += '<div class="m-rk-ep-name">' + _esc(p.full_name || '(sem nome)') + '</div>';
+  if (p.nickname) html += '<div class="m-rk-ep-nick">&ldquo;' + _esc(p.nickname) + '&rdquo;</div>';
+  if (p.age)         html += '<div class="m-rk-ep-field"><span class="m-rk-ep-field-lbl">Idade: </span>' + _esc(p.age) + ' anos</div>';
+  if (p.gender_name) html += '<div class="m-rk-ep-field"><span class="m-rk-ep-field-lbl">Gênero: </span>' + _esc(p.gender_name) + '</div>';
+  if (p.document)    html += '<div class="m-rk-ep-field"><span class="m-rk-ep-field-lbl">Doc.: </span>' + _esc(p.document) + '</div>';
+  if (p.birth_date)  html += '<div class="m-rk-ep-field"><span class="m-rk-ep-field-lbl">Nasc.: </span>' + _esc(p.birth_date) + '</div>';
+  if (p.notes)       html += '<div class="m-rk-ep-field"><span class="m-rk-ep-field-lbl">Obs.: </span>' + _esc(p.notes) + '</div>';
+  html += '</div></div></div>';
+
+  /* Ranking */
+  html += '<div>';
+  html += '<div class="m-rk-ep-section-title">Posição no Ranking</div>';
+  const medals = {1:'🥇',2:'🥈',3:'🥉'};
+  const medal  = medals[rk.position] || '#';
+  html += '<div class="m-rk-ep-badge">' + medal + ' ' + rk.position + 'º lugar</div>';
+  html += '<div class="m-rk-ep-stats">';
+  html += '<div class="m-rk-ep-stat m-rk-ep-stat-full"><div class="m-rk-ep-stat-val">' + rk.score + ' pts</div><div class="m-rk-ep-stat-lbl">Pontuação total</div></div>';
+  html += '<div class="m-rk-ep-stat"><div class="m-rk-ep-stat-val">' + rk.total_visits + '</div><div class="m-rk-ep-stat-lbl">Visitas no período</div></div>';
+  html += '<div class="m-rk-ep-stat"><div class="m-rk-ep-stat-val">' + rk.visits_with_purchase + '</div><div class="m-rk-ep-stat-lbl">c/ compra</div></div>';
+  html += '<div class="m-rk-ep-stat m-rk-ep-stat-full"><div class="m-rk-ep-stat-val">' + _brl(rk.total_spent) + '</div><div class="m-rk-ep-stat-lbl">Total comprado no período</div></div>';
+  html += '</div>';
+  if (rk.last_visit_at) html += '<div class="m-rk-ep-last">Última visita: ' + _esc(rk.last_visit_at) + '</div>';
+  html += '</div>';
+
+  /* Dias de visita */
+  if (d.visit_days && d.visit_days.length) {
+    html += '<div>';
+    html += '<div class="m-rk-ep-section-title">Dias de visita no período</div>';
+    html += '<div class="m-rk-ep-days">';
+    d.visit_days.forEach(function(v) {
+      html += '<span class="m-rk-ep-day-chip">' + _esc(v) + '</span>';
+    });
+    html += '</div></div>';
+  }
+
+  /* Produtos */
+  html += '<div>';
+  html += '<div class="m-rk-ep-section-title">Produtos comprados no período</div>';
+  if (d.products && d.products.length) {
+    d.products.forEach(function(prod) {
+      html += '<div class="m-rk-ep-prod">';
+      html += '<div class="m-rk-ep-prod-info">';
+      html += '<div class="m-rk-ep-prod-name">' + _esc(prod.product_name || '(sem nome)') + '</div>';
+      if (prod.referencia) {
+        html += '<div class="m-rk-ep-prod-ref">Ref: ' + _esc(prod.referencia);
+        if (prod.desc_linha) html += ' — ' + _esc(prod.desc_linha);
+        html += '</div>';
+      }
+      html += '</div>';
+      html += '<div class="m-rk-ep-prod-qty">' + prod.total_qty + 'x</div>';
+      html += '<div class="m-rk-ep-prod-val">' + _brl(prod.total_value) + '</div>';
+      html += '</div>';
+    });
+  } else {
+    html += '<div class="m-rk-ep-empty">Nenhum produto registrado no período.</div>';
+  }
+  html += '</div>';
+
+  html += '</div>'; /* m-rk-ep */
+  return html;
 }
 </script>
 {% endblock %}

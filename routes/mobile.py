@@ -2,7 +2,7 @@ import calendar
 from datetime import date as date_type, timedelta
 from functools import wraps
 from flask import (Blueprint, render_template, request, redirect,
-                   url_for, session, send_from_directory, make_response)
+                   url_for, session, send_from_directory, make_response, jsonify)
 from werkzeug.security import check_password_hash, generate_password_hash
 import os
 import db
@@ -1803,6 +1803,100 @@ def ranking_pessoa(person_id):
                            theme=theme,
                            company_logo=company_logo,
                            company_name=company_name)
+
+
+@mobile_bp.route('/ranking/<int:person_id>/dados')
+@_login_required
+def ranking_pessoa_dados(person_id):
+    user_id  = session['user_id']
+    store_id = request.args.get('store_id', type=int)
+    if not store_id:
+        return jsonify({'error': 'store_id required'}), 400
+
+    store = db.query_one("""
+        SELECT s.store_id FROM faciais.vw_user_store_access vsa
+        JOIN   faciais.stores s ON s.store_id = vsa.store_id
+        WHERE  vsa.user_id = %s AND vsa.store_id = %s
+    """, (user_id, store_id))
+    if not store:
+        return jsonify({'error': 'access denied'}), 403
+
+    ranking_row = db.query_one("""
+        SELECT * FROM faciais.customer_ranking
+        WHERE  store_id = %s AND person_id = %s
+    """, (store_id, person_id))
+    if not ranking_row:
+        return jsonify({'error': 'not found'}), 404
+
+    person = db.query_one("""
+        SELECT p.*, g.gender_name
+        FROM   faciais.people p
+        LEFT   JOIN faciais.genders g ON g.gender_id = p.gender_id
+        WHERE  p.person_id = %s
+    """, (person_id,))
+
+    img_row = db.query_one("""
+        SELECT image_path FROM faciais.detection_records
+        WHERE  person_id = %s AND store_id = %s AND image_path IS NOT NULL
+        ORDER  BY created_at DESC LIMIT 1
+    """, (person_id, store_id))
+    img_url = (HEIMDALL_IMAGE_BASE + img_row['image_path']) if img_row and img_row['image_path'] else None
+
+    store_ext = db.query_one("""
+        SELECT s.cnpj, s.microvix_portal, rr.analysis_period_days
+        FROM   faciais.stores s
+        JOIN   faciais.ranking_rules rr ON rr.ranking_rule_id = s.ranking_rule_id
+        WHERE  s.store_id = %s
+    """, (store_id,))
+
+    products = []
+    if store_ext and store_ext['cnpj']:
+        for p in _produtos_por_pessoa(store_id, person_id, store_ext['cnpj'], store_ext['analysis_period_days']):
+            products.append({
+                'product_name': p['product_name'],
+                'referencia':   p.get('referencia'),
+                'desc_linha':   p.get('desc_linha'),
+                'total_qty':    int(p['total_qty'] or 0),
+                'total_value':  float(p['total_value'] or 0),
+            })
+
+    visit_days = []
+    if store_ext:
+        rows = db.query_all("""
+            SELECT DISTINCT DATE(created_at) AS visit_date
+            FROM   faciais.detection_records
+            WHERE  person_id = %s AND store_id = %s
+              AND  created_at >= CURRENT_DATE - (%s || ' days')::interval
+            ORDER  BY visit_date DESC
+        """, (person_id, store_id, store_ext['analysis_period_days']))
+        visit_days = [r['visit_date'].strftime('%d/%m/%Y') for r in rows]
+
+    def _fmt(d):
+        if d is None: return None
+        return d.strftime('%d/%m/%Y') if hasattr(d, 'strftime') else str(d)
+
+    return jsonify({
+        'person': {
+            'full_name':   person['full_name']   if person else None,
+            'nickname':    person['nickname']    if person else None,
+            'age':         person['age']         if person else None,
+            'gender_name': person['gender_name'] if person else None,
+            'document':    person['document']    if person else None,
+            'birth_date':  _fmt(person['birth_date']) if person else None,
+            'notes':       person.get('notes')   if person else None,
+        },
+        'ranking': {
+            'position':            ranking_row['ranking_position'],
+            'score':               int(ranking_row['score'] or 0),
+            'total_visits':        ranking_row['total_visits'],
+            'visits_with_purchase': ranking_row['visits_with_purchase'],
+            'total_spent':         float(ranking_row['total_spent'] or 0),
+            'last_visit_at':       _fmt(ranking_row['last_visit_at']),
+        },
+        'img_url':    img_url,
+        'products':   products,
+        'visit_days': visit_days,
+    })
 
 
 # ── Mapa de Calor ─────────────────────────────────────────────────────────────
