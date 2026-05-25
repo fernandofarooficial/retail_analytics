@@ -485,7 +485,9 @@ def top5_produtos_vendedor(store_id, portal, cnpj, cod_vendedor, mes_ini_cur, me
     ]
 
 
-def top10_clientes_loja(store_id, portal, cnpj, m1_ini, m1_fim, m2_ini, m2_fim, m3_ini, m3_fim):
+def top10_clientes_loja(store_id, portal, cnpj,
+                        m0_ini, m0_fim,
+                        m1_ini, m1_fim, m2_ini, m2_fim, m3_ini, m3_fim):
     """Top 10 clientes PJ por média de faturamento nos 3 meses anteriores (m1=mais recente, m3=mais antigo)."""
     _, series_pj = get_store_series(store_id)
     rows = db.query_all("""
@@ -502,6 +504,9 @@ def top10_clientes_loja(store_id, portal, cnpj, m1_ini, m1_fim, m2_ini, m2_fim, 
             ROUND(SUM(CASE WHEN m.data_documento >= %s::date
                                 AND m.data_documento < %s::date + INTERVAL '1 day'
                            THEN m.valor_total ELSE 0 END)::numeric, 2)         AS total_m1,
+            ROUND(SUM(CASE WHEN m.data_documento >= %s::date
+                                AND m.data_documento < %s::date + INTERVAL '1 day'
+                           THEN m.valor_total ELSE 0 END)::numeric, 2)         AS total_m0,
             ROUND((
                 SUM(CASE WHEN m.data_documento >= %s::date
                               AND m.data_documento < %s::date + INTERVAL '1 day'
@@ -527,10 +532,10 @@ def top10_clientes_loja(store_id, portal, cnpj, m1_ini, m1_fim, m2_ini, m2_fim, 
         GROUP  BY m.codigo_cliente, cf.nome_cliente, cf.razao_cliente
         ORDER  BY media DESC
         LIMIT  10
-    """, (m3_ini, m3_fim, m2_ini, m2_fim, m1_ini, m1_fim,
+    """, (m3_ini, m3_fim, m2_ini, m2_fim, m1_ini, m1_fim, m0_ini, m0_fim,
           m3_ini, m3_fim, m2_ini, m2_fim, m1_ini, m1_fim,
           portal, cnpj, series_pj,
-          m3_ini, m1_fim))
+          m3_ini, m0_fim))
     return [
         {
             'cod_cliente': str(r['cod_cliente']),
@@ -538,13 +543,16 @@ def top10_clientes_loja(store_id, portal, cnpj, m1_ini, m1_fim, m2_ini, m2_fim, 
             'total_m3':    float(r['total_m3'] or 0),
             'total_m2':    float(r['total_m2'] or 0),
             'total_m1':    float(r['total_m1'] or 0),
+            'total_m0':    float(r['total_m0'] or 0),
             'media':       float(r['media'] or 0),
         }
         for r in rows
     ]
 
 
-def top10_produtos_cliente(store_id, portal, cnpj, cod_cliente, m1_ini, m1_fim, m2_ini, m2_fim, m3_ini, m3_fim):
+def top10_produtos_cliente(store_id, portal, cnpj, cod_cliente,
+                           m0_ini, m0_fim,
+                           m1_ini, m1_fim, m2_ini, m2_fim, m3_ini, m3_fim):
     """Top 10 produtos de um cliente por média de faturamento nos 3 meses anteriores."""
     _, series_pj = get_store_series(store_id)
     rows = db.query_all("""
@@ -559,6 +567,9 @@ def top10_produtos_cliente(store_id, portal, cnpj, cod_cliente, m1_ini, m1_fim, 
             ROUND(SUM(CASE WHEN m.data_documento >= %s::date
                                 AND m.data_documento < %s::date + INTERVAL '1 day'
                            THEN m.valor_total ELSE 0 END)::numeric, 2)         AS total_m1,
+            ROUND(SUM(CASE WHEN m.data_documento >= %s::date
+                                AND m.data_documento < %s::date + INTERVAL '1 day'
+                           THEN m.valor_total ELSE 0 END)::numeric, 2)         AS total_m0,
             ROUND((
                 SUM(CASE WHEN m.data_documento >= %s::date
                               AND m.data_documento < %s::date + INTERVAL '1 day'
@@ -585,16 +596,17 @@ def top10_produtos_cliente(store_id, portal, cnpj, cod_cliente, m1_ini, m1_fim, 
         GROUP  BY mp.descricao_basica, mp.nome
         ORDER  BY media DESC
         LIMIT  10
-    """, (m3_ini, m3_fim, m2_ini, m2_fim, m1_ini, m1_fim,
+    """, (m3_ini, m3_fim, m2_ini, m2_fim, m1_ini, m1_fim, m0_ini, m0_fim,
           m3_ini, m3_fim, m2_ini, m2_fim, m1_ini, m1_fim,
           portal, cnpj, cod_cliente, series_pj,
-          m3_ini, m1_fim))
+          m3_ini, m0_fim))
     return [
         {
             'nome':     r['produto'] or '(sem nome)',
             'total_m3': float(r['total_m3'] or 0),
             'total_m2': float(r['total_m2'] or 0),
             'total_m1': float(r['total_m1'] or 0),
+            'total_m0': float(r['total_m0'] or 0),
             'media':    float(r['media'] or 0),
         }
         for r in rows

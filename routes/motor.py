@@ -348,6 +348,7 @@ def vendas():
 
         top10_clientes = _top10_clientes_loja(
             store_id, portal, cnpj,
+            mes_ini_cur_str, mes_fim_cur_str,
             m1['ini'], m1['fim'],
             m2['ini'], m2['fim'],
             m3['ini'], m3['fim'])
@@ -355,6 +356,7 @@ def vendas():
         if selected_cliente:
             top10_prod_cliente = _top10_produtos_cliente(
                 store_id, portal, cnpj, selected_cliente,
+                mes_ini_cur_str, mes_fim_cur_str,
                 m1['ini'], m1['fim'],
                 m2['ini'], m2['fim'],
                 m3['ini'], m3['fim'])

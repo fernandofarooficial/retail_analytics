@@ -353,6 +353,7 @@
           <th class="text-right">{{ m2.nome[:3] }}</th>
           <th class="text-right">{{ m1.nome[:3] }}</th>
           <th class="text-right" style="color:var(--theme-primary);">Média</th>
+          <th class="text-right">{{ mes_nome[:3] }}</th>
         </tr>
       </thead>
       <tbody>
@@ -366,6 +367,7 @@
           <td class="text-right vend-val">{{ "%.1f"|format(c.total_m2 / 1000)|replace('.', ',') }}k</td>
           <td class="text-right vend-val">{{ "%.1f"|format(c.total_m1 / 1000)|replace('.', ',') }}k</td>
           <td class="text-right vend-val" style="color:var(--theme-primary);">{{ "%.1f"|format(c.media / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right vend-val">{{ "%.1f"|format(c.total_m0 / 1000)|replace('.', ',') }}k</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -393,6 +395,7 @@
           <th class="text-right">{{ m2.nome[:3] }}</th>
           <th class="text-right">{{ m1.nome[:3] }}</th>
           <th class="text-right" style="color:var(--theme-primary);">Média</th>
+          <th class="text-right">{{ mes_nome[:3] }}</th>
         </tr>
       </thead>
       <tbody>
@@ -403,6 +406,7 @@
           <td class="text-right vend-val">{{ "%.1f"|format(p.total_m2 / 1000)|replace('.', ',') }}k</td>
           <td class="text-right vend-val">{{ "%.1f"|format(p.total_m1 / 1000)|replace('.', ',') }}k</td>
           <td class="text-right vend-val" style="color:var(--theme-primary);">{{ "%.1f"|format(p.media / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right vend-val">{{ "%.1f"|format(p.total_m0 / 1000)|replace('.', ',') }}k</td>
         </tr>
         {% endfor %}
       </tbody>
