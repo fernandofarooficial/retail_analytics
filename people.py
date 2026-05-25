@@ -501,7 +501,18 @@ def top10_clientes_loja(store_id, portal, cnpj, m1_ini, m1_fim, m2_ini, m2_fim, 
                            THEN m.valor_total ELSE 0 END)::numeric, 2)         AS total_m2,
             ROUND(SUM(CASE WHEN m.data_documento >= %s::date
                                 AND m.data_documento < %s::date + INTERVAL '1 day'
-                           THEN m.valor_total ELSE 0 END)::numeric, 2)         AS total_m1
+                           THEN m.valor_total ELSE 0 END)::numeric, 2)         AS total_m1,
+            ROUND((
+                SUM(CASE WHEN m.data_documento >= %s::date
+                              AND m.data_documento < %s::date + INTERVAL '1 day'
+                         THEN m.valor_total ELSE 0 END) +
+                SUM(CASE WHEN m.data_documento >= %s::date
+                              AND m.data_documento < %s::date + INTERVAL '1 day'
+                         THEN m.valor_total ELSE 0 END) +
+                SUM(CASE WHEN m.data_documento >= %s::date
+                              AND m.data_documento < %s::date + INTERVAL '1 day'
+                         THEN m.valor_total ELSE 0 END)
+            )::numeric / 3.0, 2)                                                AS media
         FROM   microvix.microvix_movimento m
         LEFT   JOIN microvix.microvix_clientes_fornecedores cf
                     ON cf.portal = m.portal AND cf.cod_cliente = m.codigo_cliente
@@ -514,9 +525,10 @@ def top10_clientes_loja(store_id, portal, cnpj, m1_ini, m1_fim, m2_ini, m2_fim, 
           AND  m.data_documento >= %s::date
           AND  m.data_documento <  %s::date + INTERVAL '1 day'
         GROUP  BY m.codigo_cliente, cf.nome_cliente, cf.razao_cliente
-        ORDER  BY (total_m3 + total_m2 + total_m1) / 3.0 DESC
+        ORDER  BY media DESC
         LIMIT  10
     """, (m3_ini, m3_fim, m2_ini, m2_fim, m1_ini, m1_fim,
+          m3_ini, m3_fim, m2_ini, m2_fim, m1_ini, m1_fim,
           portal, cnpj, series_pj,
           m3_ini, m1_fim))
     return [
@@ -526,7 +538,7 @@ def top10_clientes_loja(store_id, portal, cnpj, m1_ini, m1_fim, m2_ini, m2_fim, 
             'total_m3':    float(r['total_m3'] or 0),
             'total_m2':    float(r['total_m2'] or 0),
             'total_m1':    float(r['total_m1'] or 0),
-            'media':       float(((r['total_m3'] or 0) + (r['total_m2'] or 0) + (r['total_m1'] or 0)) / 3.0),
+            'media':       float(r['media'] or 0),
         }
         for r in rows
     ]
@@ -546,7 +558,18 @@ def top10_produtos_cliente(store_id, portal, cnpj, cod_cliente, m1_ini, m1_fim, 
                            THEN m.valor_total ELSE 0 END)::numeric, 2)         AS total_m2,
             ROUND(SUM(CASE WHEN m.data_documento >= %s::date
                                 AND m.data_documento < %s::date + INTERVAL '1 day'
-                           THEN m.valor_total ELSE 0 END)::numeric, 2)         AS total_m1
+                           THEN m.valor_total ELSE 0 END)::numeric, 2)         AS total_m1,
+            ROUND((
+                SUM(CASE WHEN m.data_documento >= %s::date
+                              AND m.data_documento < %s::date + INTERVAL '1 day'
+                         THEN m.valor_total ELSE 0 END) +
+                SUM(CASE WHEN m.data_documento >= %s::date
+                              AND m.data_documento < %s::date + INTERVAL '1 day'
+                         THEN m.valor_total ELSE 0 END) +
+                SUM(CASE WHEN m.data_documento >= %s::date
+                              AND m.data_documento < %s::date + INTERVAL '1 day'
+                         THEN m.valor_total ELSE 0 END)
+            )::numeric / 3.0, 2)                                                AS media
         FROM   microvix.microvix_movimento m
         JOIN   microvix.microvix_produtos mp
                ON mp.portal = m.portal AND mp.cod_produto = m.cod_produto
@@ -560,9 +583,10 @@ def top10_produtos_cliente(store_id, portal, cnpj, cod_cliente, m1_ini, m1_fim, 
           AND  m.data_documento >= %s::date
           AND  m.data_documento <  %s::date + INTERVAL '1 day'
         GROUP  BY mp.descricao_basica, mp.nome
-        ORDER  BY (total_m3 + total_m2 + total_m1) / 3.0 DESC
+        ORDER  BY media DESC
         LIMIT  10
     """, (m3_ini, m3_fim, m2_ini, m2_fim, m1_ini, m1_fim,
+          m3_ini, m3_fim, m2_ini, m2_fim, m1_ini, m1_fim,
           portal, cnpj, cod_cliente, series_pj,
           m3_ini, m1_fim))
     return [
@@ -571,7 +595,7 @@ def top10_produtos_cliente(store_id, portal, cnpj, cod_cliente, m1_ini, m1_fim, 
             'total_m3': float(r['total_m3'] or 0),
             'total_m2': float(r['total_m2'] or 0),
             'total_m1': float(r['total_m1'] or 0),
-            'media':    float(((r['total_m3'] or 0) + (r['total_m2'] or 0) + (r['total_m1'] or 0)) / 3.0),
+            'media':    float(r['media'] or 0),
         }
         for r in rows
     ]
