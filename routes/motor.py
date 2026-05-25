@@ -7,6 +7,8 @@ from people import (faturamento_diario_mes      as _faturamento_diario_mes,
                     vendedores_mes              as _vendedores_mes,
                     top5_clientes_vendedor      as _top5_clientes_vendedor,
                     top5_produtos_vendedor      as _top5_produtos_vendedor,
+                    top10_clientes_loja         as _top10_clientes_loja,
+                    top10_produtos_cliente      as _top10_produtos_cliente,
                     estoque_maior_volume        as _estoque_maior_volume,
                     estoque_maior_faturamento   as _estoque_maior_faturamento,
                     estoque_valor_parado        as _estoque_valor_parado)
@@ -296,55 +298,82 @@ def vendas():
     ano  = hoje.year
     mes  = hoje.month
 
-    mes_ant = mes - 1 if mes > 1 else 12
-    ano_ant = ano     if mes > 1 else ano - 1
-
-    mes_ini_cur = date_type(ano,     mes,     1)
-    mes_fim_cur = date_type(ano,     mes,     calendar.monthrange(ano,     mes)[1])
-    mes_ini_ant = date_type(ano_ant, mes_ant, 1)
-    mes_fim_ant = date_type(ano_ant, mes_ant, calendar.monthrange(ano_ant, mes_ant)[1])
-
+    mes_ini_cur = date_type(ano, mes, 1)
+    mes_fim_cur = date_type(ano, mes, calendar.monthrange(ano, mes)[1])
     mes_ini_cur_str = mes_ini_cur.strftime('%Y-%m-%d')
     mes_fim_cur_str = mes_fim_cur.strftime('%Y-%m-%d')
-    mes_ini_ant_str = mes_ini_ant.strftime('%Y-%m-%d')
-    mes_fim_ant_str = mes_fim_ant.strftime('%Y-%m-%d')
+
+    # 3 meses anteriores: meses_ant[0]=m1 (mais recente), [2]=m3 (mais antigo)
+    meses_ant = []
+    y, m = ano, mes
+    for _ in range(3):
+        m -= 1
+        if m == 0:
+            m, y = 12, y - 1
+        ini = date_type(y, m, 1)
+        fim = date_type(y, m, calendar.monthrange(y, m)[1])
+        meses_ant.append({'ini': ini.strftime('%Y-%m-%d'),
+                          'fim': fim.strftime('%Y-%m-%d'),
+                          'nome': _MESES_PT[m - 1]})
+    m1, m2, m3 = meses_ant[0], meses_ant[1], meses_ant[2]
 
     selected_vendedor = request.args.get('vendedor')
+    selected_cliente  = request.args.get('cliente')
 
-    vendedores    = []
-    top_clientes  = []
-    top_produtos  = []
+    vendedores          = []
+    top_clientes        = []
+    top_produtos        = []
+    top10_clientes      = []
+    top10_prod_cliente  = []
 
     if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
-        portal = ctx['active_microvix_portal']
-        cnpj   = ctx['active_store_cnpj']
+        portal   = ctx['active_microvix_portal']
+        cnpj     = ctx['active_store_cnpj']
+        store_id = ctx['active_store']['store_id']
 
         vendedores = _vendedores_mes(
             portal, cnpj,
             mes_ini_cur_str, mes_fim_cur_str,
-            mes_ini_ant_str, mes_fim_ant_str)
+            m1['ini'], m1['fim'])
 
         if selected_vendedor:
             top_clientes = _top5_clientes_vendedor(
-                ctx['active_store']['store_id'], portal, cnpj, selected_vendedor,
+                store_id, portal, cnpj, selected_vendedor,
                 mes_ini_cur_str, mes_fim_cur_str,
-                mes_ini_ant_str, mes_fim_ant_str)
+                m1['ini'], m1['fim'])
             top_produtos = _top5_produtos_vendedor(
-                ctx['active_store']['store_id'], portal, cnpj, selected_vendedor,
+                store_id, portal, cnpj, selected_vendedor,
                 mes_ini_cur_str, mes_fim_cur_str,
-                mes_ini_ant_str, mes_fim_ant_str)
+                m1['ini'], m1['fim'])
+
+        top10_clientes = _top10_clientes_loja(
+            store_id, portal, cnpj,
+            m1['ini'], m1['fim'],
+            m2['ini'], m2['fim'],
+            m3['ini'], m3['fim'])
+
+        if selected_cliente:
+            top10_prod_cliente = _top10_produtos_cliente(
+                store_id, portal, cnpj, selected_cliente,
+                m1['ini'], m1['fim'],
+                m2['ini'], m2['fim'],
+                m3['ini'], m3['fim'])
 
     return render_template(
         'motor/vendas.html',
         **ctx,
         mes_nome=_MESES_PT[mes - 1],
-        mes_nome_ant=_MESES_PT[mes_ant - 1],
+        mes_nome_ant=m1['nome'],
         ano=ano,
         mes=mes,
+        m1=m1, m2=m2, m3=m3,
         vendedores=vendedores,
         selected_vendedor=selected_vendedor,
         top_clientes=top_clientes,
         top_produtos=top_produtos,
+        top10_clientes=top10_clientes,
+        selected_cliente=selected_cliente,
+        top10_prod_cliente=top10_prod_cliente,
     )
 
 

@@ -118,6 +118,52 @@
     border-radius: 6px;
     border: 1px solid #E5E7EB;
   }
+
+  /* ── Tabela multi-mês (Top 10 Clientes / Produtos) ── */
+  .me-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+  .me-table th {
+    padding: 0.35rem 0.4rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #9CA3AF;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #F3F4F6;
+    white-space: nowrap;
+  }
+  .me-table td {
+    padding: 0.2rem 0.4rem;
+    color: #374151;
+    white-space: nowrap;
+  }
+  .me-name-row td {
+    padding-top: 0.55rem;
+    padding-bottom: 0.1rem;
+    border-top: 1px solid #F3F4F6;
+    white-space: normal;
+    font-size: 0.78rem;
+    color: #374151;
+    font-weight: 500;
+  }
+  .me-name-row:first-child td { border-top: none; }
+  .me-vals-row td { padding-bottom: 0.5rem; }
+  .me-table tbody tr:last-child td { border-bottom: none; }
+  .me-val {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: #111827;
+  }
+  .me-media {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--theme-primary);
+  }
+  .me-name-row.selected td { background: color-mix(in srgb, var(--theme-primary) 8%, #fff); }
+  .me-name-row.selected .mv-name { font-weight: 700; color: var(--theme-primary); }
 </style>
 
 <div class="m-app">
@@ -170,11 +216,11 @@
       Selecione uma loja para visualizar as vendas.
     </p>
 
-    {% elif not vendedores %}
+    {% else %}
+    {% if not vendedores %}
     <p class="m-hint" style="padding: 2rem 1rem; text-align:center; color:#9CA3AF; font-size:0.875rem;">
       Sem dados de vendas para o período.
     </p>
-
     {% else %}
 
     <!-- ── Card: Lista de vendedores ──────────────────────────────────── -->
@@ -287,6 +333,103 @@
     </div>
 
     {% endif %}
+
+    {% endif %}
+
+    <!-- ── Top 10 Clientes — 3 meses anteriores ───────────────────────── -->
+    {% if top10_clientes is defined %}
+    <div class="m-chart-card">
+      <div class="m-card-header">
+        <span class="m-card-title">Top 10 Clientes</span>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          {% if selected_cliente %}
+          <a href="{{ url_for('mobile.motor_vendas', company_id=selected_company_id, store_id=selected_store_id, vendedor=selected_vendedor) }}"
+             class="mv-clear">&#10005; Limpar</a>
+          {% endif %}
+          <span class="m-card-sub">{{ m3.nome[:3] }}–{{ m1.nome[:3] }}</span>
+        </div>
+      </div>
+      {% if not top10_clientes %}
+      <p style="padding:0.5rem 0; color:#9CA3AF; font-size:0.78rem; font-style:italic;">Sem dados de clientes PJ.</p>
+      {% else %}
+      <table class="me-table">
+        <thead>
+          <tr>
+            <th style="width:14px;"></th>
+            <th></th>
+            <th class="text-right">{{ m3.nome[:3] }}</th>
+            <th class="text-right">{{ m2.nome[:3] }}</th>
+            <th class="text-right">{{ m1.nome[:3] }}</th>
+            <th class="text-right" style="color:var(--theme-primary);">Méd.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in top10_clientes %}
+          {% set is_sel = (c.cod_cliente == selected_cliente) %}
+          <tr class="me-name-row mv-row{% if is_sel %} selected{% endif %}"
+              onclick="selecionarCliente('{{ c.cod_cliente }}')">
+            <td class="mv-arrow" style="opacity:{% if is_sel %}1{% else %}0{% endif %};">›</td>
+            <td colspan="5" class="mv-name">{{ c.nome }}</td>
+          </tr>
+          <tr class="me-vals-row{% if is_sel %} selected{% endif %}"
+              style="{% if is_sel %}background:color-mix(in srgb,var(--theme-primary) 8%,#fff);{% endif %}"
+              onclick="selecionarCliente('{{ c.cod_cliente }}')">
+            <td></td>
+            <td></td>
+            <td class="text-right me-val">{{ "%.1f"|format(c.total_m3 / 1000)|replace('.', ',') }}k</td>
+            <td class="text-right me-val">{{ "%.1f"|format(c.total_m2 / 1000)|replace('.', ',') }}k</td>
+            <td class="text-right me-val">{{ "%.1f"|format(c.total_m1 / 1000)|replace('.', ',') }}k</td>
+            <td class="text-right me-media">{{ "%.1f"|format(c.media / 1000)|replace('.', ',') }}k</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+
+    <!-- ── Top 10 Produtos do Cliente selecionado ─────────────────────── -->
+    {% if selected_cliente and top10_prod_cliente is defined %}
+    {% set cli_nome = (top10_clientes | selectattr('cod_cliente', 'eq', selected_cliente) | list | first) %}
+    <div class="m-chart-card" style="margin-bottom:0.75rem;">
+      <div class="m-card-header">
+        <span class="m-card-title">
+          Top 10 Produtos{% if cli_nome %} — {{ cli_nome.nome }}{% endif %}
+        </span>
+        <span class="m-card-sub">{{ m3.nome[:3] }}–{{ m1.nome[:3] }}</span>
+      </div>
+      {% if not top10_prod_cliente %}
+      <p style="padding:0.5rem 0; color:#9CA3AF; font-size:0.78rem; font-style:italic;">Sem dados de produtos.</p>
+      {% else %}
+      <table class="me-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="text-right">{{ m3.nome[:3] }}</th>
+            <th class="text-right">{{ m2.nome[:3] }}</th>
+            <th class="text-right">{{ m1.nome[:3] }}</th>
+            <th class="text-right" style="color:var(--theme-primary);">Méd.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in top10_prod_cliente %}
+          <tr class="me-name-row">
+            <td colspan="5">{{ p.nome }}</td>
+          </tr>
+          <tr class="me-vals-row">
+            <td></td>
+            <td class="text-right me-val">{{ "%.1f"|format(p.total_m3 / 1000)|replace('.', ',') }}k</td>
+            <td class="text-right me-val">{{ "%.1f"|format(p.total_m2 / 1000)|replace('.', ',') }}k</td>
+            <td class="text-right me-val">{{ "%.1f"|format(p.total_m1 / 1000)|replace('.', ',') }}k</td>
+            <td class="text-right me-media">{{ "%.1f"|format(p.media / 1000)|replace('.', ',') }}k</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% endif %}
+
     {% endif %}
 
   </main>
@@ -343,12 +486,23 @@ function selecionarVendedor(cod) {
   } else {
     url.searchParams.set('vendedor', cod);
   }
+  url.searchParams.delete('cliente');
+  window.location.href = url.toString();
+}
+function selecionarCliente(cod) {
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('cliente') === cod) {
+    url.searchParams.delete('cliente');
+  } else {
+    url.searchParams.set('cliente', cod);
+  }
   window.location.href = url.toString();
 }
 function navegarMotor(tab) {
   const url = new URL(window.location.href);
   url.pathname = url.pathname.replace(/\/motor\/\w+$/, '/motor/' + tab);
   url.searchParams.delete('vendedor');
+  url.searchParams.delete('cliente');
   window.location.href = url.toString();
 }
 function abrirSeletorLoja() {
@@ -364,12 +518,14 @@ function selecionarEmpresa(id) {
   if (id) { url.searchParams.set('company_id', id); } else { url.searchParams.delete('company_id'); }
   url.searchParams.delete('store_id');
   url.searchParams.delete('vendedor');
+  url.searchParams.delete('cliente');
   window.location.href = url.toString();
 }
 function selecionarLoja(id) {
   const url = new URL(window.location.href);
   if (id) { url.searchParams.set('store_id', id); } else { url.searchParams.delete('store_id'); }
   url.searchParams.delete('vendedor');
+  url.searchParams.delete('cliente');
   window.location.href = url.toString();
 }
 </script>

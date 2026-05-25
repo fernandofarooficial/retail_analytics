@@ -326,6 +326,93 @@
 {% endif %}
 
 {% endif %}
+
+<!-- ── Top 10 Clientes — 3 meses anteriores ─────────────────────────── -->
+{% if top10_clientes is defined and active_store %}
+<div style="margin-top:1.5rem;">
+  <div class="gest-chart-card">
+    <div class="gest-chart-header">
+      <span class="gest-chart-title">Top 10 Clientes</span>
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        {% if selected_cliente %}
+        <a href="{{ url_for('motor.vendas', company_id=selected_company_id, store_id=selected_store_id, vendedor=selected_vendedor) }}"
+           style="font-size:0.8125rem; color:#6B7280; text-decoration:none;">&#10005; Limpar cliente</a>
+        {% endif %}
+        <span style="font-size:0.75rem; color:#9CA3AF;">base: {{ m3.nome[:3] }}–{{ m1.nome[:3] }}</span>
+      </div>
+    </div>
+    {% if not top10_clientes %}
+    <p class="kpi-hint" style="margin:0.5rem 0;">Sem dados de clientes PJ para o período.</p>
+    {% else %}
+    <table class="vend-table">
+      <thead>
+        <tr>
+          <th style="width:20px;"></th>
+          <th>Cliente</th>
+          <th class="text-right">{{ m3.nome[:3] }}</th>
+          <th class="text-right">{{ m2.nome[:3] }}</th>
+          <th class="text-right">{{ m1.nome[:3] }}</th>
+          <th class="text-right" style="color:var(--theme-primary);">Média</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in top10_clientes %}
+        {% set is_sel = (c.cod_cliente == selected_cliente) %}
+        <tr class="vend-row{% if is_sel %} selected{% endif %}"
+            onclick="selecionarCliente('{{ c.cod_cliente }}')">
+          <td class="vend-arrow">›</td>
+          <td class="vend-name">{{ c.nome }}</td>
+          <td class="text-right vend-val">{{ "%.1f"|format(c.total_m3 / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right vend-val">{{ "%.1f"|format(c.total_m2 / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right vend-val">{{ "%.1f"|format(c.total_m1 / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right vend-val" style="color:var(--theme-primary);">{{ "%.1f"|format(c.media / 1000)|replace('.', ',') }}k</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+
+  {% if selected_cliente and top10_prod_cliente is defined %}
+  {% set cli_nome = (top10_clientes | selectattr('cod_cliente', 'eq', selected_cliente) | list | first) %}
+  <div class="gest-chart-card" style="margin-top:1.25rem;">
+    <div class="gest-chart-header">
+      <span class="gest-chart-title">
+        Top 10 Produtos{% if cli_nome %} — {{ cli_nome.nome }}{% endif %}
+      </span>
+      <span style="font-size:0.75rem; color:#9CA3AF;">base: {{ m3.nome[:3] }}–{{ m1.nome[:3] }}</span>
+    </div>
+    {% if not top10_prod_cliente %}
+    <p class="kpi-hint" style="margin:0.5rem 0;">Sem dados de produtos para este cliente no período.</p>
+    {% else %}
+    <table class="vend-table">
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th class="text-right">{{ m3.nome[:3] }}</th>
+          <th class="text-right">{{ m2.nome[:3] }}</th>
+          <th class="text-right">{{ m1.nome[:3] }}</th>
+          <th class="text-right" style="color:var(--theme-primary);">Média</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in top10_prod_cliente %}
+        <tr>
+          <td>{{ p.nome }}</td>
+          <td class="text-right vend-val">{{ "%.1f"|format(p.total_m3 / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right vend-val">{{ "%.1f"|format(p.total_m2 / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right vend-val">{{ "%.1f"|format(p.total_m1 / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right vend-val" style="color:var(--theme-primary);">{{ "%.1f"|format(p.media / 1000)|replace('.', ',') }}k</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 {% endif %}
 {% endblock %}
 
@@ -338,6 +425,16 @@ function selecionarVendedor(cod) {
   } else {
     url.searchParams.set('vendedor', cod);
   }
+  url.searchParams.delete('cliente');
+  window.location.href = url.toString();
+}
+function selecionarCliente(cod) {
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('cliente') === cod) {
+    url.searchParams.delete('cliente');
+  } else {
+    url.searchParams.set('cliente', cod);
+  }
   window.location.href = url.toString();
 }
 function selecionarEmpresa(id) {
@@ -345,12 +442,14 @@ function selecionarEmpresa(id) {
   if (id) { url.searchParams.set('company_id', id); } else { url.searchParams.delete('company_id'); }
   url.searchParams.delete('store_id');
   url.searchParams.delete('vendedor');
+  url.searchParams.delete('cliente');
   window.location.href = url.toString();
 }
 function selecionarLoja(id) {
   const url = new URL(window.location.href);
   if (id) { url.searchParams.set('store_id', id); } else { url.searchParams.delete('store_id'); }
   url.searchParams.delete('vendedor');
+  url.searchParams.delete('cliente');
   window.location.href = url.toString();
 }
 </script>
