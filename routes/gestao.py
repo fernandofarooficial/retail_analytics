@@ -308,7 +308,7 @@ def vendas():
         cnpj     = ctx['active_store_cnpj']
         store_id = ctx['active_store']['store_id']
         vendas_data  = _vendas_mensal_por_vendedor(portal, cnpj, ano)
-        concentracao = _concentracao_clientes_mensal(store_id, portal, cnpj, ano)
+        concentracao = _concentracao_clientes_mensal(portal, cnpj, ano)
 
     return render_template(
         'gestao/vendas.html',
