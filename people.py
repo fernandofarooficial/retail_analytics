@@ -645,7 +645,7 @@ def concentracao_clientes_mensal(store_id, portal, cnpj, ano):
             GROUP  BY 1, 2
         ),
         grand_totals AS (
-            SELECT mes, SUM(cliente_total) AS grand_total
+            SELECT mes, SUM(cliente_total) AS grand_total, COUNT(*) AS total_clientes
             FROM   base
             GROUP  BY mes
         ),
@@ -654,12 +654,14 @@ def concentracao_clientes_mensal(store_id, portal, cnpj, ano):
                 b.mes,
                 b.cliente_total,
                 gt.grand_total,
+                gt.total_clientes,
                 RANK() OVER (PARTITION BY b.mes ORDER BY b.cliente_total DESC) AS rnk
             FROM   base b
             JOIN   grand_totals gt ON gt.mes = b.mes
         )
         SELECT
             mes,
+            MAX(total_clientes)                                                        AS total_clientes,
             ROUND(SUM(CASE WHEN rnk <=  5 THEN cliente_total ELSE 0 END)::numeric
                   / NULLIF(MAX(grand_total), 0) * 100, 1) AS pct_top5,
             ROUND(SUM(CASE WHEN rnk <= 10 THEN cliente_total ELSE 0 END)::numeric
@@ -674,12 +676,13 @@ def concentracao_clientes_mensal(store_id, portal, cnpj, ano):
     """, (portal, cnpj, ano, series_pj))
     return [
         {
-            'mes':      r['mes'],
-            'mes_nome': _MESES_PT_CURTO[r['mes'] - 1],
-            'pct_top5':  float(r['pct_top5']  or 0),
-            'pct_top10': float(r['pct_top10'] or 0),
-            'pct_top20': float(r['pct_top20'] or 0),
-            'pct_top30': float(r['pct_top30'] or 0),
+            'mes':           r['mes'],
+            'mes_nome':      _MESES_PT_CURTO[r['mes'] - 1],
+            'total_clientes': int(r['total_clientes'] or 0),
+            'pct_top5':      float(r['pct_top5']  or 0),
+            'pct_top10':     float(r['pct_top10'] or 0),
+            'pct_top20':     float(r['pct_top20'] or 0),
+            'pct_top30':     float(r['pct_top30'] or 0),
         }
         for r in rows
     ]

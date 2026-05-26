@@ -218,6 +218,7 @@
         <thead>
           <tr>
             <th>Mês</th>
+            <th>Cli.</th>
             <th>Top 5</th>
             <th>Top 10</th>
             <th>Top 20</th>
@@ -228,6 +229,7 @@
           {% for row in concentracao %}
           <tr>
             <td>{{ row.mes_nome }}</td>
+            <td>{{ row.total_clientes }}</td>
             <td>{{ "%.0f"|format(row.pct_top5) }}%</td>
             <td>{{ "%.0f"|format(row.pct_top10) }}%</td>
             <td>{{ "%.0f"|format(row.pct_top20) }}%</td>
