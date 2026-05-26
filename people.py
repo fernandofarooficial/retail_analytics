@@ -618,18 +618,20 @@ def top10_produtos_cliente(store_id, portal, cnpj, cod_cliente,
 _MESES_PT_CURTO = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
 
-def concentracao_clientes_mensal(portal, cnpj, ano):
-    """% do faturamento mensal concentrado nos top 5/10/20/30 clientes.
+def concentracao_clientes_mensal(store_id, portal, cnpj, ano):
+    """% do faturamento mensal concentrado nos top 5/10/20/30 clientes PJ da loja.
 
-    Denominador = faturamento total do mês (todos os clientes, filtros padrão).
-    Numerador   = faturamento dos top N clientes identificados (codigo_cliente <> 1).
+    Denominador = faturamento total do mês por loja (todos os clientes, filtros padrão).
+    Numerador   = faturamento dos top N clientes PJ (série PJ da loja, codigo_cliente <> 1).
     """
+    _, series_pj = get_store_series(store_id)
+    if not series_pj:
+        return []
     rows = db.query_all("""
-        WITH base AS (
+        WITH grand_totals AS (
             SELECT
                 EXTRACT(MONTH FROM m.data_documento)::int AS mes,
-                m.codigo_cliente,
-                m.valor_total
+                SUM(m.valor_total) AS grand_total
             FROM   microvix.microvix_movimento m
             WHERE  m.portal               = %s
               AND  m.cnpj_emp             = %s
@@ -637,17 +639,23 @@ def concentracao_clientes_mensal(portal, cnpj, ano):
               AND  m.cancelado           <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
               AND  (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL)
               AND  m.cod_natureza_operacao = '10030'
-        ),
-        grand_totals AS (
-            SELECT mes, SUM(valor_total) AS grand_total
-            FROM   base
-            GROUP  BY mes
+            GROUP  BY 1
         ),
         client_totals AS (
-            SELECT mes, codigo_cliente, SUM(valor_total) AS cliente_total
-            FROM   base
-            WHERE  codigo_cliente <> 1
-            GROUP  BY mes, codigo_cliente
+            SELECT
+                EXTRACT(MONTH FROM m.data_documento)::int AS mes,
+                m.codigo_cliente,
+                SUM(m.valor_total) AS cliente_total
+            FROM   microvix.microvix_movimento m
+            WHERE  m.portal               = %s
+              AND  m.cnpj_emp             = %s
+              AND  EXTRACT(YEAR FROM m.data_documento) = %s
+              AND  m.cancelado           <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
+              AND  (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL)
+              AND  m.cod_natureza_operacao = '10030'
+              AND  m.serie               = ANY(%s::varchar[])
+              AND  m.codigo_cliente      <> 1
+            GROUP  BY 1, 2
         ),
         ranked AS (
             SELECT
@@ -671,7 +679,7 @@ def concentracao_clientes_mensal(portal, cnpj, ano):
         FROM   ranked
         GROUP  BY mes
         ORDER  BY mes
-    """, (portal, cnpj, ano))
+    """, (portal, cnpj, ano, portal, cnpj, ano, series_pj))
     return [
         {
             'mes':      r['mes'],
