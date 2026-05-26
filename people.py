@@ -619,29 +619,17 @@ _MESES_PT_CURTO = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','
 
 
 def concentracao_clientes_mensal(store_id, portal, cnpj, ano):
-    """% do faturamento mensal concentrado nos top 5/10/20/30 clientes PJ da loja.
+    """% do faturamento PJ mensal concentrado nos top 5/10/20/30 clientes.
 
-    Denominador = faturamento total do mês por loja (todos os clientes, filtros padrão).
-    Numerador   = faturamento dos top N clientes PJ (série PJ da loja, codigo_cliente <> 1).
+    Base = apenas transações das séries PJ da loja.
+    Denominador = total dessas transações no mês.
+    Numerador   = top N clientes por faturamento PJ no mês.
     """
     _, series_pj = get_store_series(store_id)
     if not series_pj:
         return []
     rows = db.query_all("""
-        WITH grand_totals AS (
-            SELECT
-                EXTRACT(MONTH FROM m.data_documento)::int AS mes,
-                SUM(m.valor_total) AS grand_total
-            FROM   microvix.microvix_movimento m
-            WHERE  m.portal               = %s
-              AND  m.cnpj_emp             = %s
-              AND  EXTRACT(YEAR FROM m.data_documento) = %s
-              AND  m.cancelado           <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
-              AND  (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL)
-              AND  m.cod_natureza_operacao = '10030'
-            GROUP  BY 1
-        ),
-        client_totals AS (
+        WITH base AS (
             SELECT
                 EXTRACT(MONTH FROM m.data_documento)::int AS mes,
                 m.codigo_cliente,
@@ -654,17 +642,21 @@ def concentracao_clientes_mensal(store_id, portal, cnpj, ano):
               AND  (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL)
               AND  m.cod_natureza_operacao = '10030'
               AND  m.serie               = ANY(%s::varchar[])
-              AND  m.codigo_cliente      <> 1
             GROUP  BY 1, 2
+        ),
+        grand_totals AS (
+            SELECT mes, SUM(cliente_total) AS grand_total
+            FROM   base
+            GROUP  BY mes
         ),
         ranked AS (
             SELECT
-                ct.mes,
-                ct.cliente_total,
+                b.mes,
+                b.cliente_total,
                 gt.grand_total,
-                RANK() OVER (PARTITION BY ct.mes ORDER BY ct.cliente_total DESC) AS rnk
-            FROM   client_totals ct
-            JOIN   grand_totals  gt ON gt.mes = ct.mes
+                RANK() OVER (PARTITION BY b.mes ORDER BY b.cliente_total DESC) AS rnk
+            FROM   base b
+            JOIN   grand_totals gt ON gt.mes = b.mes
         )
         SELECT
             mes,
@@ -679,7 +671,7 @@ def concentracao_clientes_mensal(store_id, portal, cnpj, ano):
         FROM   ranked
         GROUP  BY mes
         ORDER  BY mes
-    """, (portal, cnpj, ano, portal, cnpj, ano, series_pj))
+    """, (portal, cnpj, ano, series_pj))
     return [
         {
             'mes':      r['mes'],
