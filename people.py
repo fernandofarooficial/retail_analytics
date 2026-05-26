@@ -618,7 +618,7 @@ def top10_produtos_cliente(store_id, portal, cnpj, cod_cliente,
 _MESES_PT_CURTO = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
 
-def concentracao_clientes_mensal(store_id, portal, cnpj, ano):
+def concentracao_clientes_mensal(portal, cnpj, ano):
     """% do faturamento mensal concentrado nos top 5/10/20/30 clientes.
 
     Denominador = faturamento total do mês (todos os clientes, filtros padrão).
