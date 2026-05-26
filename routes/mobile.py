@@ -36,6 +36,7 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     top5_produtos_vendedor as _top5_produtos_vendedor,
                     top10_clientes_loja as _top10_clientes_loja,
                     top10_produtos_cliente as _top10_produtos_cliente,
+                    concentracao_clientes_mensal as _concentracao_clientes_mensal,
                     estoque_maior_volume as _estoque_maior_volume,
                     estoque_maior_faturamento as _estoque_maior_faturamento,
                     estoque_valor_parado as _estoque_valor_parado,
@@ -2396,10 +2397,14 @@ def gestao_vendas():
     except (ValueError, TypeError):
         ano = ano_atual
 
-    vendas_data = {'meses_nomes': [], 'series': []}
+    vendas_data  = {'meses_nomes': [], 'series': []}
+    concentracao = []
     if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
-        vendas_data = _vendas_mensal_por_vendedor(
-            ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano)
+        portal   = ctx['active_microvix_portal']
+        cnpj     = ctx['active_store_cnpj']
+        store_id = ctx['active_store']['store_id']
+        vendas_data  = _vendas_mensal_por_vendedor(portal, cnpj, ano)
+        concentracao = _concentracao_clientes_mensal(store_id, portal, cnpj, ano)
 
     return render_template(
         'mobile/gestao_vendas.html',
@@ -2407,6 +2412,7 @@ def gestao_vendas():
         ano=ano,
         ano_atual=ano_atual,
         vendas_data=vendas_data,
+        concentracao=concentracao,
     )
 
 

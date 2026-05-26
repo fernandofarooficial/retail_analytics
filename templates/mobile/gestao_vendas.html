@@ -85,6 +85,50 @@
   .m-leg-item { display: flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; color: #374151; }
   .m-leg-dot { width: 10px; height: 3px; border-radius: 2px; flex-shrink: 0; }
 
+  /* ── Tabela de concentração mobile ── */
+  .m-conc-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    margin: 0 0 0.75rem;
+    padding: 0.875rem 0.75rem 0.625rem;
+  }
+  .m-conc-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 0.625rem;
+  }
+  .m-conc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+  .m-conc-table th {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 2px solid #F3F4F6;
+    white-space: nowrap;
+    text-align: right;
+  }
+  .m-conc-table th:first-child { text-align: left; }
+  .m-conc-table td {
+    padding: 0.5rem 0.5rem;
+    border-bottom: 1px solid #F9FAFB;
+    color: #374151;
+    white-space: nowrap;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: #111827;
+  }
+  .m-conc-table td:first-child { text-align: left; font-weight: 500; color: #374151; }
+  .m-conc-table tbody tr:last-child td { border-bottom: none; }
+
   /* ── Bottom-sheet seletor ── */
   .m-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; display: none; }
   .m-sheet-overlay.open { display: block; }
@@ -162,6 +206,37 @@
         <canvas id="chart-vendas-mensal"></canvas>
       </div>
       <div class="m-chart-legend" id="m-chart-legend"></div>
+    </div>
+
+    <!-- Tabela de Concentração -->
+    <div class="m-conc-card">
+      <div class="m-conc-title">Concentração — Top Clientes PJ {{ ano }}</div>
+      {% if not concentracao %}
+      <p style="color:#9CA3AF;font-size:0.75rem;font-style:italic;">Sem dados de clientes PJ.</p>
+      {% else %}
+      <table class="m-conc-table">
+        <thead>
+          <tr>
+            <th>Mês</th>
+            <th>Top 5</th>
+            <th>Top 10</th>
+            <th>Top 20</th>
+            <th>Top 30</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in concentracao %}
+          <tr>
+            <td>{{ row.mes_nome }}</td>
+            <td>{{ "%.0f"|format(row.pct_top5) }}%</td>
+            <td>{{ "%.0f"|format(row.pct_top10) }}%</td>
+            <td>{{ "%.0f"|format(row.pct_top20) }}%</td>
+            <td>{{ "%.0f"|format(row.pct_top30) }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
     </div>
 
     {% endif %}

@@ -76,6 +76,38 @@
     text-align: center;
   }
 
+  /* ── Tabela de concentração ── */
+  .conc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .conc-table th {
+    padding: 0.45rem 0.9rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #F3F4F6;
+    white-space: nowrap;
+  }
+  .conc-table td {
+    padding: 0.55rem 0.9rem;
+    color: #374151;
+    border-bottom: 1px solid #F9FAFB;
+    white-space: nowrap;
+  }
+  .conc-table tbody tr:last-child td { border-bottom: none; }
+  .conc-table tbody tr:hover td { background: #FAFAFA; }
+  .conc-val {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: #111827;
+    text-align: right;
+  }
+  .conc-mes { color: #374151; font-weight: 500; }
+
   /* ── Card do gráfico ── */
   .gest-chart-card {
     background: #fff;
@@ -192,6 +224,40 @@
   <div class="gest-chart-wrap">
     <canvas id="chart-vendas-mensal"></canvas>
   </div>
+</div>
+
+<!-- ── Tabela: Concentração de faturamento por clientes ─────────────── -->
+<div class="gest-chart-card" style="margin-top:1.25rem;">
+  <div class="gest-chart-header">
+    <span class="gest-chart-title">Concentração de Faturamento — Clientes {{ ano }}</span>
+    <span style="font-size:0.75rem;color:#9CA3AF;">% do faturamento mensal pelos top N clientes PJ</span>
+  </div>
+  {% if not concentracao %}
+  <p style="color:#9CA3AF;font-size:0.875rem;font-style:italic;margin:0.5rem 0;">Sem dados de clientes PJ para o período.</p>
+  {% else %}
+  <table class="conc-table">
+    <thead>
+      <tr>
+        <th>Mês</th>
+        <th class="conc-val">Top 5</th>
+        <th class="conc-val">Top 10</th>
+        <th class="conc-val">Top 20</th>
+        <th class="conc-val">Top 30</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in concentracao %}
+      <tr>
+        <td class="conc-mes">{{ row.mes_nome }}</td>
+        <td class="conc-val">{{ "%.0f"|format(row.pct_top5) }}%</td>
+        <td class="conc-val">{{ "%.0f"|format(row.pct_top10) }}%</td>
+        <td class="conc-val">{{ "%.0f"|format(row.pct_top20) }}%</td>
+        <td class="conc-val">{{ "%.0f"|format(row.pct_top30) }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
 </div>
 
 {% endif %}

@@ -613,6 +613,71 @@ def top10_produtos_cliente(store_id, portal, cnpj, cod_cliente,
     ]
 
 
+# ── Concentração de clientes ──────────────────────────────────────────────────
+
+_MESES_PT_CURTO = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
+
+def concentracao_clientes_mensal(store_id, portal, cnpj, ano):
+    """% do faturamento mensal concentrado nos top 5/10/20/30 clientes PJ."""
+    _, series_pj = get_store_series(store_id)
+    rows = db.query_all("""
+        WITH monthly_client_totals AS (
+            SELECT
+                EXTRACT(MONTH FROM m.data_documento)::int   AS mes,
+                m.codigo_cliente,
+                SUM(m.valor_total)                          AS cliente_total
+            FROM   microvix.microvix_movimento m
+            WHERE  m.portal               = %s
+              AND  m.cnpj_emp             = %s
+              AND  EXTRACT(YEAR FROM m.data_documento) = %s
+              AND  m.serie                = ANY(%s::varchar[])
+              AND  m.cancelado           <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
+              AND  (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL)
+              AND  m.cod_natureza_operacao = '10030'
+            GROUP  BY mes, m.codigo_cliente
+        ),
+        monthly_grand_totals AS (
+            SELECT mes, SUM(cliente_total) AS grand_total
+            FROM   monthly_client_totals
+            GROUP  BY mes
+        ),
+        ranked AS (
+            SELECT
+                mct.mes,
+                mct.cliente_total,
+                mgt.grand_total,
+                RANK() OVER (PARTITION BY mct.mes ORDER BY mct.cliente_total DESC) AS rnk
+            FROM   monthly_client_totals mct
+            JOIN   monthly_grand_totals  mgt ON mgt.mes = mct.mes
+        )
+        SELECT
+            mes,
+            ROUND(SUM(CASE WHEN rnk <=  5 THEN cliente_total ELSE 0 END)::numeric
+                  / NULLIF(MAX(grand_total), 0) * 100, 1) AS pct_top5,
+            ROUND(SUM(CASE WHEN rnk <= 10 THEN cliente_total ELSE 0 END)::numeric
+                  / NULLIF(MAX(grand_total), 0) * 100, 1) AS pct_top10,
+            ROUND(SUM(CASE WHEN rnk <= 20 THEN cliente_total ELSE 0 END)::numeric
+                  / NULLIF(MAX(grand_total), 0) * 100, 1) AS pct_top20,
+            ROUND(SUM(CASE WHEN rnk <= 30 THEN cliente_total ELSE 0 END)::numeric
+                  / NULLIF(MAX(grand_total), 0) * 100, 1) AS pct_top30
+        FROM   ranked
+        GROUP  BY mes
+        ORDER  BY mes
+    """, (portal, cnpj, ano, series_pj))
+    return [
+        {
+            'mes':      r['mes'],
+            'mes_nome': _MESES_PT_CURTO[r['mes'] - 1],
+            'pct_top5':  float(r['pct_top5']  or 0),
+            'pct_top10': float(r['pct_top10'] or 0),
+            'pct_top20': float(r['pct_top20'] or 0),
+            'pct_top30': float(r['pct_top30'] or 0),
+        }
+        for r in rows
+    ]
+
+
 # ── Estoque ───────────────────────────────────────────────────────────────────
 
 _ESTOQUE_BASE_FILTER = (
