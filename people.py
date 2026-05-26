@@ -635,6 +635,7 @@ def concentracao_clientes_mensal(store_id, portal, cnpj, ano):
               AND  m.cancelado           <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
               AND  (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL)
               AND  m.cod_natureza_operacao = '10030'
+              AND  m.codigo_cliente       <> 1
             GROUP  BY mes, m.codigo_cliente
         ),
         monthly_grand_totals AS (
