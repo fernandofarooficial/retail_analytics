@@ -19,7 +19,12 @@ def query_one(sql, params=None):
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(sql, params)
-            return cur.fetchone()
+            result = cur.fetchone()
+        conn.commit()
+        return result
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         _pool.putconn(conn)
 
@@ -29,7 +34,12 @@ def query_all(sql, params=None):
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(sql, params)
-            return cur.fetchall()
+            result = cur.fetchall()
+        conn.commit()
+        return result
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         _pool.putconn(conn)
 
@@ -40,5 +50,8 @@ def execute(sql, params=None):
         with conn.cursor() as cur:
             cur.execute(sql, params)
         conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         _pool.putconn(conn)
