@@ -11,7 +11,7 @@ SaaS multi-tenant de analytics de varejo com reconhecimento facial. Correlaciona
 
 - Python 3.13 + Flask ≥3.0 + PostgreSQL + gunicorn
 - Virtualenv em `.venv/`
-- Conexão DB via `PG_DSN` no `.env`; `db.py` usa `ThreadedConnectionPool(min=2, max=10)` com `RealDictCursor`, expõe `query_one`, `query_all`, `execute`
+- Conexão DB via `PG_DSN` no `.env`; `db.py` usa `ThreadedConnectionPool(min=2, max=10)` com `RealDictCursor`, expõe `query_one`, `query_all`, `execute` — todas dão `commit()` ao final (necessário para `INSERT ... RETURNING` via `query_one`) e `rollback()` em caso de exceção antes de devolver a conexão ao pool
 - Cache Flask-Caching (SimpleCache, 900 s default); charts do dashboard memoizados 15 min via `@cache.memoize(timeout=900)`
 
 ## Deploy
