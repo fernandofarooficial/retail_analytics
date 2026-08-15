@@ -42,7 +42,7 @@ git pull origin main && sudo systemctl restart retail_analytics
 **Padrão `_store_context(endpoint)`:** centraliza carregamento de empresa/loja/tema/cnpj/portal em `motor.py` e `gestao.py`. Retorna `(ctx_dict, redirect_ou_None)`. `motor.py` e `gestao.py` usam apenas `@login_required` (sem `@screen_required`); `cadastros.py`, `conta.py`, `usuarios.py` e as rotas de dashboard/ranking em `auth.py` usam `@screen_required(screen_id)`.
 
 **Queries analíticas:** `people.py` (~910 linhas) — funções de KPI Microvix, ranking, estoque; usa `get_store_series(store_id)` para obter `(series_pf, series_pj)` de `faciais.store_serie_rules`  
-**Lógica de metas:** `metas.py` (module, ~215 linhas) — resolução de meta efetiva (`_goal_value`), acumulado YTD, breakdown
+**Lógica de metas:** `metas.py` (module, ~230 linhas) — resolução de meta efetiva (`_goal_value`), acumulado YTD, distribuição diária/semanal em tempo real a partir do valor mensal (`_distribuir_mensal`, `_weekly_target`)
 
 **Scripts (`scripts/`):** `recalcular_ranking.py` — job agendado via cron no VPS (`45 23 * * *`): faz `REFRESH MATERIALIZED VIEW faciais.mv_microvix_vendas`, trunca e repopula `faciais.customer_ranking` a partir de `faciais.vw_customer_ranking`. Log em `logs/ranking_job.log`.
 
@@ -144,7 +144,17 @@ AND cod_natureza_operacao = '10030'
 | `goal_targets` | Alocação de meta a entidade (store/company/company_group). Campos: `goal_target_id`, `goal_id`, `entity_type`, `store_id`, `company_id`, `company_group_id`, `is_active` |
 | `goal_value_templates` | Valor recorrente com vigência. Campos: `template_id`, `goal_target_id`, `goal_period_id`, `target_value`, `date_from`, `date_to` (NULL=sem fim) |
 | `goal_values` | Override pontual por data de referência. Campos: `goal_value_id`, `goal_target_id`, `goal_period_id`, `reference_date`, `target_value`, `actual_value`, `is_closed` |
-| `goal_breakdowns` | Desdobramentos hierárquicos entre períodos (pai → filho) |
+| `goal_breakdowns` | Legado (não usada mais desde 2026-08) — registrava vínculo pai→filho do antigo desdobramento manual em daily/weekly. Sempre vazia daqui pra frente. |
+
+**Cadastro só em nível mensal (goals 1 e 3) ou diário (goal 2, Ticket Médio) — desde 2026-08.**
+`goal_values`/`goal_value_templates` só aceitam `goal_period_id` = `base_period_id` do goal (a UI em
+`/retail_analytics/metas/objetivos/<id>/alocacoes/<id>/valores|vigencias` já restringe isso). Não existe
+mais desdobramento manual em diário/semanal — `metas.get_metas()` e `metas.meta_faturamento_acum_diario()`
+calculam diário/semanal **sempre em tempo real** a partir do valor mensal cadastrado, distribuído pelos
+dias proporcionalmente ao `day_weight` de `vw_store_calendar` (sábado sai com peso reduzido, ex: 0.5 via
+perfil "Varejo Rua"). Ticket Médio (`goal_id=2`) é cadastrado só em nível diário e seu valor efetivo
+também é multiplicado pelo `day_weight` do dia — assim sábado sai proporcionalmente menor sem precisar de
+um segundo valor cadastrado. Ver `metas.py: _distribuir_mensal` / `_weekly_target`.
 
 **Precedência de metas:** `goal_values` (override pontual) > `goal_value_templates` (recorrente)
 
