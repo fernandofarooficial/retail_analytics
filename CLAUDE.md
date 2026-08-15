@@ -76,7 +76,9 @@ AND cod_natureza_operacao = '10030'
 
 ## Banco de Dados
 
-> **Referência definitiva do schema:** `_documentacao/base_de_dados/doc_faciais.sql` e `_documentacao/base_de_dados/doc_microvix.sql`. Sempre consultar esses arquivos para estrutura atual das tabelas.
+> **Referência definitiva do schema:** `_documentacao/base_de_dados/doc_faciais.sql` e `_documentacao/base_de_dados/doc_microvix.sql`. Sempre consultar esses arquivos para estrutura atual das tabelas. Pasta `_documentacao/` é local/gitignored — gerada por introspecção direta do banco de produção (PyCharm Database tools / MCP). Comentários de coluna de `doc_faciais.sql` vêm de `COMMENT ON` já existentes no banco; os de `doc_microvix.sql` vêm da especificação oficial do Web Service em `doc/Especificação Web Service de Saída Padrão - v176 (1).pdf` (schema `microvix` não tem `COMMENT ON` — é dado sincronizado do ERP). Regenerar esses arquivos quando o schema mudar (nova migration, nova tabela sincronizada).
+>
+> **Schema `itumbiara` no mesmo banco `lojas`:** existe um schema `itumbiara` (tabelas `cameras`, `estabelecimentos`, `pessoas`, `eventos_faciais`, `evento_matches`, `sync_control`) na mesma instância Postgres, mas **não tem nenhuma relação com este projeto** — nenhum código do repositório o referencia. Parece um sistema de reconhecimento facial separado/legado para uma rede específica. Ignorar ao investigar o schema deste projeto.
 
 ### Schema `faciais`
 
@@ -126,6 +128,7 @@ AND cod_natureza_operacao = '10030'
 |---|---|
 | `json_records` | Payloads JSON brutos das câmeras. Campos: `json_record_id`, `payload jsonb`, `log_id` |
 | `detection_records` | Detecções faciais processadas. Campos: `detection_record_id`, `json_record_id`, `track_id`, `detection_score`, `recognition_score`, `image_path`, `camera_id`, `person_id`, `store_id`, `log_id` |
+| `zions_identified_records` | Eventos do analítico ZIONS em que a pessoa já veio identificada por nome (não passam pelo pipeline Heimdall). Guardados só para consulta direta no banco — **não é lida por nenhuma rota/query do código atual**. Campos: `log_id`, `track_id`, `camera_id`, `full_name`, `score`, `payload jsonb` |
 
 #### Ranking de clientes
 
@@ -170,7 +173,7 @@ AND cod_natureza_operacao = '10030'
 | `vw_goal_daily_target` | Valor efetivo da meta: prioriza override (goal_values) sobre template |
 | `vw_goal_performance` | Apuração com `achievement_pct` e `status` (achieved/not_achieved/pending/no_target) |
 | `vw_customer_ranking` | Ranking de clientes em tempo real (fonte do cache `customer_ranking`). Score = (visitas_com_compra × pts) + (visitas_sem_compra × pts) + (total_gasto × pts_por_real). Usa `mv_microvix_vendas` para performance |
-| `mv_microvix_vendas` *(MATERIALIZED)* | Cache de vendas válidas do Microvix (join por `cnpj_emp` + `documento`), usado como fonte de `vw_customer_ranking`. Precisa de `REFRESH` antes do cálculo do ranking — feito pelo cron |
+| `mv_microvix_vendas` *(MATERIALIZED)* | Cache de vendas válidas do Microvix, usado como fonte de `vw_customer_ranking`. Precisa de `REFRESH` antes do cálculo do ranking — feito pelo cron. Filtro: `cod_natureza_operacao='10030'`/`cancelado<>'S'`/`excluido<>'S'`/`soma_relatorio='S'`, `tipo_transacao` em `('P','V','S')` ou NULL, `documento IS NOT NULL`, e `serie` restrito às séries PF da loja via join com `faciais.store_serie_rules` (`person_kind='PF'`, join por `stores.cnpj = microvix_movimento.cnpj_emp`) — corrigido em 2026-08-15 para não depender de lista fixa de séries |
 | `vw_store_series` | Séries PF e PJ por loja agregadas em array (`series_pf`, `series_pj`) a partir de `store_serie_rules`, para uso em filtros de `microvix_movimento` |
 | `vw_primeira_aparicao_clientes` *(MATERIALIZED)* | Primeira detecção de cada cliente (person_type_id='C'). Campo `first_record`. Index único em `person_id` |
 
