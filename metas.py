@@ -1,13 +1,24 @@
 # metas.py
 # Consulta metas do banco de dados.
-# goal_id=1: Faturamento  |  goal_id=2: Ticket Médio
+# goal_id=1: Faturamento na loja  |  goal_id=2: Ticket Médio  |  goal_id=3: Faturamento Total
 # Alocação buscada por entity_type='store' e store_id fornecido pelo dashboard.
 #
-# Precedência (mesma lógica da vw_goal_daily_target):
+# Cadastro só em nível mensal para os goals de faturamento (period='monthly') e diário
+# para Ticket Médio (period='daily') — não existe mais desdobramento manual em semanal/diário.
+# Precedência na resolução do valor cadastrado (mesma lógica da vw_goal_daily_target):
 #   1. goal_values com reference_date exata → override pontual
 #   2. goal_value_templates com vigência ativa → valor recorrente
+#
+# Metas diárias e semanais de faturamento são SEMPRE calculadas em tempo real a partir da
+# meta mensal cadastrada, distribuída pelos dias do mês proporcionalmente ao peso de cada dia
+# em faciais.vw_store_calendar (hierarquia: exceção loja > feriado geo > perfil > calendário
+# base — sábado já sai com peso reduzido pelo day_type do perfil da loja, ex: 0.5).
+# Ticket Médio é um valor cadastrado por dia (não se distribui um total), mas seu valor
+# efetivo também é escalado pelo peso do dia — assim o sábado sai proporcionalmente menor
+# que um dia útil sem precisar de um segundo valor cadastrado.
 
-from datetime import date
+import calendar
+from datetime import date, timedelta
 import db
 
 _GOAL_FATURAMENTO       = 1
@@ -96,58 +107,27 @@ def meta_faturamento_mes(store_id, mes_inicio):
     return _goal_value(fat_tid, 'monthly', mes_inicio)
 
 
-def meta_faturamento_acum_diario(store_id, mes_inicio, mes_fim):
+def _distribuir_mensal(store_id, target_id, ref_date):
     """
-    Retorna (daily_dict, meta_total) para o gráfico Motor — Faturamento.
-    - daily_dict : {dia_do_mes: valor_meta_diaria}  (acumula no chamador)
-    - meta_total : soma de todos os dias do mês (None se sem meta configurada)
+    Distribui a meta mensal cadastrada (period='monthly') do mês de ref_date pelos dias
+    desse mês, proporcional ao peso de cada dia em faciais.vw_store_calendar (hierarquia:
+    exceção loja > feriado geo > perfil > calendário base — ex: sábado com peso 0.5).
 
-    Prioridade:
-    1. Desdobramento diário em goal_values / goal_value_templates (period='daily')
-    2. Meta mensal (period='monthly') distribuída pelos dias úteis com peso
-       usando vw_store_calendar (hierarquia: exceção > feriado geo > perfil > base)
+    Retorna (dict {date: valor_do_dia}, valor_mensal_cadastrado). Se não houver meta mensal
+    cadastrada para o mês, retorna ({}, None).
     """
-    fat_tid = _target_id(_GOAL_FATURAMENTO_TOTAL, store_id)
-    if fat_tid is None:
-        return {}, None
+    mes_inicio = ref_date.replace(day=1)
+    mes_fim    = ref_date.replace(day=calendar.monthrange(ref_date.year, ref_date.month)[1])
 
-    # ── 1. Tenta desdobramento diário ────────────────────────────────────────
-    rows = db.query_all("""
-        SELECT EXTRACT(DAY FROM d.day)::int AS dia,
-               COALESCE(gv.target_value, gvt.target_value) AS valor
-        FROM   generate_series(%s::date, %s::date, '1 day'::interval) AS d(day)
-        LEFT   JOIN faciais.goal_values gv
-               ON  gv.goal_target_id = %s
-               AND gv.goal_period_id  = 'daily'
-               AND gv.reference_date  = d.day
-        LEFT   JOIN LATERAL (
-            SELECT target_value FROM faciais.goal_value_templates
-            WHERE  goal_target_id = %s
-              AND  goal_period_id  = 'daily'
-              AND  date_from      <= d.day
-              AND  (date_to IS NULL OR date_to >= d.day)
-            ORDER  BY date_from DESC LIMIT 1
-        ) gvt ON TRUE
-        WHERE  COALESCE(gv.target_value, gvt.target_value) IS NOT NULL
-    """, (mes_inicio, mes_fim, fat_tid, fat_tid))
-
-    if rows:
-        daily = {r['dia']: float(r['valor']) for r in rows}
-        monthly = _goal_value(fat_tid, 'monthly', mes_inicio)
-        meta_total = float(monthly) if monthly is not None else sum(daily.values())
-        return daily, meta_total
-
-    # ── 2. Distribui meta mensal pelos dias úteis com peso ───────────────────
-    monthly = _goal_value(fat_tid, 'monthly', mes_inicio)
+    monthly = _goal_value(target_id, 'monthly', mes_inicio)
     if monthly is None:
         return {}, None
 
     cal_rows = db.query_all("""
-        SELECT EXTRACT(DAY FROM calendar_date)::int AS dia, day_weight
+        SELECT calendar_date, day_weight
         FROM   faciais.vw_store_calendar
         WHERE  store_id      = %s
           AND  calendar_date BETWEEN %s AND %s
-        ORDER  BY calendar_date
     """, (store_id, mes_inicio, mes_fim))
 
     total_peso = sum(float(r['day_weight']) for r in cal_rows)
@@ -155,10 +135,47 @@ def meta_faturamento_acum_diario(store_id, mes_inicio, mes_fim):
         return {}, float(monthly)
 
     daily = {
-        r['dia']: round(float(monthly) * float(r['day_weight']) / total_peso, 2)
+        r['calendar_date']: round(float(monthly) * float(r['day_weight']) / total_peso, 2)
         for r in cal_rows if float(r['day_weight']) > 0
     }
     return daily, float(monthly)
+
+
+def _weekly_target(store_id, target_id, semana_inicio, semana_fim):
+    """Soma das metas diárias (calculadas em tempo real) de cada dia da semana. A semana pode
+    cruzar a virada do mês — cada dia usa a meta mensal e o peso do seu próprio mês."""
+    total = 0.0
+    cache = {}
+    d = semana_inicio
+    while d <= semana_fim:
+        key = (d.year, d.month)
+        if key not in cache:
+            cache[key], _ = _distribuir_mensal(store_id, target_id, d)
+        total += cache[key].get(d, 0.0)
+        d += timedelta(days=1)
+    return round(total, 2)
+
+
+def meta_faturamento_acum_diario(store_id, mes_inicio, mes_fim):
+    """
+    Retorna (daily_dict, meta_total) para o gráfico Motor — Faturamento.
+    - daily_dict : {dia_do_mes: valor_meta_diaria}, calculado em tempo real a partir da
+      meta mensal cadastrada (ver _distribuir_mensal)
+    - meta_total : valor mensal cadastrado (None se sem meta configurada)
+
+    mes_fim é aceito por compatibilidade de assinatura, mas o mês considerado é sempre o de
+    mes_inicio (os chamadores atuais só passam intervalos dentro de um único mês).
+    """
+    fat_tid = _target_id(_GOAL_FATURAMENTO_TOTAL, store_id)
+    if fat_tid is None:
+        return {}, None
+
+    by_date, meta_total = _distribuir_mensal(store_id, fat_tid, mes_inicio)
+    if meta_total is None:
+        return {}, None
+
+    daily = {d.day: v for d, v in by_date.items()}
+    return daily, meta_total
 
 
 def get_metas(store_id,
@@ -169,42 +186,40 @@ def get_metas(store_id,
     """
     Retorna dict com metas para todos os períodos do dashboard,
     ou None se não houver alocação ativa de faturamento para a loja.
+
+    Diário e semanal de faturamento são calculados em tempo real a partir da meta mensal
+    cadastrada (ver _distribuir_mensal / _weekly_target) — não há mais leitura de
+    desdobramento manual salvo em goal_values/goal_value_templates period='daily'/'weekly'.
     """
     fat_tid = _target_id(_GOAL_FATURAMENTO, store_id)
     if fat_tid is None:
         return None
 
-    fat_dia    = _goal_value(fat_tid, 'daily',   data_dia)      or 0.0
-    fat_semana = _goal_value(fat_tid, 'weekly',  semana_inicio) or 0.0
-    fat_mes    = _goal_value(fat_tid, 'monthly', mes_inicio)    or 0.0
-    fat_ytd    = _ytd_fat(fat_tid, data_dia, mes_inicio)
+    fat_mes = _goal_value(fat_tid, 'monthly', mes_inicio) or 0.0
 
-    # Sem nenhum valor configurado, não exibe seção de metas
-    if fat_dia == 0.0 and fat_semana == 0.0 and fat_mes == 0.0:
+    # Sem meta mensal cadastrada, não exibe seção de metas
+    if fat_mes == 0.0:
         return None
 
-    # Ticket médio: valor por transação — busca qualquer template ativo na data,
-    # sem filtrar por período (ticket médio não depende da janela de tempo)
+    by_date, _ = _distribuir_mensal(store_id, fat_tid, data_dia)
+    fat_dia    = by_date.get(data_dia, 0.0)
+    fat_semana = _weekly_target(store_id, fat_tid, semana_inicio, semana_fim)
+    fat_ytd    = _ytd_fat(fat_tid, data_dia, mes_inicio)
+
+    # Ticket médio: valor diário cadastrado (period='daily') escalado pelo peso do dia
+    # (faciais.vw_store_calendar) — assim o sábado sai proporcionalmente menor que um dia
+    # útil sem precisar de um segundo valor cadastrado.
     ticket_medio = 0.0
     tkt_tid = _target_id(_GOAL_TICKET_MEDIO, store_id)
     if tkt_tid:
-        row = db.query_one("""
-            SELECT COALESCE(gv.target_value, gvt.target_value) AS target_value
-            FROM (SELECT 1) _base
-            LEFT JOIN faciais.goal_values gv
-                ON  gv.goal_target_id = %s
-                AND gv.reference_date  = %s
-            LEFT JOIN LATERAL (
-                SELECT target_value FROM faciais.goal_value_templates
-                WHERE  goal_target_id = %s
-                  AND  date_from     <= %s
-                  AND  (date_to IS NULL OR date_to >= %s)
-                ORDER  BY date_from DESC
-                LIMIT  1
-            ) gvt ON TRUE
-        """, (tkt_tid, data_dia, tkt_tid, data_dia, data_dia))
-        if row and row['target_value'] is not None:
-            ticket_medio = float(row['target_value'])
+        tkt_valor = _goal_value(tkt_tid, 'daily', data_dia)
+        if tkt_valor:
+            peso_row = db.query_one("""
+                SELECT day_weight FROM faciais.vw_store_calendar
+                WHERE  store_id = %s AND calendar_date = %s
+            """, (store_id, data_dia))
+            peso = float(peso_row['day_weight']) if peso_row else 1.0
+            ticket_medio = round(float(tkt_valor) * peso, 2)
 
     return {
         'faturamento_dia':    fat_dia,
