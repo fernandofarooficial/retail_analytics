@@ -403,6 +403,45 @@ def vendedores_mes(portal, cnpj, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_
     ]
 
 
+def pedidos_venda_por_vendedor(portal, cnpj, mes_ini, mes_fim):
+    """Pedidos de venda do mês (por data_lancamento) agrupados por vendedor, somando valor_total
+    por situação: orçamento aberto (ainda não aprovado), pedido aprovado (aguardando faturamento)
+    e pedido faturado (completo ou parcial). Pedidos cancelados ficam de fora das 3 situações."""
+    rows = db.query_all("""
+        SELECT
+            p.cod_vendedor::text                                                AS cod_vendedor,
+            COALESCE(NULLIF(TRIM(mv.nome_vendedor), ''), p.cod_vendedor::text)  AS nome,
+            ROUND(SUM(CASE WHEN p.aprovado = 'N' AND p.status = 'N'
+                           THEN p.valor_total ELSE 0 END)::numeric, 2)          AS valor_orcamento_aberto,
+            ROUND(SUM(CASE WHEN p.aprovado = 'S' AND p.status = 'N'
+                           THEN p.valor_total ELSE 0 END)::numeric, 2)          AS valor_pedido_aprovado,
+            ROUND(SUM(CASE WHEN p.aprovado = 'S' AND p.status IN ('F', 'P')
+                           THEN p.valor_total ELSE 0 END)::numeric, 2)          AS valor_pedido_faturado
+        FROM   microvix.microvix_pedidos_venda p
+        LEFT   JOIN microvix.microvix_vendedores mv
+                    ON mv.portal = p.portal AND mv.cod_vendedor = p.cod_vendedor
+        WHERE  p.portal        = %s
+          AND  p.cnpj_emp      = %s
+          AND  p.cancelado     = 'N'
+          AND  p.cod_vendedor IS NOT NULL
+          AND  p.data_lancamento >= %s::date
+          AND  p.data_lancamento <  %s::date + INTERVAL '1 day'
+        GROUP  BY p.cod_vendedor, mv.nome_vendedor
+        HAVING SUM(p.valor_total) > 0
+        ORDER  BY SUM(p.valor_total) DESC
+    """, (portal, cnpj, mes_ini, mes_fim))
+    return [
+        {
+            'cod_vendedor':           str(r['cod_vendedor']),
+            'nome':                   r['nome'],
+            'valor_orcamento_aberto': float(r['valor_orcamento_aberto'] or 0),
+            'valor_pedido_aprovado':  float(r['valor_pedido_aprovado'] or 0),
+            'valor_pedido_faturado':  float(r['valor_pedido_faturado'] or 0),
+        }
+        for r in rows
+    ]
+
+
 def top5_clientes_vendedor(store_id, portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_ant):
     """Top 5 clientes PJ por faturamento no mês anterior para um vendedor, com comparativo mês atual."""
     _, series_pj = get_store_series(store_id)

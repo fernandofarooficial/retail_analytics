@@ -5,6 +5,7 @@ from routes.utils import login_required
 import db
 from people import (faturamento_diario_mes      as _faturamento_diario_mes,
                     vendedores_mes              as _vendedores_mes,
+                    pedidos_venda_por_vendedor  as _pedidos_venda_por_vendedor,
                     top5_clientes_vendedor      as _top5_clientes_vendedor,
                     top5_produtos_vendedor      as _top5_produtos_vendedor,
                     top10_clientes_loja         as _top10_clientes_loja,
@@ -321,6 +322,7 @@ def vendas():
     selected_cliente  = request.args.get('cliente')
 
     vendedores          = []
+    pedidos             = []
     top_clientes        = []
     top_produtos        = []
     top10_clientes      = []
@@ -335,6 +337,10 @@ def vendas():
             portal, cnpj,
             mes_ini_cur_str, mes_fim_cur_str,
             m1['ini'], m1['fim'])
+
+        pedidos = _pedidos_venda_por_vendedor(
+            portal, cnpj,
+            mes_ini_cur_str, mes_fim_cur_str)
 
         if selected_vendedor:
             top_clientes = _top5_clientes_vendedor(
@@ -370,6 +376,7 @@ def vendas():
         mes=mes,
         m1=m1, m2=m2, m3=m3,
         vendedores=vendedores,
+        pedidos=pedidos,
         selected_vendedor=selected_vendedor,
         top_clientes=top_clientes,
         top_produtos=top_produtos,

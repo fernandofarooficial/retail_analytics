@@ -208,6 +208,37 @@
   <span style="font-size:0.875rem; color:#6B7280;">{{ active_store.store_name }}</span>
 </div>
 
+<!-- ── Card: Pedidos (mês atual, por vendedor) ──────────────────────── -->
+<div class="gest-chart-card" style="margin-bottom:1.5rem;">
+  <div class="gest-chart-header">
+    <span class="gest-chart-title">Pedidos — {{ mes_nome }}</span>
+  </div>
+  {% if not pedidos %}
+  <p class="kpi-hint" style="margin:0.5rem 0;">Sem orçamentos ou pedidos de venda no período.</p>
+  {% else %}
+  <table class="vend-table">
+    <thead>
+      <tr>
+        <th>Vendedor</th>
+        <th class="text-right">Orçamento aberto</th>
+        <th class="text-right">Pedido aprovado</th>
+        <th class="text-right">Pedido faturado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pedidos %}
+      <tr>
+        <td class="vend-name">{{ p.nome.split(' ')[0] }}</td>
+        <td class="text-right vend-val">{{ p.valor_orcamento_aberto | br_valor_k }}</td>
+        <td class="text-right vend-val">{{ p.valor_pedido_aprovado | br_valor_k }}</td>
+        <td class="text-right vend-val">{{ p.valor_pedido_faturado | br_valor_k }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
 {% if not vendedores %}
 <p class="kpi-hint">Sem dados de vendas para o período.</p>
 {% else %}

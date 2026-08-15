@@ -217,6 +217,38 @@
     </p>
 
     {% else %}
+
+    <!-- ── Card: Pedidos (mês atual, por vendedor) ────────────────────── -->
+    <div class="m-chart-card">
+      <div class="m-card-header">
+        <span class="m-card-title">Pedidos — {{ mes_nome }}</span>
+      </div>
+      {% if not pedidos %}
+      <p style="padding:0.5rem 0; color:#9CA3AF; font-size:0.78rem; font-style:italic;">Sem orçamentos ou pedidos de venda no período.</p>
+      {% else %}
+      <table class="mv-table">
+        <thead>
+          <tr>
+            <th>Vendedor</th>
+            <th class="text-right">Orçam.</th>
+            <th class="text-right">Aprov.</th>
+            <th class="text-right">Fatur.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pedidos %}
+          <tr>
+            <td class="mv-name">{{ p.nome.split(' ')[0] }}</td>
+            <td class="text-right mv-val">{{ p.valor_orcamento_aberto | br_valor_k }}</td>
+            <td class="text-right mv-val">{{ p.valor_pedido_aprovado | br_valor_k }}</td>
+            <td class="text-right mv-val">{{ p.valor_pedido_faturado | br_valor_k }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+
     {% if not vendedores %}
     <p class="m-hint" style="padding: 2rem 1rem; text-align:center; color:#9CA3AF; font-size:0.875rem;">
       Sem dados de vendas para o período.
