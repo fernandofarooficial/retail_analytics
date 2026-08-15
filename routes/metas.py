@@ -1,9 +1,8 @@
-import calendar as pycal
 from datetime import date, timedelta
 from functools import wraps
 
 from flask import (Blueprint, render_template, request, redirect,
-                   url_for, flash, abort, jsonify, session)
+                   url_for, flash, abort, session)
 import db
 
 metas_bp = Blueprint('metas', __name__, url_prefix='/retail_analytics/metas')
@@ -277,269 +276,15 @@ def valores(goal_id, target_id):
         ORDER  BY gp.period_order DESC, gv.reference_date
     """, (target_id,))
 
-    periods = db.query_all("SELECT * FROM faciais.goal_periods ORDER BY period_order")
+    # Cadastro só é permitido no período nativo do goal (monthly p/ metas de faturamento,
+    # daily p/ Ticket Médio) — diário/semanal de faturamento agora é sempre calculado em
+    # tempo real a partir do valor mensal (ver metas.py: _distribuir_mensal / _weekly_target).
+    periods = db.query_all(
+        "SELECT * FROM faciais.goal_periods WHERE goal_period_id = %s ORDER BY period_order",
+        (goal['base_period_id'],)
+    )
     return render_template('metas/valores.html',
                            goal=goal, target=target, values=values, periods=periods)
-
-
-# ── Desdobramento ──────────────────────────────────────────────────────────────
-
-@metas_bp.route('/valores/<int:value_id>/desdobrar', methods=['GET', 'POST'])
-@_admin_required
-def desdobrar(value_id):
-    parent = db.query_one("""
-        SELECT gv.*, gp.goal_period_name, gp.period_order, gp.goal_period_id AS parent_period_id,
-               gt.goal_id, gt.goal_target_id, gt.entity_type,
-               g.goal_name, gu.symbol,
-               s.store_name, c.company_name, cg.company_group_name
-        FROM   faciais.goal_values  gv
-        JOIN   faciais.goal_periods  gp ON gp.goal_period_id  = gv.goal_period_id
-        JOIN   faciais.goal_targets  gt ON gt.goal_target_id  = gv.goal_target_id
-        JOIN   faciais.goals         g  ON g.goal_id          = gt.goal_id
-        JOIN   faciais.goal_units    gu ON gu.goal_unit_id    = g.goal_unit_id
-        LEFT JOIN faciais.stores         s  ON s.store_id          = gt.store_id
-        LEFT JOIN faciais.companies      c  ON c.company_id        = gt.company_id
-        LEFT JOIN faciais.company_groups cg ON cg.company_group_id = gt.company_group_id
-        WHERE  gv.goal_value_id = %s
-    """, (value_id,))
-    if not parent:
-        abort(404)
-
-    parent['_entity_name'] = _entity_name(parent)
-
-    child_periods = db.query_all("""
-        SELECT * FROM faciais.goal_periods
-        WHERE period_order < %s
-        ORDER BY period_order DESC
-    """, (parent['period_order'],))
-
-    row = db.query_one(
-        "SELECT COUNT(*) AS cnt FROM faciais.goal_breakdowns WHERE parent_goal_value_id=%s",
-        (value_id,)
-    )
-    num_children = row['cnt'] if row else 0
-
-    if request.method == 'POST':
-        child_period_id = request.form.get('child_period_id', '').strip()
-        dates  = request.form.getlist('ref_date[]')
-        tvals  = request.form.getlist('target_value[]')
-
-        if not child_period_id or not dates:
-            flash('Selecione um período filho e carregue a distribuição antes de salvar.', 'error')
-            return redirect(url_for('metas.desdobrar', value_id=value_id))
-
-        try:
-            for ref_date, tval in zip(dates, tvals):
-                tval_num = float(tval.strip()) if tval.strip() else None
-                existing = db.query_one(
-                    """SELECT goal_value_id FROM faciais.goal_values
-                       WHERE goal_target_id=%s AND goal_period_id=%s AND reference_date=%s""",
-                    (parent['goal_target_id'], child_period_id, ref_date)
-                )
-                if existing:
-                    child_id = existing['goal_value_id']
-                    db.execute(
-                        "UPDATE faciais.goal_values SET target_value=%s WHERE goal_value_id=%s",
-                        (tval_num, child_id)
-                    )
-                else:
-                    row = db.query_one(
-                        """INSERT INTO faciais.goal_values
-                           (goal_target_id, goal_period_id, reference_date, target_value)
-                           VALUES (%s,%s,%s,%s) RETURNING goal_value_id""",
-                        (parent['goal_target_id'], child_period_id, ref_date, tval_num)
-                    )
-                    child_id = row['goal_value_id']
-
-                db.execute(
-                    """INSERT INTO faciais.goal_breakdowns
-                       (parent_goal_value_id, child_goal_value_id)
-                       VALUES (%s,%s)
-                       ON CONFLICT (parent_goal_value_id, child_goal_value_id) DO NOTHING""",
-                    (value_id, child_id)
-                )
-
-            flash('Desdobramento salvo com sucesso.', 'success')
-        except Exception as e:
-            flash(f'Erro no desdobramento: {e}', 'error')
-
-        return redirect(url_for('metas.valores',
-                                goal_id=parent['goal_id'],
-                                target_id=parent['goal_target_id']))
-
-    return render_template('metas/desdobrar.html',
-                           parent=parent,
-                           child_periods=child_periods,
-                           num_children=num_children,
-                           value_id=value_id)
-
-
-@metas_bp.route('/valores/<int:value_id>/desdobrar/sugestao')
-@_admin_required
-def desdobrar_sugestao(value_id):
-    parent = db.query_one("""
-        SELECT gv.*, gp.period_order, gp.goal_period_id AS parent_period_id,
-               gt.entity_type, gt.store_id
-        FROM   faciais.goal_values gv
-        JOIN   faciais.goal_periods gp ON gp.goal_period_id = gv.goal_period_id
-        JOIN   faciais.goal_targets gt ON gt.goal_target_id = gv.goal_target_id
-        WHERE  gv.goal_value_id = %s
-    """, (value_id,))
-    if not parent:
-        return jsonify([]), 404
-
-    child_period_id = request.args.get('child_period_id', '')
-    if not child_period_id:
-        return jsonify([])
-
-    return jsonify(_suggest_breakdown(parent, child_period_id))
-
-
-def _suggest_breakdown(parent, child_period_id):
-    ref_date   = parent['reference_date']
-    parent_pid = parent['parent_period_id']
-    target_val = float(parent['target_value']) if parent['target_value'] else 0.0
-    year, month = ref_date.year, ref_date.month
-
-    if parent_pid == 'annual':
-        start, end = date(year, 1, 1), date(year, 12, 31)
-    elif parent_pid == 'ytd':
-        start, end = date(year, 1, 1), ref_date
-    elif parent_pid == 'quadrimester':
-        q = (month - 1) // 4
-        start = date(year, q * 4 + 1, 1)
-        em = min(q * 4 + 4, 12)
-        end = date(year, em, pycal.monthrange(year, em)[1])
-    elif parent_pid == 'quarterly':
-        q = (month - 1) // 3
-        start = date(year, q * 3 + 1, 1)
-        em = min(q * 3 + 3, 12)
-        end = date(year, em, pycal.monthrange(year, em)[1])
-    elif parent_pid == 'monthly':
-        start = date(year, month, 1)
-        end   = date(year, month, pycal.monthrange(year, month)[1])
-    elif parent_pid == 'weekly':
-        start = ref_date - timedelta(days=ref_date.weekday())
-        end   = start + timedelta(days=6)
-    else:
-        return []
-
-    def _next_month(d):
-        return date(d.year + (d.month // 12), d.month % 12 + 1, 1)
-
-    slots = []
-
-    if child_period_id == 'monthly':
-        months = []
-        cur = date(start.year, start.month, 1)
-        while cur <= end:
-            months.append(cur)
-            cur = _next_month(cur)
-        sug = round(target_val / len(months), 4) if months else 0
-        for m in months:
-            slots.append({'ref_date': m.isoformat(), 'label': m.strftime('%b/%Y'), 'suggested_value': str(sug)})
-
-    elif child_period_id == 'weekly':
-        cur = start - timedelta(days=start.weekday())
-        weeks = []
-        while cur <= end:
-            weeks.append(cur)
-            cur += timedelta(weeks=1)
-        sug = round(target_val / len(weeks), 4) if weeks else 0
-        for w in weeks:
-            iso = w.isocalendar()
-            slots.append({
-                'ref_date': w.isoformat(),
-                'label': f'Sem {iso[1]}/{iso[0]} ({w.strftime("%d/%m")})',
-                'suggested_value': str(sug),
-            })
-
-    elif child_period_id == 'daily':
-        # Distribui proporcionalmente ao peso do dia no calendário
-        entity_type = parent.get('entity_type')
-        store_id    = parent.get('store_id')
-
-        if entity_type == 'store' and store_id:
-            cal_days = db.query_all("""
-                SELECT calendar_date, day_weight, day_label
-                FROM   faciais.vw_store_calendar
-                WHERE  store_id = %s
-                  AND  calendar_date BETWEEN %s AND %s
-                  AND  day_weight > 0
-                ORDER  BY calendar_date
-            """, (store_id, start, end))
-        else:
-            cal_days = db.query_all("""
-                SELECT c.calendar_date,
-                       dt.weight AS day_weight,
-                       c.holiday_name AS day_label
-                FROM   faciais.calendar c
-                JOIN   faciais.day_types dt ON dt.day_type_id = c.day_type_id
-                WHERE  c.calendar_date BETWEEN %s AND %s
-                  AND  dt.weight > 0
-                ORDER  BY c.calendar_date
-            """, (start, end))
-
-        if not cal_days:
-            # Fallback: todos os dias igualmente (calendário não populado)
-            cur = start
-            all_days = []
-            while cur <= end:
-                all_days.append(cur)
-                cur += timedelta(days=1)
-            sug = round(target_val / len(all_days), 4) if all_days else 0
-            for d in all_days:
-                slots.append({
-                    'ref_date': d.isoformat(),
-                    'label': d.strftime('%d/%m/%Y') + ' ⚠ sem calendário',
-                    'suggested_value': str(sug),
-                })
-        else:
-            total_weight = sum(float(d['day_weight']) for d in cal_days)
-            for d in cal_days:
-                weight   = float(d['day_weight'])
-                sug      = round(target_val * weight / total_weight, 4) if total_weight else 0
-                cal_date = d['calendar_date']
-                label    = cal_date.strftime('%d/%m/%Y')
-                if d.get('day_label'):
-                    label += f' — {d["day_label"]}'
-                elif weight < 1.0:
-                    label += f' (peso {weight})'
-                slots.append({
-                    'ref_date': cal_date.isoformat(),
-                    'label': label,
-                    'suggested_value': str(sug),
-                })
-
-    elif child_period_id == 'quarterly':
-        seen, quarters = set(), []
-        cur = date(start.year, start.month, 1)
-        while cur <= end:
-            q = (cur.month - 1) // 3
-            qs = date(cur.year, q * 3 + 1, 1)
-            if qs not in seen:
-                seen.add(qs)
-                quarters.append((qs, f'T{q + 1}/{cur.year}'))
-            cur = _next_month(cur)
-        sug = round(target_val / len(quarters), 4) if quarters else 0
-        for qs, label in quarters:
-            slots.append({'ref_date': qs.isoformat(), 'label': label, 'suggested_value': str(sug)})
-
-    elif child_period_id == 'quadrimester':
-        seen, quads = set(), []
-        cur = date(start.year, start.month, 1)
-        while cur <= end:
-            q = (cur.month - 1) // 4
-            qs = date(cur.year, q * 4 + 1, 1)
-            if qs not in seen:
-                seen.add(qs)
-                quads.append((qs, f'Q{q + 1}/{cur.year}'))
-            cur = _next_month(cur)
-        sug = round(target_val / len(quads), 4) if quads else 0
-        for qs, label in quads:
-            slots.append({'ref_date': qs.isoformat(), 'label': label, 'suggested_value': str(sug)})
-
-    return slots
 
 
 # ── Calendário ─────────────────────────────────────────────────────────────────
@@ -1019,7 +764,10 @@ def vigencias(goal_id, target_id):
         ORDER  BY gvt.goal_period_id, gvt.date_from DESC
     """, (today, today, target_id))
 
-    periods = db.query_all("SELECT * FROM faciais.goal_periods ORDER BY period_order")
+    periods = db.query_all(
+        "SELECT * FROM faciais.goal_periods WHERE goal_period_id = %s ORDER BY period_order",
+        (goal['base_period_id'],)
+    )
 
     return render_template('metas/vigencias.html',
                            goal=goal, target=target,

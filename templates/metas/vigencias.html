@@ -152,7 +152,7 @@ function abrirNovo() {
     document.getElementById('modal-titulo').textContent = 'Nova Vigência';
     document.getElementById('form-action').value = 'criar';
     document.getElementById('form-id').value   = '';
-    document.getElementById('f-period').value  = '';
+    document.getElementById('f-period').value  = '{{ goal.base_period_id }}';
     document.getElementById('f-value').value   = '';
     document.getElementById('f-from').value    = '';
     document.getElementById('f-to').value      = '';

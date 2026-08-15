@@ -59,11 +59,6 @@
                     {% else %}—{% endif %}
                 </td>
                 <td class="col-actions">
-                    {% if v.period_order > 1 %}
-                    <a href="{{ url_for('metas.desdobrar', value_id=v.goal_value_id) }}"
-                       class="btn-ver" style="border-color:#059669; color:#059669;"
-                       title="Criar desdobramento em períodos menores">Desdobrar</a>
-                    {% endif %}
                     <button class="btn-edit"
                         data-id="{{ v.goal_value_id }}"
                         data-period="{{ v.goal_period_id }}"
@@ -108,7 +103,11 @@
                 <label>Data de Referência <span style="color:#EF4444">*</span></label>
                 <input type="date" id="field-date" name="reference_date" required>
                 <small style="color:#6B7280; font-size:.8rem;">
-                    Use o 1º dia do período (ex: 01/01/2025 para anual, 01/01/2025 para jan/2025 mensal)
+                    {% if goal.base_period_id == 'monthly' %}
+                        Use o 1º dia do mês (ex: 01/08/2026 para agosto/2026)
+                    {% else %}
+                        Use a data exata do dia (ex: 15/08/2026)
+                    {% endif %}
                 </small>
             </div>
             <div class="form-group">
@@ -131,7 +130,7 @@ function abrirNovo() {
     document.getElementById('modal-titulo').textContent = 'Novo Valor de Meta';
     document.getElementById('form-action').value = 'criar';
     document.getElementById('form-id').value     = '';
-    document.getElementById('field-period').value = '';
+    document.getElementById('field-period').value = '{{ goal.base_period_id }}';
     document.getElementById('field-date').value   = '';
     document.getElementById('field-value').value  = '';
     modal.showModal();
