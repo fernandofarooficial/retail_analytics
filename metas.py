@@ -24,6 +24,7 @@ import db
 _GOAL_FATURAMENTO       = 1
 _GOAL_TICKET_MEDIO      = 2
 _GOAL_FATURAMENTO_TOTAL = 3
+_GOAL_PEDIDOS_GERADOS   = 4
 
 
 def _target_id(goal_id, store_id):
@@ -34,6 +35,18 @@ def _target_id(goal_id, store_id):
         LIMIT 1
     """, (goal_id, store_id))
     return row['goal_target_id'] if row else None
+
+
+def _target_seller(goal_id, seller_id):
+    """Retorna (goal_target_id, distribution_mode) da alocação ativa do goal para o vendedor,
+    ou (None, None) se não houver alocação."""
+    row = db.query_one("""
+        SELECT goal_target_id, distribution_mode FROM faciais.goal_targets
+        WHERE  goal_id = %s AND entity_type = 'seller'
+          AND  seller_id = %s AND is_active = TRUE
+        LIMIT 1
+    """, (goal_id, seller_id))
+    return (row['goal_target_id'], row['distribution_mode']) if row else (None, None)
 
 
 def _goal_value(target_id, period_id, ref_date):
@@ -154,6 +167,61 @@ def _weekly_target(store_id, target_id, semana_inicio, semana_fim):
         total += cache[key].get(d, 0.0)
         d += timedelta(days=1)
     return round(total, 2)
+
+
+def _distribuir_semanal(store_id, target_id, semana_inicio, distribution_mode='calendar_weight'):
+    """
+    Distribui a meta semanal cadastrada (period='weekly') pelos dias dessa semana
+    (semana_inicio = segunda-feira). Duas modalidades, por alocação
+    (faciais.goal_targets.distribution_mode):
+    - 'calendar_weight': proporcional ao day_weight de vw_store_calendar — mesma lógica de
+      _distribuir_mensal (sábado sai reduzido conforme o perfil de calendário da loja).
+    - 'full_days_only': só dias com peso exatamente 1.0 (dia cheio) recebem meta, dividida
+      igualmente entre eles; demais dias (sábado, meio período, feriado etc) ficam zero.
+
+    Retorna (dict {date: valor_do_dia}, valor_semanal_cadastrado). Se não houver meta semanal
+    cadastrada, retorna ({}, None).
+    """
+    semana_fim = semana_inicio + timedelta(days=6)
+
+    weekly = _goal_value(target_id, 'weekly', semana_inicio)
+    if weekly is None:
+        return {}, None
+
+    cal_rows = db.query_all("""
+        SELECT calendar_date, day_weight
+        FROM   faciais.vw_store_calendar
+        WHERE  store_id      = %s
+          AND  calendar_date BETWEEN %s AND %s
+    """, (store_id, semana_inicio, semana_fim))
+
+    if distribution_mode == 'full_days_only':
+        full_days = [r['calendar_date'] for r in cal_rows if float(r['day_weight']) == 1.0]
+        if not full_days:
+            return {}, float(weekly)
+        share = round(float(weekly) / len(full_days), 2)
+        daily = {d: share for d in full_days}
+    else:
+        total_peso = sum(float(r['day_weight']) for r in cal_rows)
+        if total_peso == 0:
+            return {}, float(weekly)
+        daily = {
+            r['calendar_date']: round(float(weekly) * float(r['day_weight']) / total_peso, 2)
+            for r in cal_rows if float(r['day_weight']) > 0
+        }
+    return daily, float(weekly)
+
+
+def meta_pedidos_semana(seller_id, store_id, semana_inicio):
+    """
+    Retorna (daily_dict, meta_semana) da meta de Pedidos Gerados (goal_id=4) para um vendedor
+    numa semana (semana_inicio = segunda-feira), respeitando o distribution_mode da alocação.
+    ({}, None) se não houver alocação/meta ativa para o vendedor.
+    """
+    target_id, distribution_mode = _target_seller(_GOAL_PEDIDOS_GERADOS, seller_id)
+    if target_id is None:
+        return {}, None
+    return _distribuir_semanal(store_id, target_id, semana_inicio, distribution_mode)
 
 
 def meta_faturamento_acum_diario(store_id, mes_inicio, mes_fim):

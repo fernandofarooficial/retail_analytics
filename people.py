@@ -442,6 +442,26 @@ def pedidos_venda_por_vendedor(portal, cnpj, mes_ini, mes_fim):
     ]
 
 
+def pedidos_gerados_por_vendedor(portal, cnpj, cod_vendedor, data_ini, data_fim):
+    """Quantidade de pedidos/orçamentos de venda gerados por um vendedor, por dia, no intervalo.
+    Conta toda transação lançada em microvix_pedidos_venda (aprovada ou não — orçamento conta
+    igual a pedido aprovado), excluindo apenas cancelado='S'. Mede o esforço de geração, não a
+    conversão (ver meta "Pedidos Gerados", goal_id=4). Retorna {date: qtd}."""
+    rows = db.query_all("""
+        SELECT p.data_lancamento::date          AS dia,
+               COUNT(DISTINCT p.transacao)       AS qtd
+        FROM   microvix.microvix_pedidos_venda p
+        WHERE  p.portal        = %s
+          AND  p.cnpj_emp      = %s
+          AND  p.cod_vendedor  = %s
+          AND  p.cancelado    <> 'S'
+          AND  p.data_lancamento >= %s::date
+          AND  p.data_lancamento <  %s::date + INTERVAL '1 day'
+        GROUP  BY dia
+    """, (portal, cnpj, cod_vendedor, data_ini, data_fim))
+    return {r['dia']: int(r['qtd']) for r in rows}
+
+
 def top5_clientes_vendedor(store_id, portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_ant):
     """Top 5 clientes PJ por faturamento no mês anterior para um vendedor, com comparativo mês atual."""
     _, series_pj = get_store_series(store_id)
