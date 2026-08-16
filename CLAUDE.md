@@ -157,13 +157,16 @@ valor mensal cadastrado, distribuído pelos dias proporcionalmente ao `day_weigh
 só em nível diário e seu valor efetivo também é multiplicado pelo `day_weight` do dia. Ver `metas.py:
 _distribuir_mensal` / `_weekly_target`.
 
-**Meta por vendedor (`goal_id=4`, Pedidos Gerados) — 2026-08, cálculo ainda não implementado (Parte A
-só criou o schema).** Cadastro semanal (`base_period_id='weekly'`) por `seller_id`. `distribution_mode`
-por alocação controla como a semana se distribui em dias: `calendar_weight` = mesma lógica de
+**Meta por vendedor (`goal_id=4`, Pedidos Gerados) — 2026-08, completo.** Cadastro semanal
+(`base_period_id='weekly'`) por `seller_id`, feito em `/retail_analytics/metas/objetivos/4/alocacoes`
+(tipo de entidade "Vendedor": escolhe loja → vendedor → `distribution_mode`). `distribution_mode` por
+alocação controla como a semana se distribui em dias: `calendar_weight` = mesma lógica de
 `_distribuir_mensal` (proporcional ao `day_weight`); `full_days_only` = só dias com peso exatamente 1.0
 recebem meta (dividido igualmente entre eles), demais dias (sábado, meio período etc) ficam zero.
 "Realizado" conta pedidos distintos por vendedor em `microvix.microvix_pedidos_venda` (todo lançamento,
-`aprovado` ou não, excluindo só `cancelado='S'`).
+`aprovado` ou não, excluindo só `cancelado='S'`) via `people.pedidos_gerados_por_loja`. Cálculo:
+`metas.pedidos_meta_semana_por_loja(store_id, semana_inicio)`. Exibido no quadro "Pedidos" de
+Motor > Vendas (colunas Meta/Realizado por semana; clicar num vendedor mostra o dia a dia da semana).
 
 **Precedência de metas:** `goal_values` (override pontual) > `goal_value_templates` (recorrente)
 
