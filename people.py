@@ -449,15 +449,15 @@ def pedidos_venda_por_vendedor(store_id, portal, cnpj, mes_ini, mes_fim):
 
 
 def pedidos_gerados_por_loja(portal, cnpj, data_ini, data_fim):
-    """Quantidade de pedidos/orçamentos de venda gerados, por vendedor e por dia, no intervalo,
-    para todos os vendedores da loja de uma vez. Conta toda transação lançada em
+    """Valor (R$) de pedidos/orçamentos de venda gerados, por vendedor e por dia, no intervalo,
+    para todos os vendedores da loja de uma vez. Soma valor_total de toda transação lançada em
     microvix_pedidos_venda (aprovada ou não — orçamento conta igual a pedido aprovado),
     excluindo apenas cancelado='S'. Mede o esforço de geração, não a conversão (ver meta
-    "Pedidos Gerados", goal_id=4). Retorna {cod_vendedor: {date: qtd}}."""
+    "Pedidos Gerados", goal_id=4). Retorna {cod_vendedor: {date: valor}}."""
     rows = db.query_all("""
         SELECT p.cod_vendedor,
-               p.data_lancamento::date     AS dia,
-               COUNT(DISTINCT p.transacao) AS qtd
+               p.data_lancamento::date              AS dia,
+               ROUND(SUM(p.valor_total)::numeric, 2) AS valor
         FROM   microvix.microvix_pedidos_venda p
         WHERE  p.portal        = %s
           AND  p.cnpj_emp      = %s
@@ -469,7 +469,7 @@ def pedidos_gerados_por_loja(portal, cnpj, data_ini, data_fim):
     """, (portal, cnpj, data_ini, data_fim))
     result = {}
     for r in rows:
-        result.setdefault(str(r['cod_vendedor']), {})[r['dia']] = int(r['qtd'])
+        result.setdefault(str(r['cod_vendedor']), {})[r['dia']] = float(r['valor'] or 0)
     return result
 
 

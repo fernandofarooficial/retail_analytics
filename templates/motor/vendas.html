@@ -238,13 +238,13 @@
         <td class="text-right vend-val">{{ p.valor_pedido_faturado | br_valor_k }}</td>
         <td class="text-right vend-val">
           {% if p.pedidos_meta_semana is not none %}
-            {{ p.pedidos_meta_semana | round(1) }}
+            {{ p.pedidos_meta_semana | br_valor_k }}
           {% else %}
             <span class="text-muted" style="font-size:0.8rem;">sem meta</span>
           {% endif %}
         </td>
         <td class="text-right vend-val">
-          {{ p.pedidos_realizado_semana }}
+          {{ p.pedidos_realizado_semana | br_valor_k }}
           {% if p.pedidos_meta_semana %}
             {% set atingimento = (p.pedidos_realizado_semana / p.pedidos_meta_semana * 100) %}
             {% if atingimento >= 100 %}
@@ -400,8 +400,8 @@
         {% for d in pedido_vend.pedidos_dias_semana %}
         <tr>
           <td>{{ d.dia_semana }} {{ d.data.strftime('%d/%m') }}</td>
-          <td class="text-right vend-val">{{ d.meta | round(1) }}</td>
-          <td class="text-right vend-val">{{ d.realizado }}</td>
+          <td class="text-right vend-val">{{ d.meta | br_valor_k }}</td>
+          <td class="text-right vend-val">{{ d.realizado | br_valor_k }}</td>
         </tr>
         {% endfor %}
       </tbody>

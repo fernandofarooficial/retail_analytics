@@ -247,7 +247,11 @@
             <td class="text-right mv-val">{{ p.valor_pedido_faturado | br_valor_k }}</td>
             <td class="text-right mv-val">
               {% if p.pedidos_meta_semana is not none %}
-                {{ p.pedidos_realizado_semana }}/{{ p.pedidos_meta_semana | round(1) }}
+                {{ p.pedidos_realizado_semana | br_valor_k }}
+                {% if p.pedidos_meta_semana %}
+                  {% set atingimento = (p.pedidos_realizado_semana / p.pedidos_meta_semana * 100) %}
+                  <span class="mv-delta {{ 'delta-up' if atingimento >= 100 else 'delta-down' }}">{{ "%.0f"|format(atingimento) }}%</span>
+                {% endif %}
               {% else %}
                 <span style="color:#9CA3AF; font-size:0.68rem;">sem meta</span>
               {% endif %}
@@ -399,8 +403,8 @@
           {% for d in pedido_vend.pedidos_dias_semana %}
           <tr>
             <td>{{ d.dia_semana }} {{ d.data.strftime('%d/%m') }}</td>
-            <td class="text-right mv-val">{{ d.meta | round(1) }}</td>
-            <td class="text-right mv-val">{{ d.realizado }}</td>
+            <td class="text-right mv-val">{{ d.meta | br_valor_k }}</td>
+            <td class="text-right mv-val">{{ d.realizado | br_valor_k }}</td>
           </tr>
           {% endfor %}
         </tbody>
