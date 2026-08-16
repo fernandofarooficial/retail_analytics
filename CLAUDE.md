@@ -140,22 +140,32 @@ AND cod_natureza_operacao = '10030'
 
 | Tabela | Descrição |
 |---|---|
-| `goals` | Catálogo de metas. Campos: `goal_id`, `goal_name`, `goal_description`, `goal_unit_id`, `direction` (H=maior melhor/L=menor melhor/B=binária), `base_period_id`, `is_active`. IDs fixos: 1=Faturamento, 2=Ticket Médio, 3=Faturamento Total (Motor) |
-| `goal_targets` | Alocação de meta a entidade (store/company/company_group). Campos: `goal_target_id`, `goal_id`, `entity_type`, `store_id`, `company_id`, `company_group_id`, `is_active` |
+| `goals` | Catálogo de metas. Campos: `goal_id`, `goal_name`, `goal_description`, `goal_unit_id`, `direction` (H=maior melhor/L=menor melhor/B=binária), `base_period_id`, `is_active`. IDs fixos: 1=Faturamento na loja (monthly), 2=Ticket Médio (daily), 3=Faturamento Total/Motor (monthly), 4=Pedidos Gerados (weekly, `qty`, por vendedor — 2026-08) |
+| `goal_targets` | Alocação de meta a entidade (store/company/company_group/**seller**, desde 2026-08). Campos: `goal_target_id`, `goal_id`, `entity_type`, `store_id`, `company_id`, `company_group_id`, `seller_id`, `is_active`, `distribution_mode` (`calendar_weight` padrão \| `full_days_only`, por alocação) |
 | `goal_value_templates` | Valor recorrente com vigência. Campos: `template_id`, `goal_target_id`, `goal_period_id`, `target_value`, `date_from`, `date_to` (NULL=sem fim) |
 | `goal_values` | Override pontual por data de referência. Campos: `goal_value_id`, `goal_target_id`, `goal_period_id`, `reference_date`, `target_value`, `actual_value`, `is_closed` |
 | `goal_breakdowns` | Legado (não usada mais desde 2026-08) — registrava vínculo pai→filho do antigo desdobramento manual em daily/weekly. Sempre vazia daqui pra frente. |
-| `sellers` | **(2026-08, ainda não usada em código)** Identidade local de vendedores elegíveis a receber meta. Campos: `seller_id`, `store_id`, `cod_vendedor` (Microvix, escopado por loja/portal), `seller_name`, `is_active`. Alimentada por uma aplicação externa que sincroniza o schema `microvix` — o retail_analytics só lê. Prevista para virar `entity_type='seller'` em `goal_targets` (meta por vendedor). |
+| `sellers` | Identidade local de vendedores elegíveis a receber meta. Campos: `seller_id`, `store_id`, `cod_vendedor` (Microvix, escopado por loja/portal), `seller_name`, `is_active`. Alimentada por uma aplicação externa (`camera300`) que sincroniza o schema `microvix` — o retail_analytics só lê. Referenciada por `goal_targets.seller_id` (`entity_type='seller'`). |
 
-**Cadastro só em nível mensal (goals 1 e 3) ou diário (goal 2, Ticket Médio) — desde 2026-08.**
-`goal_values`/`goal_value_templates` só aceitam `goal_period_id` = `base_period_id` do goal (a UI em
-`/retail_analytics/metas/objetivos/<id>/alocacoes/<id>/valores|vigencias` já restringe isso). Não existe
-mais desdobramento manual em diário/semanal — `metas.get_metas()` e `metas.meta_faturamento_acum_diario()`
-calculam diário/semanal **sempre em tempo real** a partir do valor mensal cadastrado, distribuído pelos
-dias proporcionalmente ao `day_weight` de `vw_store_calendar` (sábado sai com peso reduzido, ex: 0.5 via
-perfil "Varejo Rua"). Ticket Médio (`goal_id=2`) é cadastrado só em nível diário e seu valor efetivo
-também é multiplicado pelo `day_weight` do dia — assim sábado sai proporcionalmente menor sem precisar de
-um segundo valor cadastrado. Ver `metas.py: _distribuir_mensal` / `_weekly_target`.
+**Cadastro só em nível mensal (goals 1 e 3), diário (goal 2, Ticket Médio) ou semanal (goal 4,
+Pedidos Gerados) — desde 2026-08.** `goal_values`/`goal_value_templates` só aceitam `goal_period_id`
+= `base_period_id` do goal (a UI em `/retail_analytics/metas/objetivos/<id>/alocacoes/<id>/valores|vigencias`
+já restringe isso). Não existe desdobramento manual em diário/semanal — `metas.get_metas()` e
+`metas.meta_faturamento_acum_diario()` calculam diário/semanal **sempre em tempo real** a partir do
+valor mensal cadastrado, distribuído pelos dias proporcionalmente ao `day_weight` de `vw_store_calendar`
+(sábado sai com peso reduzido, ex: 0.5 via perfil "Varejo Rua"). Ticket Médio (`goal_id=2`) é cadastrado
+só em nível diário e seu valor efetivo também é multiplicado pelo `day_weight` do dia. Ver `metas.py:
+_distribuir_mensal` / `_weekly_target`.
+
+**Meta por vendedor (`goal_id=4`, Pedidos Gerados) — 2026-08, cálculo ainda não implementado (Parte A
+só criou o schema).** Cadastro semanal (`base_period_id='weekly'`) por `seller_id`. `distribution_mode`
+por alocação controla como a semana se distribui em dias: `calendar_weight` = mesma lógica de
+`_distribuir_mensal` (proporcional ao `day_weight`); `full_days_only` = só dias com peso exatamente 1.0
+recebem meta (dividido igualmente entre eles), demais dias (sábado, meio período etc) ficam zero.
+"Realizado" conta pedidos distintos por vendedor em `microvix.microvix_pedidos_venda` (todo lançamento,
+`aprovado` ou não, excluindo só `cancelado='S'`).
+
+**Precedência de metas:** `goal_values` (override pontual) > `goal_value_templates` (recorrente)
 
 **Precedência de metas:** `goal_values` (override pontual) > `goal_value_templates` (recorrente)
 
