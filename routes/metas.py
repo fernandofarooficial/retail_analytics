@@ -24,6 +24,10 @@ def _entity_name(target):
         return target.get('store_name') or f'Loja {target["store_id"]}'
     elif target['entity_type'] == 'company':
         return target.get('company_name') or f'Empresa {target["company_id"]}'
+    elif target['entity_type'] == 'seller':
+        nome = target.get('seller_name') or f'Vendedor {target["seller_id"]}'
+        loja = target.get('seller_store_name')
+        return f'{nome} ({loja})' if loja else nome
     return target.get('company_group_name') or f'Grupo {target["company_group_id"]}'
 
 
@@ -132,11 +136,15 @@ def alocacoes(goal_id):
                 store_id    = request.form.get('store_id')         or None
                 company_id  = request.form.get('company_id')       or None
                 group_id    = request.form.get('company_group_id') or None
+                seller_id   = request.form.get('seller_id')        or None
+                distribution_mode = request.form.get('distribution_mode') or 'calendar_weight'
                 db.execute(
                     """INSERT INTO faciais.goal_targets
-                       (goal_id, entity_type, store_id, company_id, company_group_id)
-                       VALUES (%s, %s, %s, %s, %s)""",
-                    (goal_id, entity_type, store_id, company_id, group_id)
+                       (goal_id, entity_type, store_id, company_id, company_group_id,
+                        seller_id, distribution_mode)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                    (goal_id, entity_type, store_id, company_id, group_id,
+                     seller_id, distribution_mode)
                 )
                 flash('Alocação criada com sucesso.', 'success')
 
@@ -168,15 +176,19 @@ def alocacoes(goal_id):
     targets = db.query_all("""
         SELECT gt.*,
                s.store_name, c.company_name, cg.company_group_name,
+               sl.seller_name, sl.store_id AS seller_store_id, sls.store_name AS seller_store_name,
                COUNT(gv.goal_value_id) AS num_values
         FROM   faciais.goal_targets gt
-        LEFT JOIN faciais.stores         s  ON s.store_id          = gt.store_id
-        LEFT JOIN faciais.companies      c  ON c.company_id        = gt.company_id
-        LEFT JOIN faciais.company_groups cg ON cg.company_group_id = gt.company_group_id
-        LEFT JOIN faciais.goal_values    gv ON gv.goal_target_id   = gt.goal_target_id
+        LEFT JOIN faciais.stores         s   ON s.store_id          = gt.store_id
+        LEFT JOIN faciais.companies      c   ON c.company_id        = gt.company_id
+        LEFT JOIN faciais.company_groups cg  ON cg.company_group_id = gt.company_group_id
+        LEFT JOIN faciais.sellers        sl  ON sl.seller_id        = gt.seller_id
+        LEFT JOIN faciais.stores         sls ON sls.store_id        = sl.store_id
+        LEFT JOIN faciais.goal_values    gv  ON gv.goal_target_id   = gt.goal_target_id
         WHERE  gt.goal_id = %s
-        GROUP  BY gt.goal_target_id, s.store_name, c.company_name, cg.company_group_name
-        ORDER  BY gt.entity_type, s.store_name, c.company_name, cg.company_group_name
+        GROUP  BY gt.goal_target_id, s.store_name, c.company_name, cg.company_group_name,
+                  sl.seller_name, sl.store_id, sls.store_name
+        ORDER  BY gt.entity_type, s.store_name, c.company_name, cg.company_group_name, sl.seller_name
     """, (goal_id,))
 
     for t in targets:
@@ -185,10 +197,14 @@ def alocacoes(goal_id):
     stores    = db.query_all("SELECT store_id, store_name FROM faciais.stores ORDER BY store_name")
     companies = db.query_all("SELECT company_id, company_name FROM faciais.companies ORDER BY company_name")
     groups    = db.query_all("SELECT company_group_id, company_group_name FROM faciais.company_groups ORDER BY company_group_name")
+    sellers   = db.query_all("""
+        SELECT seller_id, store_id, seller_name FROM faciais.sellers
+        WHERE  is_active = TRUE ORDER BY store_id, seller_name
+    """)
 
     return render_template('metas/alocacoes.html',
                            goal=goal, targets=targets,
-                           stores=stores, companies=companies, groups=groups)
+                           stores=stores, companies=companies, groups=groups, sellers=sellers)
 
 
 # ── Valores ───────────────────────────────────────────────────────────────────
@@ -204,11 +220,14 @@ def valores(goal_id, target_id):
     )
     target = db.query_one(
         """SELECT gt.*,
-                  s.store_name, c.company_name, cg.company_group_name
+                  s.store_name, c.company_name, cg.company_group_name,
+                  sl.seller_name, sl.store_id AS seller_store_id, sls.store_name AS seller_store_name
            FROM   faciais.goal_targets gt
-           LEFT JOIN faciais.stores         s  ON s.store_id          = gt.store_id
-           LEFT JOIN faciais.companies      c  ON c.company_id        = gt.company_id
-           LEFT JOIN faciais.company_groups cg ON cg.company_group_id = gt.company_group_id
+           LEFT JOIN faciais.stores         s   ON s.store_id          = gt.store_id
+           LEFT JOIN faciais.companies      c   ON c.company_id        = gt.company_id
+           LEFT JOIN faciais.company_groups cg  ON cg.company_group_id = gt.company_group_id
+           LEFT JOIN faciais.sellers        sl  ON sl.seller_id        = gt.seller_id
+           LEFT JOIN faciais.stores         sls ON sls.store_id        = sl.store_id
            WHERE  gt.goal_target_id = %s AND gt.goal_id = %s""",
         (target_id, goal_id)
     )
@@ -672,11 +691,14 @@ def vigencias(goal_id, target_id):
     )
     target = db.query_one(
         """SELECT gt.*,
-                  s.store_name, c.company_name, cg.company_group_name
+                  s.store_name, c.company_name, cg.company_group_name,
+                  sl.seller_name, sl.store_id AS seller_store_id, sls.store_name AS seller_store_name
            FROM   faciais.goal_targets gt
-           LEFT JOIN faciais.stores         s  ON s.store_id          = gt.store_id
-           LEFT JOIN faciais.companies      c  ON c.company_id        = gt.company_id
-           LEFT JOIN faciais.company_groups cg ON cg.company_group_id = gt.company_group_id
+           LEFT JOIN faciais.stores         s   ON s.store_id          = gt.store_id
+           LEFT JOIN faciais.companies      c   ON c.company_id        = gt.company_id
+           LEFT JOIN faciais.company_groups cg  ON cg.company_group_id = gt.company_group_id
+           LEFT JOIN faciais.sellers        sl  ON sl.seller_id        = gt.seller_id
+           LEFT JOIN faciais.stores         sls ON sls.store_id        = sl.store_id
            WHERE  gt.goal_target_id = %s AND gt.goal_id = %s""",
         (target_id, goal_id)
     )

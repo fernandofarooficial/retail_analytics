@@ -6,7 +6,9 @@ from flask import (Blueprint, render_template, request, redirect,
 from werkzeug.security import check_password_hash, generate_password_hash
 import os
 import db
-from metas import get_metas as _get_metas, meta_faturamento_acum_diario as _meta_faturamento_acum_diario
+from metas import (get_metas as _get_metas,
+                   meta_faturamento_acum_diario as _meta_faturamento_acum_diario,
+                   pedidos_meta_semana_por_loja as _pedidos_meta_semana_por_loja)
 _MESES_PT_M = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
 
@@ -33,6 +35,7 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     vendas_mensal_por_vendedor as _vendas_mensal_por_vendedor,
                     vendedores_mes as _vendedores_mes,
                     pedidos_venda_por_vendedor as _pedidos_venda_por_vendedor,
+                    pedidos_gerados_por_loja as _pedidos_gerados_por_loja,
                     top5_clientes_vendedor as _top5_clientes_vendedor,
                     top5_produtos_vendedor as _top5_produtos_vendedor,
                     top10_clientes_loja as _top10_clientes_loja,
@@ -2519,6 +2522,7 @@ def motor_vendas():
 
     _MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    _DIAS_SEMANA_PT = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom']
 
     mes_ini_cur = date_type(ano, mes, 1)
     mes_fim_cur = date_type(ano, mes, calendar.monthrange(ano, mes)[1])
@@ -2538,6 +2542,9 @@ def motor_vendas():
                           'fim': fim.strftime('%Y-%m-%d'),
                           'nome': _MESES_PT[m - 1]})
     m1, m2, m3 = meses_ant[0], meses_ant[1], meses_ant[2]
+
+    semana_inicio = hoje - timedelta(days=hoje.weekday())
+    semana_fim    = semana_inicio + timedelta(days=6)
 
     selected_vendedor = request.args.get('vendedor')
     selected_cliente  = request.args.get('cliente')
@@ -2560,8 +2567,28 @@ def motor_vendas():
             m1['ini'], m1['fim'])
 
         pedidos = _pedidos_venda_por_vendedor(
-            portal, cnpj,
+            store_id, portal, cnpj,
             mes_ini_cur_str, mes_fim_cur_str)
+
+        meta_semana_por_seller = _pedidos_meta_semana_por_loja(store_id, semana_inicio)
+        realizado_semana_por_vendedor = _pedidos_gerados_por_loja(
+            portal, cnpj, semana_inicio, semana_fim)
+        for p in pedidos:
+            realizado_dia = realizado_semana_por_vendedor.get(p['cod_vendedor'], {})
+            p['pedidos_realizado_semana'] = sum(realizado_dia.values())
+            meta_dia, meta_semana = ({}, None)
+            if p['seller_id'] is not None:
+                meta_dia, meta_semana = meta_semana_por_seller.get(p['seller_id'], ({}, None))
+            p['pedidos_meta_semana'] = meta_semana
+            p['pedidos_dias_semana'] = [
+                {
+                    'data':       semana_inicio + timedelta(days=i),
+                    'dia_semana': _DIAS_SEMANA_PT[i],
+                    'meta':       meta_dia.get(semana_inicio + timedelta(days=i), 0.0),
+                    'realizado':  realizado_dia.get(semana_inicio + timedelta(days=i), 0),
+                }
+                for i in range(7)
+            ]
 
         if selected_vendedor:
             top_clientes = _top5_clientes_vendedor(
@@ -2596,6 +2623,8 @@ def motor_vendas():
         mes_nome=_MESES_PT[mes - 1],
         mes_nome_ant=m1['nome'],
         m1=m1, m2=m2, m3=m3,
+        semana_inicio=semana_inicio,
+        semana_fim=semana_fim,
         vendedores=vendedores,
         pedidos=pedidos,
         selected_vendedor=selected_vendedor,

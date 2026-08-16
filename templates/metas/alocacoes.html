@@ -14,7 +14,7 @@
 </div>
 
 <div class="info-card" style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:.875rem 1.125rem; font-size:.875rem; color:#1E40AF; margin-bottom:1.25rem;">
-    Uma alocação vincula esta meta a uma loja, empresa ou grupo empresarial específico,
+    Uma alocação vincula esta meta a uma loja, empresa, grupo empresarial ou vendedor específico,
     permitindo definir valores-alvo independentes para cada entidade.
 </div>
 
@@ -39,11 +39,20 @@
                         <span class="badge" style="background:#FEF3C7; color:#92400E;">Loja</span>
                     {% elif t.entity_type == 'company' %}
                         <span class="badge" style="background:#DBEAFE; color:#1D4ED8;">Empresa</span>
+                    {% elif t.entity_type == 'seller' %}
+                        <span class="badge" style="background:#DCFCE7; color:#166534;">Vendedor</span>
                     {% else %}
                         <span class="badge" style="background:#F3E8FF; color:#6B21A8;">Grupo</span>
                     {% endif %}
                 </td>
-                <td style="font-weight:500">{{ t._entity_name }}</td>
+                <td style="font-weight:500">
+                    {{ t._entity_name }}
+                    {% if t.entity_type == 'seller' %}
+                        <div style="font-size:.75rem; color:#6B7280; font-weight:400;">
+                            distribuição: {{ 'peso do calendário' if t.distribution_mode == 'calendar_weight' else 'só dias cheios' }}
+                        </div>
+                    {% endif %}
+                </td>
                 <td style="text-align:center">
                     {% if t.num_values > 0 %}
                         <a href="{{ url_for('metas.valores', goal_id=goal.goal_id, target_id=t.goal_target_id) }}"
@@ -98,6 +107,7 @@
                     <option value="store">Loja</option>
                     <option value="company">Empresa</option>
                     <option value="company_group">Grupo Empresarial</option>
+                    <option value="seller">Vendedor</option>
                 </select>
             </div>
 
@@ -108,6 +118,34 @@
                     {% for s in stores %}
                     <option value="{{ s.store_id }}">{{ s.store_name }}</option>
                     {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group" id="grupo-seller" style="display:none">
+                <label>Loja do vendedor <span style="color:#EF4444">*</span></label>
+                <select id="field-seller-store" onchange="filtrarVendedores()">
+                    <option value="">— Selecione —</option>
+                    {% for s in stores %}
+                    <option value="{{ s.store_id }}">{{ s.store_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group" id="grupo-seller-vendedor" style="display:none">
+                <label>Vendedor <span style="color:#EF4444">*</span></label>
+                <select id="field-seller" name="seller_id">
+                    <option value="">— Selecione a loja primeiro —</option>
+                    {% for v in sellers %}
+                    <option value="{{ v.seller_id }}" data-store="{{ v.store_id }}" style="display:none">{{ v.seller_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group" id="grupo-seller-modo" style="display:none">
+                <label>Como a meta semanal se distribui pelos dias <span style="color:#EF4444">*</span></label>
+                <select id="field-distribution-mode" name="distribution_mode">
+                    <option value="calendar_weight">Peso do calendário (padrão — sábado sai reduzido)</option>
+                    <option value="full_days_only">Só dias cheios (sábado e meio período ficam zero)</option>
                 </select>
             </div>
 
@@ -147,9 +185,28 @@ modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); })
 
 function atualizarEntitySelect() {
     const tipo = document.getElementById('field-entity-type').value;
-    document.getElementById('grupo-store').style.display   = tipo === 'store'         ? '' : 'none';
-    document.getElementById('grupo-company').style.display = tipo === 'company'       ? '' : 'none';
-    document.getElementById('grupo-group').style.display   = tipo === 'company_group' ? '' : 'none';
+    document.getElementById('grupo-store').style.display          = tipo === 'store'         ? '' : 'none';
+    document.getElementById('grupo-company').style.display        = tipo === 'company'       ? '' : 'none';
+    document.getElementById('grupo-group').style.display          = tipo === 'company_group' ? '' : 'none';
+    document.getElementById('grupo-seller').style.display         = tipo === 'seller'        ? '' : 'none';
+    document.getElementById('grupo-seller-vendedor').style.display = tipo === 'seller'        ? '' : 'none';
+    document.getElementById('grupo-seller-modo').style.display    = tipo === 'seller'        ? '' : 'none';
+}
+
+function filtrarVendedores() {
+    const storeId = document.getElementById('field-seller-store').value;
+    const select  = document.getElementById('field-seller');
+    let temOpcaoVisivel = false;
+    for (const opt of select.options) {
+        if (!opt.value) continue; // placeholder
+        const visivel = opt.dataset.store === storeId;
+        opt.style.display = visivel ? '' : 'none';
+        if (visivel) temOpcaoVisivel = true;
+    }
+    select.value = '';
+    select.options[0].textContent = storeId
+        ? (temOpcaoVisivel ? '— Selecione —' : '— Nenhum vendedor ativo nesta loja —')
+        : '— Selecione a loja primeiro —';
 }
 </script>
 {% endblock %}

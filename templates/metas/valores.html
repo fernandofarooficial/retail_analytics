@@ -105,6 +105,8 @@
                 <small style="color:#6B7280; font-size:.8rem;">
                     {% if goal.base_period_id == 'monthly' %}
                         Use o 1º dia do mês (ex: 01/08/2026 para agosto/2026)
+                    {% elif goal.base_period_id == 'weekly' %}
+                        Use a segunda-feira da semana (ex: 10/08/2026 para a semana de 10 a 16/08)
                     {% else %}
                         Use a data exata do dia (ex: 15/08/2026)
                     {% endif %}

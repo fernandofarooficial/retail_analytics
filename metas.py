@@ -212,16 +212,28 @@ def _distribuir_semanal(store_id, target_id, semana_inicio, distribution_mode='c
     return daily, float(weekly)
 
 
-def meta_pedidos_semana(seller_id, store_id, semana_inicio):
+def pedidos_meta_semana_por_loja(store_id, semana_inicio):
     """
-    Retorna (daily_dict, meta_semana) da meta de Pedidos Gerados (goal_id=4) para um vendedor
-    numa semana (semana_inicio = segunda-feira), respeitando o distribution_mode da alocação.
-    ({}, None) se não houver alocação/meta ativa para o vendedor.
+    Retorna {seller_id: (daily_dict, meta_semana)} da meta de Pedidos Gerados (goal_id=4) para
+    todos os vendedores da loja com alocação ativa numa semana (semana_inicio = segunda-feira),
+    cada um respeitando o distribution_mode da própria alocação. Vendedores sem alocação ativa
+    ou sem meta semanal cadastrada para a semana não entram no dict.
     """
-    target_id, distribution_mode = _target_seller(_GOAL_PEDIDOS_GERADOS, seller_id)
-    if target_id is None:
-        return {}, None
-    return _distribuir_semanal(store_id, target_id, semana_inicio, distribution_mode)
+    rows = db.query_all("""
+        SELECT gt.seller_id, gt.goal_target_id, gt.distribution_mode
+        FROM   faciais.goal_targets gt
+        JOIN   faciais.sellers sl ON sl.seller_id = gt.seller_id
+        WHERE  gt.goal_id = %s AND gt.entity_type = 'seller' AND gt.is_active = TRUE
+          AND  sl.store_id = %s
+    """, (_GOAL_PEDIDOS_GERADOS, store_id))
+
+    result = {}
+    for r in rows:
+        daily, meta_semana = _distribuir_semanal(
+            store_id, r['goal_target_id'], semana_inicio, r['distribution_mode'])
+        if meta_semana is not None:
+            result[r['seller_id']] = (daily, meta_semana)
+    return result
 
 
 def meta_faturamento_acum_diario(store_id, mes_inicio, mes_fim):

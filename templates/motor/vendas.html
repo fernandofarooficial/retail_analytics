@@ -223,19 +223,44 @@
         <th class="text-right">Orçamento aberto</th>
         <th class="text-right">Pedido aprovado</th>
         <th class="text-right">Pedido faturado</th>
+        <th class="text-right">Meta pedidos/sem.</th>
+        <th class="text-right">Realizado/sem.</th>
       </tr>
     </thead>
     <tbody>
       {% for p in pedidos %}
-      <tr>
+      {% set is_sel = (p.cod_vendedor == selected_vendedor) %}
+      <tr class="vend-row{% if is_sel %} selected{% endif %}"
+          onclick="selecionarVendedor('{{ p.cod_vendedor }}')">
         <td class="vend-name">{{ p.nome.split(' ')[0] }}</td>
         <td class="text-right vend-val">{{ p.valor_orcamento_aberto | br_valor_k }}</td>
         <td class="text-right vend-val">{{ p.valor_pedido_aprovado | br_valor_k }}</td>
         <td class="text-right vend-val">{{ p.valor_pedido_faturado | br_valor_k }}</td>
+        <td class="text-right vend-val">
+          {% if p.pedidos_meta_semana is not none %}
+            {{ p.pedidos_meta_semana | round(1) }}
+          {% else %}
+            <span class="text-muted" style="font-size:0.8rem;">sem meta</span>
+          {% endif %}
+        </td>
+        <td class="text-right vend-val">
+          {{ p.pedidos_realizado_semana }}
+          {% if p.pedidos_meta_semana %}
+            {% set atingimento = (p.pedidos_realizado_semana / p.pedidos_meta_semana * 100) %}
+            {% if atingimento >= 100 %}
+              <span class="vend-delta delta-up">{{ "%.0f"|format(atingimento) }}%</span>
+            {% else %}
+              <span class="vend-delta delta-down">{{ "%.0f"|format(atingimento) }}%</span>
+            {% endif %}
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  <p class="kpi-hint" style="margin:0.75rem 0 0; font-size:0.8rem;">
+    Meta de Pedidos Gerados: semana de {{ semana_inicio.strftime('%d/%m') }} a {{ semana_fim.strftime('%d/%m') }}. Clique num vendedor pra ver o dia a dia.
+  </p>
   {% endif %}
 </div>
 
@@ -291,6 +316,7 @@
 <!-- ── Detalhes do vendedor selecionado ─────────────────────────────── -->
 {% if selected_vendedor %}
 {% set vend_nome = (vendedores | selectattr('cod_vendedor', 'eq', selected_vendedor) | list | first) %}
+{% set pedido_vend = (pedidos | selectattr('cod_vendedor', 'eq', selected_vendedor) | list | first) %}
 <div class="vend-detail-grid">
 
   <!-- Top 5 Clientes -->
@@ -352,6 +378,36 @@
       </tbody>
     </table>
   </div>
+
+  {% if pedido_vend and pedido_vend.pedidos_meta_semana is not none %}
+  <!-- Pedidos Gerados — dia a dia -->
+  <div class="gest-chart-card">
+    <div class="gest-chart-header">
+      <span class="gest-chart-title">
+        Pedidos Gerados — dia a dia{% if pedido_vend %} — {{ pedido_vend.nome.split(' ')[0] }}{% endif %}
+      </span>
+      <span style="font-size:0.75rem; color:#9CA3AF;">{{ semana_inicio.strftime('%d/%m') }}–{{ semana_fim.strftime('%d/%m') }}</span>
+    </div>
+    <table class="vend-table">
+      <thead>
+        <tr>
+          <th>Dia</th>
+          <th class="text-right">Meta</th>
+          <th class="text-right">Realizado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in pedido_vend.pedidos_dias_semana %}
+        <tr>
+          <td>{{ d.dia_semana }} {{ d.data.strftime('%d/%m') }}</td>
+          <td class="text-right vend-val">{{ d.meta | round(1) }}</td>
+          <td class="text-right vend-val">{{ d.realizado }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 
 </div>
 {% endif %}
