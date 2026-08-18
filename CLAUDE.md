@@ -30,16 +30,21 @@ git pull origin main && sudo systemctl restart retail_analytics
 
 **Blueprints (`routes/`):**
 - `auth.py` (~1950 linhas) — login/logout, dashboard web, `/visitacao`, `/mapa-calor`, `/ranking` (+ `/ranking/<person_id>`, `/ranking/recalcular`), `/heatmap-imagem`. Prefix: `/retail_analytics`
-- `mobile.py` (~2690 linhas) — espelho do auth.py para mobile (login, dashboard, `/visitacao`, `/ranking`, `/mapa-calor`, `/heatmap-imagem`) + `/sw.js` (PWA) + reimplementação própria (não reuso de blueprint) das telas de `gestao.py` (`/gestao/faturamento|vendas|estoque`) e `motor.py` (`/motor/faturamento|vendas|estoque`). Prefix: `/retail_analytics/m`
+- `mobile.py` (~2690 linhas) — espelho do auth.py para mobile (login, dashboard, `/visitacao`, `/ranking`, `/mapa-calor`, `/heatmap-imagem`) + `/sw.js` (PWA) + reimplementação própria (não reuso de blueprint) das telas de `gestao.py` (`/gestao/faturamento|vendas|estoque`) e `motor.py` (`/motor/faturamento|vendas|estoque`). Prefix: `/retail_analytics/m`. **Não tem equivalente de `relatorios.py`** — o quadro "Pedidos" (meta/realizado por vendedor) que existia em `/motor/vendas` foi removido do mobile (2026-08), só existe na versão web (`Relatórios > Pedidos`).
 - `cadastros.py` — CRUD empresas, lojas, câmeras, temas, regras de ranking (`/ranking-regras`)
 - `usuarios.py` — gestão de usuários e permissões
 - `conta.py` — troca de senha
 - `metas.py` — módulo de metas, calendário, exceções, feriados regionais e perfis de calendário (admin only). Prefix: `/retail_analytics/metas`
 - `motor.py` — Motor Operacional (`/faturamento`, `/vendas`, `/estoque`). Prefix: `/retail_analytics/motor`
 - `gestao.py` — Gestão Estratégica (`/faturamento`, `/vendas`, `/estoque`). Prefix: `/retail_analytics/gestao`
+- `relatorios.py` (2026-08) — Relatórios, web only (sem equivalente mobile). Hoje só `/pedidos`
+  (quadro de pedidos por vendedor — mês atual em R$ + meta/realizado semanal de Pedidos Gerados —
+  movido de dentro de Motor > Vendas). Prefix: `/retail_analytics/relatorios`. Estrutura pensada
+  pra crescer: menu "Relatórios" na navbar + sub-tabs (`.gest-tabs`) dentro da página pros
+  relatórios futuros.
 - `utils.py` — decorators `@login_required`, `@screen_required(screen_id)`, helpers de KPI de tempo de permanência
 
-**Padrão `_store_context(endpoint)`:** centraliza carregamento de empresa/loja/tema/cnpj/portal em `motor.py` e `gestao.py`. Retorna `(ctx_dict, redirect_ou_None)`. `motor.py` e `gestao.py` usam apenas `@login_required` (sem `@screen_required`); `cadastros.py`, `conta.py`, `usuarios.py` e as rotas de dashboard/ranking em `auth.py` usam `@screen_required(screen_id)`.
+**Padrão `_store_context(endpoint)`:** centraliza carregamento de empresa/loja/tema/cnpj/portal em `motor.py`, `gestao.py` e `relatorios.py` (cada um com sua própria cópia local da função — não é compartilhada via import). Retorna `(ctx_dict, redirect_ou_None)`. `motor.py`, `gestao.py` e `relatorios.py` usam apenas `@login_required` (sem `@screen_required`); `cadastros.py`, `conta.py`, `usuarios.py` e as rotas de dashboard/ranking em `auth.py` usam `@screen_required(screen_id)`.
 
 **Queries analíticas:** `people.py` (~910 linhas) — funções de KPI Microvix, ranking, estoque; usa `get_store_series(store_id)` para obter `(series_pf, series_pj)` de `faciais.store_serie_rules`  
 **Lógica de metas:** `metas.py` (module, ~230 linhas) — resolução de meta efetiva (`_goal_value`), acumulado YTD, distribuição diária/semanal em tempo real a partir do valor mensal (`_distribuir_mensal`, `_weekly_target`)
@@ -166,8 +171,9 @@ recebem meta (dividido igualmente entre eles), demais dias (sábado, meio perío
 "Realizado" soma `valor_total` (R$) por vendedor em `microvix.microvix_pedidos_venda` (todo lançamento,
 `aprovado` ou não, excluindo só `cancelado='S'`) via `people.pedidos_gerados_por_loja`. Cálculo:
 `metas.pedidos_meta_semana_por_loja(store_id, semana_inicio)`. Exibido no quadro "Pedidos" de
-Motor > Vendas (colunas Meta/Realizado por semana, formatadas em R$ via `br_valor_k`; clicar num
-vendedor mostra o dia a dia da semana).
+**Relatórios > Pedidos** (`relatorios.pedidos`, web only — 2026-08, movido de dentro de Motor >
+Vendas; não existe equivalente mobile, foi removido de lá) — colunas Meta/Realizado por semana,
+formatadas em R$ via `br_valor_k`; clicar num vendedor mostra o dia a dia da semana.
 
 **Precedência de metas:** `goal_values` (override pontual) > `goal_value_templates` (recorrente)
 

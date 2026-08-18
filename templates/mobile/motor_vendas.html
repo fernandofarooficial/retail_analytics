@@ -218,54 +218,6 @@
 
     {% else %}
 
-    <!-- ── Card: Pedidos (mês atual, por vendedor) ────────────────────── -->
-    <div class="m-chart-card">
-      <div class="m-card-header">
-        <span class="m-card-title">Pedidos — {{ mes_nome }}</span>
-      </div>
-      {% if not pedidos %}
-      <p style="padding:0.5rem 0; color:#9CA3AF; font-size:0.78rem; font-style:italic;">Sem orçamentos ou pedidos de venda no período.</p>
-      {% else %}
-      <table class="mv-table">
-        <thead>
-          <tr>
-            <th>Vendedor</th>
-            <th class="text-right">Orçam.</th>
-            <th class="text-right">Aprov.</th>
-            <th class="text-right">Fatur.</th>
-            <th class="text-right">Ped/Sem.</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in pedidos %}
-          {% set is_sel = (p.cod_vendedor == selected_vendedor) %}
-          <tr class="mv-row{% if is_sel %} selected{% endif %}"
-              onclick="selecionarVendedor('{{ p.cod_vendedor }}')">
-            <td class="mv-name">{{ p.nome.split(' ')[0] }}</td>
-            <td class="text-right mv-val">{{ p.valor_orcamento_aberto | br_valor_k }}</td>
-            <td class="text-right mv-val">{{ p.valor_pedido_aprovado | br_valor_k }}</td>
-            <td class="text-right mv-val">{{ p.valor_pedido_faturado | br_valor_k }}</td>
-            <td class="text-right mv-val">
-              {% if p.pedidos_meta_semana is not none %}
-                {{ p.pedidos_realizado_semana | br_valor_k }}
-                {% if p.pedidos_meta_semana %}
-                  {% set atingimento = (p.pedidos_realizado_semana / p.pedidos_meta_semana * 100) %}
-                  <span class="mv-delta {{ 'delta-up' if atingimento >= 100 else 'delta-down' }}">{{ "%.0f"|format(atingimento) }}%</span>
-                {% endif %}
-              {% else %}
-                <span style="color:#9CA3AF; font-size:0.68rem;">sem meta</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      <p style="margin:0.5rem 0 0; font-size:0.7rem; color:#9CA3AF;">
-        Pedidos Gerados: semana {{ semana_inicio.strftime('%d/%m') }}–{{ semana_fim.strftime('%d/%m') }}. Toque num vendedor pra ver o dia a dia.
-      </p>
-      {% endif %}
-    </div>
-
     {% if not vendedores %}
     <p class="m-hint" style="padding: 2rem 1rem; text-align:center; color:#9CA3AF; font-size:0.875rem;">
       Sem dados de vendas para o período.
@@ -320,7 +272,6 @@
     <!-- ── Detalhes do vendedor selecionado ───────────────────────────── -->
     {% if selected_vendedor %}
     {% set vend_nome = (vendedores | selectattr('cod_vendedor', 'eq', selected_vendedor) | list | first) %}
-    {% set pedido_vend = (pedidos | selectattr('cod_vendedor', 'eq', selected_vendedor) | list | first) %}
 
     <!-- Top 5 Clientes -->
     <div class="m-chart-card">
@@ -381,36 +332,6 @@
         </tbody>
       </table>
     </div>
-
-    {% if pedido_vend and pedido_vend.pedidos_meta_semana is not none %}
-    <!-- Pedidos Gerados — dia a dia -->
-    <div class="m-chart-card" style="margin-bottom: 0.75rem;">
-      <div class="m-card-header">
-        <span class="m-card-title">
-          Pedidos Gerados{% if pedido_vend %} — {{ pedido_vend.nome.split(' ')[0] }}{% endif %}
-        </span>
-        <span class="m-card-sub">{{ semana_inicio.strftime('%d/%m') }}–{{ semana_fim.strftime('%d/%m') }}</span>
-      </div>
-      <table class="mv-table">
-        <thead>
-          <tr>
-            <th>Dia</th>
-            <th class="text-right">Meta</th>
-            <th class="text-right">Realizado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for d in pedido_vend.pedidos_dias_semana %}
-          <tr>
-            <td>{{ d.dia_semana }} {{ d.data.strftime('%d/%m') }}</td>
-            <td class="text-right mv-val">{{ d.meta | br_valor_k }}</td>
-            <td class="text-right mv-val">{{ d.realizado | br_valor_k }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
 
     {% endif %}
 

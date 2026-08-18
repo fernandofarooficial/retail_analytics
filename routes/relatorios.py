@@ -1,27 +1,22 @@
-import calendar
-from datetime import date as date_type
+from datetime import date as date_type, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, session
 from routes.utils import login_required
 import db
-from people import (faturamento_diario_mes      as _faturamento_diario_mes,
-                    vendedores_mes              as _vendedores_mes,
-                    top5_clientes_vendedor      as _top5_clientes_vendedor,
-                    top5_produtos_vendedor      as _top5_produtos_vendedor,
-                    top10_clientes_loja         as _top10_clientes_loja,
-                    top10_produtos_cliente      as _top10_produtos_cliente,
-                    estoque_maior_volume        as _estoque_maior_volume,
-                    estoque_maior_faturamento   as _estoque_maior_faturamento,
-                    estoque_valor_parado        as _estoque_valor_parado)
-from metas import meta_faturamento_acum_diario as _meta_faturamento_acum_diario
+from people import (pedidos_venda_por_vendedor as _pedidos_venda_por_vendedor,
+                    pedidos_gerados_por_loja   as _pedidos_gerados_por_loja)
+from metas import pedidos_meta_semana_por_loja as _pedidos_meta_semana_por_loja
+import calendar
 
-motor_bp = Blueprint('motor', __name__, url_prefix='/retail_analytics/motor')
+relatorios_bp = Blueprint('relatorios', __name__, url_prefix='/retail_analytics/relatorios')
 
 _MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
              'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+_DIAS_SEMANA_PT = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom']
 
 
 def _store_context(endpoint):
-    """Carrega empresa/loja/tema compartilhado por todas as rotas de motor."""
+    """Carrega empresa/loja/tema compartilhado por todas as rotas de relatórios (mesmo padrão
+    usado em motor.py e gestao.py)."""
     user_id   = session['user_id']
     user_type = session['user_type_id']
     selected_company_id = request.args.get('company_id', type=int)
@@ -218,79 +213,12 @@ def _store_context(endpoint):
     ), None
 
 
-# ── Faturamento ───────────────────────────────────────────────────────────────
+# ── Pedidos ──────────────────────────────────────────────────────────────────
 
-@motor_bp.route('/faturamento')
+@relatorios_bp.route('/pedidos')
 @login_required
-def faturamento():
-    ctx, redir = _store_context('motor.faturamento')
-    if redir:
-        return redir
-
-    hoje        = date_type.today()
-    ano         = hoje.year
-    mes         = hoje.month
-    mes_inicio  = date_type(ano, mes, 1)
-    dias_no_mes = calendar.monthrange(ano, mes)[1]
-
-    fat_diario = {}
-    if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
-        fat_diario = _faturamento_diario_mes(
-            ctx['active_microvix_portal'], ctx['active_store_cnpj'], ano, mes)
-
-    mes_fim = date_type(ano, mes, dias_no_mes)
-    meta_daily, meta_total = {}, None
-    if ctx['active_store']:
-        meta_daily, meta_total = _meta_faturamento_acum_diario(
-            ctx['active_store']['store_id'], mes_inicio, mes_fim)
-
-    labels         = [f"{d:02d}/{mes:02d}" for d in range(1, dias_no_mes + 1)]
-    realizado_acum = []
-    meta_acum      = []
-    acum           = 0.0
-    acum_meta      = 0.0
-
-    for dia in range(1, dias_no_mes + 1):
-        acum      += fat_diario.get(dia, 0.0)
-        acum_meta += meta_daily.get(dia, 0.0)
-        realizado_acum.append(round(acum, 2) if date_type(ano, mes, dia) <= hoje else None)
-        meta_acum.append(round(acum_meta, 2) if meta_total is not None else None)
-
-    realizado_hoje = realizado_acum[hoje.day - 1]
-    meta_hoje      = meta_acum[hoje.day - 1] if meta_total is not None else None
-    pct_hoje       = round(realizado_hoje / meta_hoje * 100, 1) if (meta_hoje and realizado_hoje is not None) else None
-
-    media_necessaria = None
-    dias_restantes   = dias_no_mes - hoje.day
-    if (meta_total is not None and realizado_hoje is not None and
-            meta_hoje is not None and realizado_hoje < meta_hoje and
-            dias_restantes > 0):
-        media_necessaria = round((meta_total - realizado_hoje) / dias_restantes, 2)
-
-    return render_template(
-        'motor/faturamento.html',
-        **ctx,
-        mes_nome=_MESES_PT[mes - 1],
-        ano=ano,
-        mes=mes,
-        labels=labels,
-        realizado_acum=realizado_acum,
-        meta_acum=meta_acum,
-        tem_meta=(meta_total is not None),
-        meta_total=meta_total,
-        realizado_hoje=realizado_hoje,
-        meta_hoje=meta_hoje,
-        pct_hoje=pct_hoje,
-        media_necessaria=media_necessaria,
-    )
-
-
-# ── Vendas ────────────────────────────────────────────────────────────────────
-
-@motor_bp.route('/vendas')
-@login_required
-def vendas():
-    ctx, redir = _store_context('motor.vendas')
+def pedidos():
+    ctx, redir = _store_context('relatorios.pedidos')
     if redir:
         return redir
 
@@ -303,132 +231,50 @@ def vendas():
     mes_ini_cur_str = mes_ini_cur.strftime('%Y-%m-%d')
     mes_fim_cur_str = mes_fim_cur.strftime('%Y-%m-%d')
 
-    # 3 meses anteriores: meses_ant[0]=m1 (mais recente), [2]=m3 (mais antigo)
-    meses_ant = []
-    y, m = ano, mes
-    for _ in range(3):
-        m -= 1
-        if m == 0:
-            m, y = 12, y - 1
-        ini = date_type(y, m, 1)
-        fim = date_type(y, m, calendar.monthrange(y, m)[1])
-        meses_ant.append({'ini': ini.strftime('%Y-%m-%d'),
-                          'fim': fim.strftime('%Y-%m-%d'),
-                          'nome': _MESES_PT[m - 1]})
-    m1, m2, m3 = meses_ant[0], meses_ant[1], meses_ant[2]
+    semana_inicio = hoje - timedelta(days=hoje.weekday())
+    semana_fim    = semana_inicio + timedelta(days=6)
 
     selected_vendedor = request.args.get('vendedor')
-    selected_cliente  = request.args.get('cliente')
 
-    vendedores          = []
-    top_clientes        = []
-    top_produtos        = []
-    top10_clientes      = []
-    top10_prod_cliente  = []
+    pedidos_lista = []
 
     if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
         portal   = ctx['active_microvix_portal']
         cnpj     = ctx['active_store_cnpj']
         store_id = ctx['active_store']['store_id']
 
-        vendedores = _vendedores_mes(
-            portal, cnpj,
-            mes_ini_cur_str, mes_fim_cur_str,
-            m1['ini'], m1['fim'])
-
-        if selected_vendedor:
-            top_clientes = _top5_clientes_vendedor(
-                store_id, portal, cnpj, selected_vendedor,
-                mes_ini_cur_str, mes_fim_cur_str,
-                m1['ini'], m1['fim'])
-            top_produtos = _top5_produtos_vendedor(
-                store_id, portal, cnpj, selected_vendedor,
-                mes_ini_cur_str, mes_fim_cur_str,
-                m1['ini'], m1['fim'])
-
-        top10_clientes = _top10_clientes_loja(
+        pedidos_lista = _pedidos_venda_por_vendedor(
             store_id, portal, cnpj,
-            mes_ini_cur_str, mes_fim_cur_str,
-            m1['ini'], m1['fim'],
-            m2['ini'], m2['fim'],
-            m3['ini'], m3['fim'])
+            mes_ini_cur_str, mes_fim_cur_str)
 
-        if selected_cliente:
-            top10_prod_cliente = _top10_produtos_cliente(
-                store_id, portal, cnpj, selected_cliente,
-                mes_ini_cur_str, mes_fim_cur_str,
-                m1['ini'], m1['fim'],
-                m2['ini'], m2['fim'],
-                m3['ini'], m3['fim'])
+        meta_semana_por_seller = _pedidos_meta_semana_por_loja(store_id, semana_inicio)
+        realizado_semana_por_vendedor = _pedidos_gerados_por_loja(
+            portal, cnpj, semana_inicio, semana_fim)
+        for p in pedidos_lista:
+            realizado_dia = realizado_semana_por_vendedor.get(p['cod_vendedor'], {})
+            p['pedidos_realizado_semana'] = sum(realizado_dia.values())
+            meta_dia, meta_semana = ({}, None)
+            if p['seller_id'] is not None:
+                meta_dia, meta_semana = meta_semana_por_seller.get(p['seller_id'], ({}, None))
+            p['pedidos_meta_semana'] = meta_semana
+            p['pedidos_dias_semana'] = [
+                {
+                    'data':       semana_inicio + timedelta(days=i),
+                    'dia_semana': _DIAS_SEMANA_PT[i],
+                    'meta':       meta_dia.get(semana_inicio + timedelta(days=i), 0.0),
+                    'realizado':  realizado_dia.get(semana_inicio + timedelta(days=i), 0.0),
+                }
+                for i in range(7)
+            ]
 
     return render_template(
-        'motor/vendas.html',
+        'relatorios/pedidos.html',
         **ctx,
         mes_nome=_MESES_PT[mes - 1],
-        mes_nome_ant=m1['nome'],
         ano=ano,
         mes=mes,
-        m1=m1, m2=m2, m3=m3,
-        vendedores=vendedores,
+        semana_inicio=semana_inicio,
+        semana_fim=semana_fim,
+        pedidos=pedidos_lista,
         selected_vendedor=selected_vendedor,
-        top_clientes=top_clientes,
-        top_produtos=top_produtos,
-        top10_clientes=top10_clientes,
-        selected_cliente=selected_cliente,
-        top10_prod_cliente=top10_prod_cliente,
-    )
-
-
-# ── Estoque ───────────────────────────────────────────────────────────────────
-
-@motor_bp.route('/estoque')
-@login_required
-def estoque():
-    ctx, redir = _store_context('motor.estoque')
-    if redir:
-        return redir
-
-    hoje = date_type.today()
-    ano  = hoje.year
-    mes  = hoje.month
-
-    # Computa m0 (atual), m1, m2, m3 em ordem decrescente
-    meses = []
-    y, m = ano, mes
-    for _ in range(4):
-        ini = date_type(y, m, 1)
-        fim = date_type(y, m, calendar.monthrange(y, m)[1])
-        meses.append({'ini': ini.strftime('%Y-%m-%d'),
-                      'fim': fim.strftime('%Y-%m-%d'),
-                      'nome': _MESES_PT[m - 1]})
-        m -= 1
-        if m == 0:
-            m, y = 12, y - 1
-    m0, m1, m2, m3 = meses[0], meses[1], meses[2], meses[3]
-
-    maior_volume     = []
-    maior_fat        = []
-    valor_parado     = []
-
-    if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
-        portal = ctx['active_microvix_portal']
-        cnpj   = ctx['active_store_cnpj']
-        args   = (portal, cnpj,
-                  m3['ini'], m3['fim'],
-                  m2['ini'], m2['fim'],
-                  m1['ini'], m1['fim'],
-                  m0['ini'], m0['fim'])
-        maior_volume = _estoque_maior_volume(*args)
-        maior_fat    = _estoque_maior_faturamento(*args)
-        valor_parado = _estoque_valor_parado(portal, cnpj, m3['ini'])
-
-    return render_template(
-        'motor/estoque.html',
-        **ctx,
-        ano=ano,
-        m0_nome=m0['nome'], m1_nome=m1['nome'],
-        m2_nome=m2['nome'], m3_nome=m3['nome'],
-        maior_volume=maior_volume,
-        maior_fat=maior_fat,
-        valor_parado=valor_parado,
     )
