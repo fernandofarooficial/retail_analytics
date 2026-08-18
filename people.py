@@ -403,10 +403,11 @@ def vendedores_mes(portal, cnpj, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_
     ]
 
 
-def pedidos_venda_por_vendedor(store_id, portal, cnpj, mes_ini, mes_fim):
-    """Pedidos de venda do mês (por data_lancamento) agrupados por vendedor, somando valor_total
-    por situação: orçamento aberto (ainda não aprovado), pedido aprovado (aguardando faturamento)
-    e pedido faturado (completo ou parcial). Pedidos cancelados ficam de fora das 3 situações.
+def pedidos_venda_por_vendedor(store_id, portal, cnpj, data_ini, data_fim):
+    """Pedidos de venda no período (por data_lancamento) agrupados por vendedor, somando
+    valor_total por situação: orçamento aberto (ainda não aprovado), pedido aprovado (aguardando
+    faturamento) e pedido faturado (completo ou parcial) — cada pedido cai em exatamente uma das
+    3 situações (nunca somado em mais de uma coluna). Pedidos cancelados ficam de fora das 3.
     Inclui seller_id (faciais.sellers), quando existir, para permitir cruzar com metas por
     vendedor (goal_id=4, Pedidos Gerados)."""
     rows = db.query_all("""
@@ -434,7 +435,7 @@ def pedidos_venda_por_vendedor(store_id, portal, cnpj, mes_ini, mes_fim):
         GROUP  BY p.cod_vendedor, mv.nome_vendedor, sl.seller_id
         HAVING SUM(p.valor_total) > 0
         ORDER  BY SUM(p.valor_total) DESC
-    """, (store_id, portal, cnpj, mes_ini, mes_fim))
+    """, (store_id, portal, cnpj, data_ini, data_fim))
     return [
         {
             'cod_vendedor':           str(r['cod_vendedor']),

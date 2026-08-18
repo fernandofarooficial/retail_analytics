@@ -130,6 +130,15 @@
   }
   .delta-up   { background: #DCFCE7; color: #166534; }
   .delta-down { background: #FEE2E2; color: #991B1B; }
+
+  /* ── Navegação de semana ── */
+  .kpi-nav-btn {
+    background: none; border: 1px solid #E5E7EB; border-radius: 6px;
+    padding: 0.25rem 0.75rem; cursor: pointer; font-size: 1.1rem;
+    color: #6B7280; line-height: 1;
+  }
+  .kpi-nav-btn:hover { background: #F9FAFB; color: #374151; }
+  .kpi-period-label { font-size: 0.9375rem; font-weight: 700; color: #111827; }
 </style>
 
 <!-- ── Cabeçalho + seletor de empresa/loja ──────────────────────────── -->
@@ -183,14 +192,16 @@
 
 <!-- ── Toolbar ──────────────────────────────────────────────────────── -->
 <div class="gest-toolbar">
-  <span style="font-size:0.9375rem; font-weight:700; color:#111827;">{{ mes_nome }} {{ ano }}</span>
+  <button class="kpi-nav-btn" onclick="mudarSemana('{{ semana_anterior_str }}')">&#8249;</button>
+  <span class="kpi-period-label">{{ semana_label }}</span>
+  <button class="kpi-nav-btn" onclick="mudarSemana('{{ semana_proxima_str }}')">&#8250;</button>
   <span style="font-size:0.875rem; color:#6B7280;">{{ active_store.store_name }}</span>
 </div>
 
-<!-- ── Card: Pedidos (mês atual, por vendedor) ──────────────────────── -->
+<!-- ── Card: Pedidos (semana selecionada, por vendedor) ─────────────── -->
 <div class="gest-chart-card">
   <div class="gest-chart-header">
-    <span class="gest-chart-title">Pedidos — {{ mes_nome }}</span>
+    <span class="gest-chart-title">Pedidos — semana de {{ semana_inicio.strftime('%d/%m') }} a {{ semana_fim.strftime('%d/%m') }}</span>
     {% if selected_vendedor %}
     <a href="{{ url_for('relatorios.pedidos', company_id=selected_company_id, store_id=selected_store_id) }}"
        style="font-size:0.8125rem; color:#6B7280; text-decoration:none;">&#10005; Limpar seleção</a>
@@ -242,7 +253,7 @@
     </tbody>
   </table>
   <p class="kpi-hint" style="margin:0.75rem 0 0; font-size:0.8rem;">
-    Meta de Pedidos Gerados: semana de {{ semana_inicio.strftime('%d/%m') }} a {{ semana_fim.strftime('%d/%m') }}. Clique num vendedor pra ver o dia a dia.
+    Valores da semana de {{ semana_inicio.strftime('%d/%m') }} a {{ semana_fim.strftime('%d/%m') }}. Clique num vendedor pra ver o dia a dia.
   </p>
   {% endif %}
 </div>
@@ -288,6 +299,12 @@
 
 {% block head %}
 <script>
+function mudarSemana(valor) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('semana', valor);
+  url.searchParams.delete('vendedor');
+  window.location.href = url.toString();
+}
 function selecionarVendedor(cod) {
   const url = new URL(window.location.href);
   if (url.searchParams.get('vendedor') === cod) {

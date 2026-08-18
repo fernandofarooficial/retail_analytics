@@ -5,12 +5,9 @@ import db
 from people import (pedidos_venda_por_vendedor as _pedidos_venda_por_vendedor,
                     pedidos_gerados_por_loja   as _pedidos_gerados_por_loja)
 from metas import pedidos_meta_semana_por_loja as _pedidos_meta_semana_por_loja
-import calendar
 
 relatorios_bp = Blueprint('relatorios', __name__, url_prefix='/retail_analytics/relatorios')
 
-_MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-             'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 _DIAS_SEMANA_PT = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom']
 
 
@@ -222,17 +219,20 @@ def pedidos():
     if redir:
         return redir
 
-    hoje = date_type.today()
-    ano  = hoje.year
-    mes  = hoje.month
+    semana_str = request.args.get('semana', date_type.today().strftime('%Y-%m-%d'))
+    try:
+        selected_date = date_type.fromisoformat(semana_str)
+    except ValueError:
+        selected_date = date_type.today()
 
-    mes_ini_cur = date_type(ano, mes, 1)
-    mes_fim_cur = date_type(ano, mes, calendar.monthrange(ano, mes)[1])
-    mes_ini_cur_str = mes_ini_cur.strftime('%Y-%m-%d')
-    mes_fim_cur_str = mes_fim_cur.strftime('%Y-%m-%d')
-
-    semana_inicio = hoje - timedelta(days=hoje.weekday())
+    semana_inicio = selected_date - timedelta(days=selected_date.weekday())
     semana_fim    = semana_inicio + timedelta(days=6)
+    semana_inicio_str = semana_inicio.strftime('%Y-%m-%d')
+    semana_fim_str    = semana_fim.strftime('%Y-%m-%d')
+
+    semana_anterior_str = (semana_inicio - timedelta(days=1)).strftime('%Y-%m-%d')
+    semana_proxima_str  = (semana_fim    + timedelta(days=1)).strftime('%Y-%m-%d')
+    semana_label = f"{semana_inicio.strftime('%d/%m')} – {semana_fim.strftime('%d/%m/%Y')}"
 
     selected_vendedor = request.args.get('vendedor')
 
@@ -245,7 +245,7 @@ def pedidos():
 
         pedidos_lista = _pedidos_venda_por_vendedor(
             store_id, portal, cnpj,
-            mes_ini_cur_str, mes_fim_cur_str)
+            semana_inicio_str, semana_fim_str)
 
         meta_semana_por_seller = _pedidos_meta_semana_por_loja(store_id, semana_inicio)
         realizado_semana_por_vendedor = _pedidos_gerados_por_loja(
@@ -270,11 +270,12 @@ def pedidos():
     return render_template(
         'relatorios/pedidos.html',
         **ctx,
-        mes_nome=_MESES_PT[mes - 1],
-        ano=ano,
-        mes=mes,
+        semana=semana_str,
         semana_inicio=semana_inicio,
         semana_fim=semana_fim,
+        semana_anterior_str=semana_anterior_str,
+        semana_proxima_str=semana_proxima_str,
+        semana_label=semana_label,
         pedidos=pedidos_lista,
         selected_vendedor=selected_vendedor,
     )
