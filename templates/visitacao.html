@@ -19,6 +19,7 @@
   }
 
   .vis-card {
+    position: relative;
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 1px 5px rgba(0,0,0,.09);
@@ -26,6 +27,37 @@
     display: flex;
     gap: 0.875rem;
     align-items: flex-start;
+  }
+  .vis-edit-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9CA3AF;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0.25rem;
+    border-radius: 6px;
+  }
+  .vis-edit-btn:hover { color: var(--theme-primary); background: #F9FAFB; }
+  .form-group textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1.5px solid #D1D5DB;
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    color: #000;
+    background: #fff;
+    outline: none;
+    resize: vertical;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .form-group textarea:focus {
+    border-color: #0057A8;
+    box-shadow: 0 0 0 3px rgba(0, 87, 168, 0.12);
   }
   .vis-photo {
     width: 72px;
@@ -201,6 +233,17 @@
     {% for c in clientes %}
     <div class="vis-card">
 
+      <button type="button" class="vis-edit-btn" title="Editar dados do cliente"
+              onclick="abrirEditarPessoa(this)"
+              data-id="{{ c.person_id }}"
+              data-full-name="{{ c.full_name or '' }}"
+              data-nickname="{{ c.nickname or '' }}"
+              data-document="{{ c.document or '' }}"
+              data-birth-date="{{ c.birth_date }}"
+              data-age="{{ c.age or '' }}"
+              data-gender-id="{{ c.gender_id or '' }}"
+              data-notes="{{ c.notes or '' }}">&#9998;</button>
+
       {% if c.img_url %}
       <img class="vis-photo" src="{{ c.img_url }}" alt="Foto"
            onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
@@ -254,9 +297,87 @@
   {% endif %}
 </div>
 
+<!-- ── Modal: editar dados do cliente ────────────────────────────────── -->
+<dialog id="pessoa-modal">
+  <form method="POST" id="pessoa-form">
+    <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
+    <input type="hidden" name="store_id" value="{{ selected_store_id or '' }}">
+    <input type="hidden" name="date" value="{{ data_str }}">
+    <div class="modal-header">
+      <h2>Editar Cliente</h2>
+      <button type="button" class="modal-close" onclick="fecharPessoaModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label>Nome completo</label>
+          <input type="text" id="pf-full-name" name="full_name" maxlength="255">
+        </div>
+        <div class="form-group">
+          <label>Apelido</label>
+          <input type="text" id="pf-nickname" name="nickname" maxlength="50">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Documento (CPF)</label>
+          <input type="text" id="pf-document" name="document" maxlength="14">
+        </div>
+        <div class="form-group">
+          <label>Data de nascimento</label>
+          <input type="date" id="pf-birth-date" name="birth_date">
+        </div>
+        <div class="form-group" style="flex:0 0 100px">
+          <label>Idade</label>
+          <input type="number" id="pf-age" name="age" min="0" max="120">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Gênero</label>
+          <select id="pf-gender" name="gender_id">
+            <option value="">— Não informado —</option>
+            {% for g in genders %}
+            <option value="{{ g.gender_id }}">{{ g.gender_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label>Observações</label>
+          <textarea id="pf-notes" name="notes" rows="3" maxlength="255"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-secondary" onclick="fecharPessoaModal()">Cancelar</button>
+      <button type="submit" class="btn-primary">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
 {% endif %}
 
 <script>
+const pessoaModal = document.getElementById('pessoa-modal');
+const pessoaForm  = document.getElementById('pessoa-form');
+
+function abrirEditarPessoa(btn) {
+  const d = btn.dataset;
+  pessoaForm.action                       = '/retail_analytics/visitacao/pessoa/' + d.id;
+  document.getElementById('pf-full-name').value  = d.fullName;
+  document.getElementById('pf-nickname').value   = d.nickname;
+  document.getElementById('pf-document').value   = d.document;
+  document.getElementById('pf-birth-date').value = d.birthDate;
+  document.getElementById('pf-age').value        = d.age;
+  document.getElementById('pf-gender').value     = d.genderId;
+  document.getElementById('pf-notes').value      = d.notes;
+  pessoaModal.showModal();
+}
+function fecharPessoaModal() { pessoaModal.close(); }
+pessoaModal.addEventListener('click', e => { if (e.target === pessoaModal) fecharPessoaModal(); });
+
 function mudarData(valor) {
   const url = new URL(window.location.href);
   url.searchParams.set('date', valor);

@@ -1317,7 +1317,10 @@ def visitacao():
                 li.image_path,
                 p.full_name,
                 p.nickname,
+                p.document,
+                p.birth_date,
                 p.age,
+                p.gender_id,
                 g.gender_name,
                 p.notes,
                 (r.person_id IS NOT NULL) AS is_recorrente
@@ -1334,7 +1337,10 @@ def visitacao():
                 'person_id':         r['person_id'],
                 'full_name':         r['full_name'],
                 'nickname':          r['nickname'],
+                'document':          r['document'],
+                'birth_date':        r['birth_date'].strftime('%Y-%m-%d') if r['birth_date'] else '',
                 'age':               r['age'],
+                'gender_id':         r['gender_id'],
                 'gender_name':       r['gender_name'],
                 'notes':             r['notes'],
                 'is_recorrente':     r['is_recorrente'],
@@ -1361,6 +1367,10 @@ def visitacao():
         if row:
             theme['primary_color'] = row['primary_color']
 
+    genders = db.query_all(
+        "SELECT gender_id, gender_name FROM faciais.genders WHERE gender_id <> 'A' ORDER BY gender_name"
+    )
+
     return render_template(
         'visitacao.html',
         company_logo=company_logo,
@@ -1373,7 +1383,38 @@ def visitacao():
         data_str=data_str,
         theme=theme,
         clientes=clientes,
+        genders=genders,
     )
+
+
+@auth_bp.route('/visitacao/pessoa/<int:person_id>', methods=['POST'])
+@login_required
+@screen_required('dashboard')
+def visitacao_editar_pessoa(person_id):
+    full_name = request.form.get('full_name', '').strip() or None
+    nickname  = request.form.get('nickname', '').strip() or None
+    document  = request.form.get('document', '').strip() or None
+    birth_date = request.form.get('birth_date') or None
+    gender_id  = request.form.get('gender_id') or None
+    notes      = request.form.get('notes', '').strip() or None
+    age_raw    = request.form.get('age', '').strip()
+
+    try:
+        age = int(age_raw) if age_raw else None
+        db.execute("""
+            UPDATE faciais.people
+            SET    full_name = %s, nickname = %s, document = %s, birth_date = %s,
+                   age = %s, gender_id = %s, notes = %s
+            WHERE  person_id = %s
+        """, (full_name, nickname, document, birth_date, age, gender_id, notes, person_id))
+        flash('Dados do cliente atualizados com sucesso.', 'success')
+    except Exception as e:
+        flash(f'Erro ao atualizar cliente: {e}', 'error')
+
+    return redirect(url_for('auth.visitacao',
+                            company_id=request.form.get('company_id') or None,
+                            store_id=request.form.get('store_id') or None,
+                            date=request.form.get('date') or None))
 
 
 # ── Mapa de Calor ─────────────────────────────────────────────────────────────

@@ -29,8 +29,8 @@ git pull origin main && sudo systemctl restart retail_analytics
 ## Arquitetura
 
 **Blueprints (`routes/`):**
-- `auth.py` (~1950 linhas) — login/logout, dashboard web, `/visitacao`, `/mapa-calor`, `/ranking` (+ `/ranking/<person_id>`, `/ranking/recalcular`), `/heatmap-imagem`. Prefix: `/retail_analytics`
-- `mobile.py` (~2690 linhas) — espelho do auth.py para mobile (login, dashboard, `/visitacao`, `/ranking`, `/mapa-calor`, `/heatmap-imagem`) + `/sw.js` (PWA) + reimplementação própria (não reuso de blueprint) das telas de `gestao.py` (`/gestao/faturamento|vendas|estoque`) e `motor.py` (`/motor/faturamento|vendas|estoque`). Prefix: `/retail_analytics/m`. **Não tem equivalente de `relatorios.py`** — o quadro "Pedidos" (meta/realizado por vendedor) que existia em `/motor/vendas` foi removido do mobile (2026-08), só existe na versão web (`Relatórios > Pedidos`).
+- `auth.py` (~1950 linhas) — login/logout, dashboard web, `/visitacao` (+ `/visitacao/pessoa/<person_id>` POST — edição de dados do cliente, ver seção "Visitação" abaixo), `/mapa-calor`, `/ranking` (+ `/ranking/<person_id>`, `/ranking/recalcular`), `/heatmap-imagem`. Prefix: `/retail_analytics`
+- `mobile.py` (~2690 linhas) — espelho do auth.py para mobile (login, dashboard, `/visitacao` + `/visitacao/pessoa/<person_id>` POST, `/ranking`, `/mapa-calor`, `/heatmap-imagem`) + `/sw.js` (PWA) + reimplementação própria (não reuso de blueprint) das telas de `gestao.py` (`/gestao/faturamento|vendas|estoque`) e `motor.py` (`/motor/faturamento|vendas|estoque`). Prefix: `/retail_analytics/m`. **Não tem equivalente de `relatorios.py`** — o quadro "Pedidos" (meta/realizado por vendedor) que existia em `/motor/vendas` foi removido do mobile (2026-08), só existe na versão web (`Relatórios > Pedidos`).
 - `cadastros.py` — CRUD empresas, lojas, câmeras, temas, regras de ranking (`/ranking-regras`)
 - `usuarios.py` — gestão de usuários e permissões
 - `conta.py` — troca de senha
@@ -70,6 +70,18 @@ AND cod_natureza_operacao = '10030'
 ```
 
 **Séries PF vs. PJ:** `faciais.store_serie_rules` mapeia, por loja, quais séries de NF (`serie`) correspondem a Pessoa Física ou Jurídica (`person_kind`). `people.get_store_series(store_id)` retorna `(series_pf, series_pj)`; a maioria das queries analíticas (faturamento, ticket médio, ranking de clientes) filtra `microvix_movimento.serie = ANY(series_pf)` para considerar só vendas a PF, enquanto concentração/venda por vendedor a PJ usa `series_pj`. Existe também a view `faciais.vw_store_series` com o mesmo dado agregado em array, mas as queries em `people.py` consultam `store_serie_rules` diretamente.
+
+**Visitação — edição de `faciais.people` (2026-08):** na tela `/visitacao` (web e mobile), cada
+card de cliente tem um botão de editar (&#9998;) que abre um formulário (modal `<dialog>` na web,
+bottom-sheet no mobile) para corrigir os dados da pessoa reconhecida. Campos editáveis: `full_name`,
+`nickname`, `document`, `birth_date`, `age`, `gender_id`, `notes`. **Não editáveis** por esta tela:
+`person_type_id` (a lista só mostra `person_type_id='C'`; trocar o tipo faria o registro desaparecer
+da visitação) e os campos de integração do pipeline facial (`crm_key`, `reference_track_id`). Rota:
+`POST /visitacao/pessoa/<person_id>` (`auth.visitacao_editar_pessoa` / `mobile.visitacao_editar_pessoa`),
+que faz `UPDATE faciais.people` e redireciona de volta pra `/visitacao` preservando
+`company_id`/`store_id`/`date` (enviados como campos hidden no form). Web usa `flash()` pra
+confirmar sucesso/erro; mobile não tem `flash()` (base mobile não renderiza flashed messages) —
+em caso de erro no `UPDATE`, redireciona com `?pessoa_erro=1` e a página mostra um banner inline.
 
 ## Template filters registrados em `app.py`
 
@@ -112,7 +124,7 @@ AND cod_natureza_operacao = '10030'
 | `stores` | `store_id`, `company_id`, `retailer_group_id`, `store_name`, `cnpj`, `uf`, `city`, `calendar_profile_id`, `microvix_portal`, `ranking_rule_id` |
 | `cameras` | `camera_id` (manual), `camera_type_id`, `store_id`, `camera_name`, `rtsp_url`, `heat_camera_id` |
 | `users` | `user_id`, `username`, `full_name`, `email`, `password_hash`, `user_type_id`, `is_active`, `last_company_group_id`, `last_retailer_group_id`, `last_store_id` |
-| `people` | `person_id`, `full_name`, `nickname`, `document`, `crm_key`, `birth_date`, `age`, `gender_id`, `person_type_id`, `reference_track_id` |
+| `people` | `person_id`, `full_name`, `nickname`, `document`, `crm_key`, `birth_date`, `age`, `gender_id`, `person_type_id`, `reference_track_id`, `notes` |
 | `company_themes` | `company_id`, cores HEX (`primary_color`, `secondary_color`, `accent_color`, `text_color`, `background_color`, `graph_color_1..4`), `logo_url` |
 | `store_serie_rules` | `store_serie_rule_id`, `store_id` (FK cascade), `person_kind` (`PF`/`PJ`), `serie` (série da NF). Unique `(store_id, serie)`. Ver seção "Séries PF vs. PJ" acima |
 

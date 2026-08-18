@@ -21,6 +21,7 @@
   .m-hdr-info-val { font-size: 0.68rem; font-weight: 700; color: var(--secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
 
   .m-vis-card {
+    position: relative;
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
@@ -29,6 +30,28 @@
     display: flex;
     gap: 0.75rem;
     align-items: flex-start;
+  }
+  .m-vis-edit-btn {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9CA3AF;
+    font-size: 0.95rem;
+    line-height: 1;
+    padding: 0.3rem;
+    border-radius: 6px;
+  }
+  .m-vis-edit-btn:active { color: var(--theme-primary); background: #F9FAFB; }
+  .m-pessoa-erro {
+    background: #FEE2E2;
+    color: #991B1B;
+    font-size: 0.8rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
   }
   .m-vis-photo {
     width: 64px;
@@ -187,6 +210,10 @@
     <p class="m-hint">Selecione uma loja para visualizar a visitação.</p>
     {% else %}
 
+    {% if pessoa_erro %}
+    <div class="m-pessoa-erro">Não foi possível salvar os dados do cliente. Tente novamente.</div>
+    {% endif %}
+
     <div class="m-date-row">
       <span class="m-date-label">Data</span>
       <input type="date" class="m-date-input" value="{{ data_str }}"
@@ -207,6 +234,17 @@
     {% if clientes %}
       {% for c in clientes %}
       <div class="m-vis-card">
+
+        <button type="button" class="m-vis-edit-btn" title="Editar dados do cliente"
+                onclick="abrirEditarPessoa(this)"
+                data-id="{{ c.person_id }}"
+                data-full-name="{{ c.full_name or '' }}"
+                data-nickname="{{ c.nickname or '' }}"
+                data-document="{{ c.document or '' }}"
+                data-birth-date="{{ c.birth_date }}"
+                data-age="{{ c.age or '' }}"
+                data-gender-id="{{ c.gender_id or '' }}"
+                data-notes="{{ c.notes or '' }}">&#9998;</button>
 
         {% if c.img_url %}
         <img class="m-vis-photo" src="{{ c.img_url }}" alt="Foto"
@@ -305,6 +343,56 @@
 
   <button class="m-sheet-close" onclick="fecharSeletorLoja()">Fechar</button>
 </div>
+
+<!-- ── Bottom-sheet: editar cliente ─────────────────────────────────── -->
+<div id="m-pessoa-overlay" class="m-sheet-overlay" onclick="fecharPessoaSheet()"></div>
+<div id="m-pessoa-sheet" class="m-store-sheet" style="max-height:85vh; overflow-y:auto;">
+  <div class="m-sheet-handle"></div>
+  <div class="m-sheet-title">Editar Cliente</div>
+
+  <form method="POST" id="m-pessoa-form">
+    <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
+    <input type="hidden" name="store_id" value="{{ selected_store_id or '' }}">
+    <input type="hidden" name="date" value="{{ data_str }}">
+
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Nome completo</label>
+      <input class="m-input" type="text" id="mpf-full-name" name="full_name" maxlength="255">
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Apelido</label>
+      <input class="m-input" type="text" id="mpf-nickname" name="nickname" maxlength="50">
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Documento (CPF)</label>
+      <input class="m-input" type="text" id="mpf-document" name="document" maxlength="14">
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Data de nascimento</label>
+      <input class="m-input" type="date" id="mpf-birth-date" name="birth_date">
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Idade</label>
+      <input class="m-input" type="number" id="mpf-age" name="age" min="0" max="120">
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Gênero</label>
+      <select class="m-select" id="mpf-gender" name="gender_id" style="width:100%; flex:none;">
+        <option value="">— Não informado —</option>
+        {% for g in genders %}
+        <option value="{{ g.gender_id }}">{{ g.gender_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Observações</label>
+      <textarea class="m-input" id="mpf-notes" name="notes" rows="3" maxlength="255"></textarea>
+    </div>
+
+    <button type="submit" class="m-vis-refresh-btn" style="width:100%; justify-content:center; padding:0.75rem;">Salvar</button>
+  </form>
+  <button class="m-sheet-close" onclick="fecharPessoaSheet()">Cancelar</button>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -321,6 +409,23 @@ function abrirSeletorLoja() {
 function fecharSeletorLoja() {
   document.getElementById('m-sheet-overlay').classList.remove('open');
   document.getElementById('m-store-sheet').classList.remove('open');
+}
+function abrirEditarPessoa(btn) {
+  const d = btn.dataset;
+  document.getElementById('m-pessoa-form').action    = '/retail_analytics/m/visitacao/pessoa/' + d.id;
+  document.getElementById('mpf-full-name').value      = d.fullName;
+  document.getElementById('mpf-nickname').value       = d.nickname;
+  document.getElementById('mpf-document').value       = d.document;
+  document.getElementById('mpf-birth-date').value     = d.birthDate;
+  document.getElementById('mpf-age').value            = d.age;
+  document.getElementById('mpf-gender').value         = d.genderId;
+  document.getElementById('mpf-notes').value          = d.notes;
+  document.getElementById('m-pessoa-overlay').classList.add('open');
+  document.getElementById('m-pessoa-sheet').classList.add('open');
+}
+function fecharPessoaSheet() {
+  document.getElementById('m-pessoa-overlay').classList.remove('open');
+  document.getElementById('m-pessoa-sheet').classList.remove('open');
 }
 function selecionarEmpresa(id) {
   const url = new URL(window.location.href);

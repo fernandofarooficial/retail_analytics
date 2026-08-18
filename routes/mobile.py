@@ -1441,6 +1441,8 @@ def visitacao():
     except ValueError:
         data_str = date_type.today().strftime('%Y-%m-%d')
 
+    pessoa_erro = bool(request.args.get('pessoa_erro'))
+
     # ── Clientes do dia ───────────────────────────────────────────────────────
     clientes = []
     if active_store:
@@ -1484,7 +1486,10 @@ def visitacao():
                 li.image_path,
                 p.full_name,
                 p.nickname,
+                p.document,
+                p.birth_date,
                 p.age,
+                p.gender_id,
                 g.gender_name,
                 p.notes,
                 (r.person_id IS NOT NULL) AS is_recorrente
@@ -1501,7 +1506,10 @@ def visitacao():
                 'person_id':         r['person_id'],
                 'full_name':         r['full_name'],
                 'nickname':          r['nickname'],
+                'document':          r['document'],
+                'birth_date':        r['birth_date'].strftime('%Y-%m-%d') if r['birth_date'] else '',
                 'age':               r['age'],
+                'gender_id':         r['gender_id'],
                 'gender_name':       r['gender_name'],
                 'notes':             r['notes'],
                 'is_recorrente':     r['is_recorrente'],
@@ -1530,6 +1538,10 @@ def visitacao():
         if row:
             theme.update({k: v for k, v in row.items() if v})
 
+    genders = db.query_all(
+        "SELECT gender_id, gender_name FROM faciais.genders WHERE gender_id <> 'A' ORDER BY gender_name"
+    )
+
     return render_template(
         'mobile/visitacao.html',
         company_logo=company_logo,
@@ -1542,7 +1554,39 @@ def visitacao():
         data_str=data_str,
         theme=theme,
         clientes=clientes,
+        genders=genders,
+        pessoa_erro=pessoa_erro,
     )
+
+
+@mobile_bp.route('/visitacao/pessoa/<int:person_id>', methods=['POST'])
+@_login_required
+def visitacao_editar_pessoa(person_id):
+    full_name  = request.form.get('full_name', '').strip() or None
+    nickname   = request.form.get('nickname', '').strip() or None
+    document   = request.form.get('document', '').strip() or None
+    birth_date = request.form.get('birth_date') or None
+    gender_id  = request.form.get('gender_id') or None
+    notes      = request.form.get('notes', '').strip() or None
+    age_raw    = request.form.get('age', '').strip()
+
+    erro = None
+    try:
+        age = int(age_raw) if age_raw else None
+        db.execute("""
+            UPDATE faciais.people
+            SET    full_name = %s, nickname = %s, document = %s, birth_date = %s,
+                   age = %s, gender_id = %s, notes = %s
+            WHERE  person_id = %s
+        """, (full_name, nickname, document, birth_date, age, gender_id, notes, person_id))
+    except Exception:
+        erro = '1'
+
+    return redirect(url_for('mobile.visitacao',
+                            company_id=request.form.get('company_id') or None,
+                            store_id=request.form.get('store_id') or None,
+                            date=request.form.get('date') or None,
+                            pessoa_erro=erro))
 
 
 # ── Ranking de Clientes ───────────────────────────────────────────────────────
