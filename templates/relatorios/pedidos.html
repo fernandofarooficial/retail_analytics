@@ -258,6 +258,60 @@
   {% endif %}
 </div>
 
+<!-- ── Card: Pedidos (mês de referência da semana, por vendedor) ────── -->
+<div class="gest-chart-card" style="margin-top:1.25rem;">
+  <div class="gest-chart-header">
+    <span class="gest-chart-title">Pedidos — acumulado de {{ mes_nome }}</span>
+  </div>
+  {% if not pedidos_mes %}
+  <p class="kpi-hint" style="margin:0.5rem 0;">Sem orçamentos ou pedidos de venda no período.</p>
+  {% else %}
+  <table class="vend-table">
+    <thead>
+      <tr>
+        <th>Vendedor</th>
+        <th class="text-right">Orçamento aberto</th>
+        <th class="text-right">Pedido aprovado</th>
+        <th class="text-right">Pedido faturado</th>
+        <th class="text-right">Meta pedidos/mês</th>
+        <th class="text-right">Realizado/mês</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pedidos_mes %}
+      <tr>
+        <td class="vend-name">{{ p.nome.split(' ')[0] }}</td>
+        <td class="text-right vend-val">{{ p.valor_orcamento_aberto | br_valor_k }}</td>
+        <td class="text-right vend-val">{{ p.valor_pedido_aprovado | br_valor_k }}</td>
+        <td class="text-right vend-val">{{ p.valor_pedido_faturado | br_valor_k }}</td>
+        <td class="text-right vend-val">
+          {% if p.pedidos_meta_mes is not none %}
+            {{ p.pedidos_meta_mes | br_valor_k }}
+          {% else %}
+            <span class="text-muted" style="font-size:0.8rem;">sem meta</span>
+          {% endif %}
+        </td>
+        <td class="text-right vend-val">
+          {{ p.pedidos_realizado_mes | br_valor_k }}
+          {% if p.pedidos_meta_mes %}
+            {% set atingimento_mes = (p.pedidos_realizado_mes / p.pedidos_meta_mes * 100) %}
+            {% if atingimento_mes >= 100 %}
+              <span class="vend-delta delta-up">{{ "%.0f"|format(atingimento_mes) }}%</span>
+            {% else %}
+              <span class="vend-delta delta-down">{{ "%.0f"|format(atingimento_mes) }}%</span>
+            {% endif %}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="kpi-hint" style="margin:0.75rem 0 0; font-size:0.8rem;">
+    Valores acumulados de {{ mes_inicio.strftime('%d/%m') }} a {{ mes_fim.strftime('%d/%m') }} — mês de referência da semana selecionada acima.
+  </p>
+  {% endif %}
+</div>
+
 <!-- ── Detalhes do vendedor selecionado ─────────────────────────────── -->
 {% if selected_vendedor %}
 {% set pedido_vend = (pedidos | selectattr('cod_vendedor', 'eq', selected_vendedor) | list | first) %}

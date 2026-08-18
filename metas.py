@@ -236,6 +236,45 @@ def pedidos_meta_semana_por_loja(store_id, semana_inicio):
     return result
 
 
+def pedidos_meta_mes_por_loja(store_id, mes_inicio, mes_fim):
+    """
+    Retorna {seller_id: meta_mes} da meta de Pedidos Gerados (goal_id=4) acumulada no mês
+    [mes_inicio, mes_fim], para todos os vendedores da loja com alocação ativa. O mês é somado
+    dia a dia: cada dia pertence a uma semana ISO (segunda a domingo, pode cruzar a virada do
+    mês) cuja meta semanal cadastrada é distribuída via _distribuir_semanal (respeitando o
+    distribution_mode da alocação) — dias de semanas sem meta semanal cadastrada contam zero.
+    Vendedores sem alocação ativa, ou sem nenhuma semana com meta cadastrada no mês inteiro,
+    não entram no dict.
+    """
+    rows = db.query_all("""
+        SELECT gt.seller_id, gt.goal_target_id, gt.distribution_mode
+        FROM   faciais.goal_targets gt
+        JOIN   faciais.sellers sl ON sl.seller_id = gt.seller_id
+        WHERE  gt.goal_id = %s AND gt.entity_type = 'seller' AND gt.is_active = TRUE
+          AND  sl.store_id = %s
+    """, (_GOAL_PEDIDOS_GERADOS, store_id))
+
+    result = {}
+    for r in rows:
+        week_cache = {}
+        total    = 0.0
+        any_meta = False
+        d = mes_inicio
+        while d <= mes_fim:
+            semana_inicio_d = d - timedelta(days=d.weekday())
+            if semana_inicio_d not in week_cache:
+                week_cache[semana_inicio_d] = _distribuir_semanal(
+                    store_id, r['goal_target_id'], semana_inicio_d, r['distribution_mode'])
+            daily, meta_semana = week_cache[semana_inicio_d]
+            if meta_semana is not None:
+                any_meta = True
+            total += daily.get(d, 0.0)
+            d += timedelta(days=1)
+        if any_meta:
+            result[r['seller_id']] = round(total, 2)
+    return result
+
+
 def meta_faturamento_acum_diario(store_id, mes_inicio, mes_fim):
     """
     Retorna (daily_dict, meta_total) para o gráfico Motor — Faturamento.

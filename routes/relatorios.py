@@ -1,13 +1,17 @@
+import calendar
 from datetime import date as date_type, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, session
 from routes.utils import login_required
 import db
 from people import (pedidos_venda_por_vendedor as _pedidos_venda_por_vendedor,
                     pedidos_gerados_por_loja   as _pedidos_gerados_por_loja)
-from metas import pedidos_meta_semana_por_loja as _pedidos_meta_semana_por_loja
+from metas import (pedidos_meta_semana_por_loja as _pedidos_meta_semana_por_loja,
+                   pedidos_meta_mes_por_loja    as _pedidos_meta_mes_por_loja)
 
 relatorios_bp = Blueprint('relatorios', __name__, url_prefix='/retail_analytics/relatorios')
 
+_MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+             'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 _DIAS_SEMANA_PT = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom']
 
 
@@ -234,9 +238,17 @@ def pedidos():
     semana_proxima_str  = (semana_fim    + timedelta(days=1)).strftime('%Y-%m-%d')
     semana_label = f"{semana_inicio.strftime('%d/%m')} – {semana_fim.strftime('%d/%m/%Y')}"
 
+    # Mês de referência da semana escolhida (mês em que cai a segunda-feira da semana)
+    mes_inicio = semana_inicio.replace(day=1)
+    mes_fim    = semana_inicio.replace(day=calendar.monthrange(semana_inicio.year, semana_inicio.month)[1])
+    mes_inicio_str = mes_inicio.strftime('%Y-%m-%d')
+    mes_fim_str    = mes_fim.strftime('%Y-%m-%d')
+    mes_nome = _MESES_PT[semana_inicio.month - 1]
+
     selected_vendedor = request.args.get('vendedor')
 
-    pedidos_lista = []
+    pedidos_lista     = []
+    pedidos_mes_lista = []
 
     if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
         portal   = ctx['active_microvix_portal']
@@ -267,6 +279,19 @@ def pedidos():
                 for i in range(7)
             ]
 
+        pedidos_mes_lista = _pedidos_venda_por_vendedor(
+            store_id, portal, cnpj,
+            mes_inicio_str, mes_fim_str)
+
+        meta_mes_por_seller = _pedidos_meta_mes_por_loja(store_id, mes_inicio, mes_fim)
+        realizado_mes_por_vendedor = _pedidos_gerados_por_loja(
+            portal, cnpj, mes_inicio_str, mes_fim_str)
+        for p in pedidos_mes_lista:
+            realizado_dia_mes = realizado_mes_por_vendedor.get(p['cod_vendedor'], {})
+            p['pedidos_realizado_mes'] = sum(realizado_dia_mes.values())
+            p['pedidos_meta_mes'] = (
+                meta_mes_por_seller.get(p['seller_id']) if p['seller_id'] is not None else None)
+
     return render_template(
         'relatorios/pedidos.html',
         **ctx,
@@ -276,6 +301,10 @@ def pedidos():
         semana_anterior_str=semana_anterior_str,
         semana_proxima_str=semana_proxima_str,
         semana_label=semana_label,
+        mes_inicio=mes_inicio,
+        mes_fim=mes_fim,
+        mes_nome=mes_nome,
         pedidos=pedidos_lista,
+        pedidos_mes=pedidos_mes_lista,
         selected_vendedor=selected_vendedor,
     )
