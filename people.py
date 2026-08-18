@@ -405,17 +405,19 @@ def vendedores_mes(portal, cnpj, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_
 
 def pedidos_venda_por_vendedor(store_id, portal, cnpj, data_ini, data_fim):
     """Pedidos de venda no período (por data_lancamento) agrupados por vendedor, somando
-    valor_total por situação: orçamento aberto (ainda não aprovado), pedido aprovado (aguardando
-    faturamento) e pedido faturado (completo ou parcial) — cada pedido cai em exatamente uma das
-    3 situações (nunca somado em mais de uma coluna). Pedidos cancelados ficam de fora das 3.
-    Inclui seller_id (faciais.sellers), quando existir, para permitir cruzar com metas por
-    vendedor (goal_id=4, Pedidos Gerados)."""
+    valor_total por situação: orçamento aberto (ainda não aprovado, com menos de 30 dias de
+    lançamento — orçamento mais velho que isso é considerado morto e não entra na soma), pedido
+    aprovado (aguardando faturamento) e pedido faturado (completo ou parcial) — cada pedido cai
+    em no máximo uma das 3 situações (nunca somado em mais de uma coluna). Pedidos cancelados
+    ficam de fora das 3. Inclui seller_id (faciais.sellers), quando existir, para permitir cruzar
+    com metas por vendedor (goal_id=4, Pedidos Gerados)."""
     rows = db.query_all("""
         SELECT
             p.cod_vendedor::text                                                AS cod_vendedor,
             COALESCE(NULLIF(TRIM(mv.nome_vendedor), ''), p.cod_vendedor::text)  AS nome,
             sl.seller_id                                                        AS seller_id,
             ROUND(SUM(CASE WHEN p.aprovado = 'N' AND p.status = 'N'
+                                AND p.data_lancamento >= CURRENT_DATE - INTERVAL '30 days'
                            THEN p.valor_total ELSE 0 END)::numeric, 2)          AS valor_orcamento_aberto,
             ROUND(SUM(CASE WHEN p.aprovado = 'S' AND p.status = 'N'
                            THEN p.valor_total ELSE 0 END)::numeric, 2)          AS valor_pedido_aprovado,
