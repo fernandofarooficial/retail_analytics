@@ -241,6 +241,8 @@
                 data-full-name="{{ c.full_name or '' }}"
                 data-nickname="{{ c.nickname or '' }}"
                 data-document="{{ c.document or '' }}"
+                data-phone="{{ c.phone or '' }}"
+                data-email="{{ c.email or '' }}"
                 data-birth-date="{{ c.birth_date }}"
                 data-age="{{ c.age or '' }}"
                 data-gender-id="{{ c.gender_id or '' }}"
@@ -376,6 +378,14 @@
       <input class="m-input" type="number" id="mpf-age" name="age" min="0" max="120">
     </div>
     <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Telefone</label>
+      <input class="m-input" type="text" id="mpf-phone" name="phone" maxlength="20">
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">E-mail</label>
+      <input class="m-input" type="email" id="mpf-email" name="email" maxlength="255">
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
       <label class="m-label">Gênero</label>
       <select class="m-select" id="mpf-gender" name="gender_id" style="width:100%; flex:none;">
         <option value="">— Não informado —</option>
@@ -416,6 +426,8 @@ function abrirEditarPessoa(btn) {
   document.getElementById('mpf-full-name').value      = d.fullName;
   document.getElementById('mpf-nickname').value       = d.nickname;
   document.getElementById('mpf-document').value       = d.document;
+  document.getElementById('mpf-phone').value           = d.phone;
+  document.getElementById('mpf-email').value           = d.email;
   document.getElementById('mpf-birth-date').value     = d.birthDate;
   document.getElementById('mpf-age').value            = d.age;
   document.getElementById('mpf-gender').value         = d.genderId;

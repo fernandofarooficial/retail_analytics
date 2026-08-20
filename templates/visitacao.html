@@ -239,6 +239,8 @@
               data-full-name="{{ c.full_name or '' }}"
               data-nickname="{{ c.nickname or '' }}"
               data-document="{{ c.document or '' }}"
+              data-phone="{{ c.phone or '' }}"
+              data-email="{{ c.email or '' }}"
               data-birth-date="{{ c.birth_date }}"
               data-age="{{ c.age or '' }}"
               data-gender-id="{{ c.gender_id or '' }}"
@@ -334,6 +336,16 @@
       </div>
       <div class="form-row">
         <div class="form-group">
+          <label>Telefone</label>
+          <input type="text" id="pf-phone" name="phone" maxlength="20">
+        </div>
+        <div class="form-group" style="flex:2">
+          <label>E-mail</label>
+          <input type="email" id="pf-email" name="email" maxlength="255">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
           <label>Gênero</label>
           <select id="pf-gender" name="gender_id">
             <option value="">— Não informado —</option>
@@ -369,6 +381,8 @@ function abrirEditarPessoa(btn) {
   document.getElementById('pf-full-name').value  = d.fullName;
   document.getElementById('pf-nickname').value   = d.nickname;
   document.getElementById('pf-document').value   = d.document;
+  document.getElementById('pf-phone').value      = d.phone;
+  document.getElementById('pf-email').value      = d.email;
   document.getElementById('pf-birth-date').value = d.birthDate;
   document.getElementById('pf-age').value        = d.age;
   document.getElementById('pf-gender').value     = d.genderId;

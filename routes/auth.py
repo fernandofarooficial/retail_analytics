@@ -1318,6 +1318,8 @@ def visitacao():
                 p.full_name,
                 p.nickname,
                 p.document,
+                p.phone,
+                p.email,
                 p.birth_date,
                 p.age,
                 p.gender_id,
@@ -1338,6 +1340,8 @@ def visitacao():
                 'full_name':         r['full_name'],
                 'nickname':          r['nickname'],
                 'document':          r['document'],
+                'phone':             r['phone'],
+                'email':             r['email'],
                 'birth_date':        r['birth_date'].strftime('%Y-%m-%d') if r['birth_date'] else '',
                 'age':               r['age'],
                 'gender_id':         r['gender_id'],
@@ -1394,6 +1398,8 @@ def visitacao_editar_pessoa(person_id):
     full_name = request.form.get('full_name', '').strip() or None
     nickname  = request.form.get('nickname', '').strip() or None
     document  = request.form.get('document', '').strip() or None
+    phone      = request.form.get('phone', '').strip() or None
+    email      = request.form.get('email', '').strip() or None
     birth_date = request.form.get('birth_date') or None
     gender_id  = request.form.get('gender_id') or None
     notes      = request.form.get('notes', '').strip() or None
@@ -1403,10 +1409,10 @@ def visitacao_editar_pessoa(person_id):
         age = int(age_raw) if age_raw else None
         db.execute("""
             UPDATE faciais.people
-            SET    full_name = %s, nickname = %s, document = %s, birth_date = %s,
-                   age = %s, gender_id = %s, notes = %s
+            SET    full_name = %s, nickname = %s, document = %s, phone = %s, email = %s,
+                   birth_date = %s, age = %s, gender_id = %s, notes = %s
             WHERE  person_id = %s
-        """, (full_name, nickname, document, birth_date, age, gender_id, notes, person_id))
+        """, (full_name, nickname, document, phone, email, birth_date, age, gender_id, notes, person_id))
         flash('Dados do cliente atualizados com sucesso.', 'success')
     except Exception as e:
         flash(f'Erro ao atualizar cliente: {e}', 'error')

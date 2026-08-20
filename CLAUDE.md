@@ -74,7 +74,9 @@ AND cod_natureza_operacao = '10030'
 **Visitação — edição de `faciais.people` (2026-08):** na tela `/visitacao` (web e mobile), cada
 card de cliente tem um botão de editar (&#9998;) que abre um formulário (modal `<dialog>` na web,
 bottom-sheet no mobile) para corrigir os dados da pessoa reconhecida. Campos editáveis: `full_name`,
-`nickname`, `document`, `birth_date`, `age`, `gender_id`, `notes`. **Não editáveis** por esta tela:
+`nickname`, `document`, `phone`, `email`, `birth_date`, `age`, `gender_id`, `notes`
+(`phone`/`email`, 2026-08, colunas compartilhadas com o camera300 — migration
+`migrations/add_people_contato.sql`). **Não editáveis** por esta tela:
 `person_type_id` (a lista só mostra `person_type_id='C'`; trocar o tipo faria o registro desaparecer
 da visitação) e os campos de integração do pipeline facial (`crm_key`, `reference_track_id`). Rota:
 `POST /visitacao/pessoa/<person_id>` (`auth.visitacao_editar_pessoa` / `mobile.visitacao_editar_pessoa`),
@@ -124,7 +126,7 @@ em caso de erro no `UPDATE`, redireciona com `?pessoa_erro=1` e a página mostra
 | `stores` | `store_id`, `company_id`, `retailer_group_id`, `store_name`, `cnpj`, `uf`, `city`, `calendar_profile_id`, `microvix_portal`, `ranking_rule_id` |
 | `cameras` | `camera_id` (manual), `camera_type_id`, `store_id`, `camera_name`, `rtsp_url`, `heat_camera_id` |
 | `users` | `user_id`, `username`, `full_name`, `email`, `password_hash`, `user_type_id`, `is_active`, `last_company_group_id`, `last_retailer_group_id`, `last_store_id` |
-| `people` | `person_id`, `full_name`, `nickname`, `document`, `crm_key`, `birth_date`, `age`, `gender_id`, `person_type_id`, `reference_track_id`, `notes` |
+| `people` | `person_id`, `full_name`, `nickname`, `document`, `phone`, `email`, `crm_key`, `birth_date`, `age`, `gender_id`, `person_type_id`, `reference_track_id`, `notes` |
 | `company_themes` | `company_id`, cores HEX (`primary_color`, `secondary_color`, `accent_color`, `text_color`, `background_color`, `graph_color_1..4`), `logo_url` |
 | `store_serie_rules` | `store_serie_rule_id`, `store_id` (FK cascade), `person_kind` (`PF`/`PJ`), `serie` (série da NF). Unique `(store_id, serie)`. Ver seção "Séries PF vs. PJ" acima |
 
