@@ -337,7 +337,9 @@
       <div class="form-row">
         <div class="form-group">
           <label>Telefone</label>
-          <input type="text" id="pf-phone" name="phone" maxlength="20">
+          <input type="text" id="pf-phone" name="phone" maxlength="16"
+                 inputmode="numeric" placeholder="(00) 0-0000-0000"
+                 oninput="mascararTelefone(this)">
         </div>
         <div class="form-group" style="flex:2">
           <label>E-mail</label>
@@ -382,12 +384,21 @@ function abrirEditarPessoa(btn) {
   document.getElementById('pf-nickname').value   = d.nickname;
   document.getElementById('pf-document').value   = d.document;
   document.getElementById('pf-phone').value      = d.phone;
+  mascararTelefone(document.getElementById('pf-phone'));
   document.getElementById('pf-email').value      = d.email;
   document.getElementById('pf-birth-date').value = d.birthDate;
   document.getElementById('pf-age').value        = d.age;
   document.getElementById('pf-gender').value     = d.genderId;
   document.getElementById('pf-notes').value      = d.notes;
   pessoaModal.showModal();
+}
+function mascararTelefone(input) {
+  let v = input.value.replace(/\D/g, '').slice(0, 11);
+  if (v.length > 7)      v = '(' + v.slice(0,2) + ') ' + v.slice(2,3) + '-' + v.slice(3,7) + '-' + v.slice(7);
+  else if (v.length > 3) v = '(' + v.slice(0,2) + ') ' + v.slice(2,3) + '-' + v.slice(3);
+  else if (v.length > 2) v = '(' + v.slice(0,2) + ') ' + v.slice(2);
+  else if (v.length > 0) v = '(' + v;
+  input.value = v;
 }
 function fecharPessoaModal() { pessoaModal.close(); }
 pessoaModal.addEventListener('click', e => { if (e.target === pessoaModal) fecharPessoaModal(); });

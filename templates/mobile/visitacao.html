@@ -379,7 +379,9 @@
     </div>
     <div class="m-field" style="margin-bottom:0.75rem;">
       <label class="m-label">Telefone</label>
-      <input class="m-input" type="text" id="mpf-phone" name="phone" maxlength="20">
+      <input class="m-input" type="text" id="mpf-phone" name="phone" maxlength="16"
+             inputmode="numeric" placeholder="(00) 0-0000-0000"
+             oninput="mascararTelefone(this)">
     </div>
     <div class="m-field" style="margin-bottom:0.75rem;">
       <label class="m-label">E-mail</label>
@@ -420,6 +422,14 @@ function fecharSeletorLoja() {
   document.getElementById('m-sheet-overlay').classList.remove('open');
   document.getElementById('m-store-sheet').classList.remove('open');
 }
+function mascararTelefone(input) {
+  let v = input.value.replace(/\D/g, '').slice(0, 11);
+  if (v.length > 7)      v = '(' + v.slice(0,2) + ') ' + v.slice(2,3) + '-' + v.slice(3,7) + '-' + v.slice(7);
+  else if (v.length > 3) v = '(' + v.slice(0,2) + ') ' + v.slice(2,3) + '-' + v.slice(3);
+  else if (v.length > 2) v = '(' + v.slice(0,2) + ') ' + v.slice(2);
+  else if (v.length > 0) v = '(' + v;
+  input.value = v;
+}
 function abrirEditarPessoa(btn) {
   const d = btn.dataset;
   document.getElementById('m-pessoa-form').action    = '/retail_analytics/m/visitacao/pessoa/' + d.id;
@@ -427,6 +437,7 @@ function abrirEditarPessoa(btn) {
   document.getElementById('mpf-nickname').value       = d.nickname;
   document.getElementById('mpf-document').value       = d.document;
   document.getElementById('mpf-phone').value           = d.phone;
+  mascararTelefone(document.getElementById('mpf-phone'));
   document.getElementById('mpf-email').value           = d.email;
   document.getElementById('mpf-birth-date').value     = d.birthDate;
   document.getElementById('mpf-age').value            = d.age;
