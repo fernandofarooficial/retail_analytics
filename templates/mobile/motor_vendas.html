@@ -273,11 +273,11 @@
     {% if selected_vendedor %}
     {% set vend_nome = (vendedores | selectattr('cod_vendedor', 'eq', selected_vendedor) | list | first) %}
 
-    <!-- Top 5 Clientes -->
+    <!-- Top 10 Clientes -->
     <div class="m-chart-card">
       <div class="m-card-header">
         <span class="m-card-title">
-          Top 5 Clientes{% if vend_nome %} — {{ vend_nome.nome.split(' ')[0] }}{% endif %}
+          Top 10 Clientes{% if vend_nome %} — {{ vend_nome.nome.split(' ')[0] }}{% endif %}
         </span>
         <span class="m-card-sub">base: {{ mes_nome_ant }}</span>
       </div>
@@ -303,11 +303,11 @@
       </table>
     </div>
 
-    <!-- Top 5 Produtos -->
+    <!-- Top 10 Produtos -->
     <div class="m-chart-card" style="margin-bottom: 0.75rem;">
       <div class="m-card-header">
         <span class="m-card-title">
-          Top 5 Produtos{% if vend_nome %} — {{ vend_nome.nome.split(' ')[0] }}{% endif %}
+          Top 10 Produtos{% if vend_nome %} — {{ vend_nome.nome.split(' ')[0] }}{% endif %}
         </span>
         <span class="m-card-sub">base: {{ mes_nome_ant }}</span>
       </div>

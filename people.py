@@ -476,8 +476,8 @@ def pedidos_gerados_por_loja(portal, cnpj, data_ini, data_fim):
     return result
 
 
-def top5_clientes_vendedor(store_id, portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_ant):
-    """Top 5 clientes PJ por faturamento no mês anterior para um vendedor, com comparativo mês atual."""
+def top10_clientes_vendedor(store_id, portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_ant):
+    """Top 10 clientes PJ por faturamento no mês anterior para um vendedor, com comparativo mês atual."""
     _, series_pj = get_store_series(store_id)
     rows = db.query_all("""
         SELECT
@@ -504,7 +504,7 @@ def top5_clientes_vendedor(store_id, portal, cnpj, cod_vendedor, mes_ini_cur, me
           AND  m.data_documento <  %s::date + INTERVAL '1 day'
         GROUP  BY m.codigo_cliente, cf.nome_cliente, cf.razao_cliente
         ORDER  BY total_ant DESC
-        LIMIT  5
+        LIMIT  10
     """, (mes_ini_ant, mes_fim_ant, mes_ini_cur, mes_fim_cur,
           portal, cnpj, cod_vendedor, series_pj,
           mes_ini_ant, mes_fim_cur))
@@ -518,8 +518,8 @@ def top5_clientes_vendedor(store_id, portal, cnpj, cod_vendedor, mes_ini_cur, me
     ]
 
 
-def top5_produtos_vendedor(store_id, portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_ant):
-    """Top 5 produtos PJ por faturamento no mês anterior para um vendedor, com comparativo mês atual."""
+def top10_produtos_vendedor(store_id, portal, cnpj, cod_vendedor, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_ant):
+    """Top 10 produtos PJ por faturamento no mês anterior para um vendedor, com comparativo mês atual."""
     _, series_pj = get_store_series(store_id)
     rows = db.query_all("""
         SELECT
@@ -544,7 +544,7 @@ def top5_produtos_vendedor(store_id, portal, cnpj, cod_vendedor, mes_ini_cur, me
           AND  m.data_documento <  %s::date + INTERVAL '1 day'
         GROUP  BY mp.descricao_basica, mp.nome
         ORDER  BY total_ant DESC
-        LIMIT  5
+        LIMIT  10
     """, (mes_ini_ant, mes_fim_ant, mes_ini_cur, mes_fim_cur,
           portal, cnpj, cod_vendedor, series_pj,
           mes_ini_ant, mes_fim_cur))

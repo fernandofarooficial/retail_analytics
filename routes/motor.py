@@ -5,8 +5,8 @@ from routes.utils import login_required
 import db
 from people import (faturamento_diario_mes      as _faturamento_diario_mes,
                     vendedores_mes              as _vendedores_mes,
-                    top5_clientes_vendedor      as _top5_clientes_vendedor,
-                    top5_produtos_vendedor      as _top5_produtos_vendedor,
+                    top10_clientes_vendedor     as _top10_clientes_vendedor,
+                    top10_produtos_vendedor     as _top10_produtos_vendedor,
                     top10_clientes_loja         as _top10_clientes_loja,
                     top10_produtos_cliente      as _top10_produtos_cliente,
                     estoque_maior_volume        as _estoque_maior_volume,
@@ -337,11 +337,11 @@ def vendas():
             m1['ini'], m1['fim'])
 
         if selected_vendedor:
-            top_clientes = _top5_clientes_vendedor(
+            top_clientes = _top10_clientes_vendedor(
                 store_id, portal, cnpj, selected_vendedor,
                 mes_ini_cur_str, mes_fim_cur_str,
                 m1['ini'], m1['fim'])
-            top_produtos = _top5_produtos_vendedor(
+            top_produtos = _top10_produtos_vendedor(
                 store_id, portal, cnpj, selected_vendedor,
                 mes_ini_cur_str, mes_fim_cur_str,
                 m1['ini'], m1['fim'])
