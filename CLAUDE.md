@@ -35,7 +35,7 @@ git pull origin main && sudo systemctl restart retail_analytics
 - `usuarios.py` — gestão de usuários e permissões
 - `conta.py` — troca de senha
 - `metas.py` — módulo de metas, calendário, exceções, feriados regionais e perfis de calendário (admin only). Prefix: `/retail_analytics/metas`
-- `motor.py` — Motor Operacional (`/faturamento`, `/vendas`, `/estoque`). Prefix: `/retail_analytics/motor`
+- `motor.py` — Motor Operacional (`/faturamento`, `/vendas`, `/estoque`). Prefix: `/retail_analytics/motor`. Em `/vendas`, ao selecionar um vendedor mostra Top 10 (clientes e produtos, aumentado de Top 5 em 2026-08) por faturamento do mês anterior com comparativo mês atual — `people.top10_clientes_vendedor`/`top10_produtos_vendedor`, também usado em `mobile.py`
 - `gestao.py` — Gestão Estratégica (`/faturamento`, `/vendas`, `/estoque`). Prefix: `/retail_analytics/gestao`
 - `relatorios.py` (2026-08) — Relatórios, web only (sem equivalente mobile). Hoje só `/pedidos`
   (quadro de pedidos por vendedor — mês atual em R$ + meta/realizado semanal de Pedidos Gerados —
