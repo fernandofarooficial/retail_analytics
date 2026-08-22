@@ -435,6 +435,47 @@
     {% endif %}
     {% endif %}
 
+    <!-- ── Top 10 Inadimplentes ────────────────────────────────────────── -->
+    {% if top10_inadimplentes is defined %}
+    <div class="m-chart-card" style="margin-bottom: 0.75rem;">
+      <div class="m-card-header">
+        <span class="m-card-title">Top 10 Inadimplentes</span>
+        <div style="display:flex;align-items:center;gap:0.3rem;">
+          <a href="#" onclick="ordenarInadimplentes('valor'); return false;"
+             class="mv-clear{% if inadimplentes_order == 'valor' %} active{% endif %}"
+             style="{% if inadimplentes_order == 'valor' %}background:var(--theme-primary);color:#fff;border-color:var(--theme-primary);{% endif %}">Valor</a>
+          <a href="#" onclick="ordenarInadimplentes('prazo'); return false;"
+             class="mv-clear{% if inadimplentes_order == 'prazo' %} active{% endif %}"
+             style="{% if inadimplentes_order == 'prazo' %}background:var(--theme-primary);color:#fff;border-color:var(--theme-primary);{% endif %}">Prazo</a>
+        </div>
+      </div>
+      {% if not top10_inadimplentes %}
+      <p style="padding:0.5rem 0; color:#9CA3AF; font-size:0.78rem; font-style:italic;">Nenhum cliente inadimplente no momento.</p>
+      {% else %}
+      <table class="mv-table">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th class="text-right">Faturas</th>
+            <th class="text-right">Valor</th>
+            <th class="text-right">Atraso</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in top10_inadimplentes %}
+          <tr>
+            <td>{{ c.nome }}</td>
+            <td class="text-right">{{ c.qtde_faturas }}</td>
+            <td class="text-right mv-val">{{ "%.1f"|format(c.valor_total / 1000)|replace('.', ',') }}k</td>
+            <td class="text-right mv-val">{{ c.dias_atraso }}d</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+    {% endif %}
+
     {% endif %}
 
   </main>
@@ -501,6 +542,11 @@ function selecionarCliente(cod) {
   } else {
     url.searchParams.set('cliente', cod);
   }
+  window.location.href = url.toString();
+}
+function ordenarInadimplentes(order) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('inadimplentes_order', order);
   window.location.href = url.toString();
 }
 function navegarMotor(tab) {

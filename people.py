@@ -686,6 +686,48 @@ def top10_produtos_cliente(store_id, portal, cnpj, cod_cliente,
     ]
 
 
+def top10_inadimplentes(portal, cnpj, order_by='valor'):
+    """Top 10 clientes inadimplentes da loja: faturas a receber (microvix_faturas)
+    vencidas e ainda não baixadas, agregadas por cliente.
+
+    order_by: 'prazo' ordena pelo maior atraso (dias); qualquer outro valor
+    (padrão 'valor') ordena pelo maior valor total em aberto.
+    """
+    order_sql = 'dias_atraso DESC' if order_by == 'prazo' else 'valor_total DESC'
+    rows = db.query_all(f"""
+        SELECT
+            f.cod_cliente,
+            COALESCE(NULLIF(TRIM(cf.nome_cliente), ''), cf.razao_cliente, f.nome_cliente,
+                     f.cod_cliente::text)                                       AS nome_cliente,
+            ROUND(SUM(f.valor_fatura - COALESCE(f.valor_pago, 0))::numeric, 2)  AS valor_total,
+            MAX((CURRENT_DATE - f.data_vencimento::date))::int                  AS dias_atraso,
+            COUNT(*)                                                            AS qtde_faturas
+        FROM   microvix.microvix_faturas f
+        LEFT   JOIN microvix.microvix_clientes_fornecedores cf
+                    ON cf.portal = f.portal AND cf.cod_cliente = f.cod_cliente
+        WHERE  f.portal             = %s
+          AND  f.cnpj_emp           = %s
+          AND  f.receber_pagar      = 'R'
+          AND  f.cancelado          = 'N'
+          AND  f.excluido           = 'N'
+          AND  f.data_baixa IS NULL
+          AND  f.data_vencimento    < CURRENT_DATE
+        GROUP  BY f.cod_cliente, cf.nome_cliente, cf.razao_cliente, f.nome_cliente
+        ORDER  BY {order_sql}
+        LIMIT  10
+    """, (portal, cnpj))
+    return [
+        {
+            'cod_cliente':   str(r['cod_cliente']),
+            'nome':          r['nome_cliente'] or f"Cliente {r['cod_cliente']}",
+            'valor_total':   float(r['valor_total'] or 0),
+            'dias_atraso':   int(r['dias_atraso'] or 0),
+            'qtde_faturas':  int(r['qtde_faturas'] or 0),
+        }
+        for r in rows
+    ]
+
+
 # ── Concentração de clientes ──────────────────────────────────────────────────
 
 _MESES_PT_CURTO = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']

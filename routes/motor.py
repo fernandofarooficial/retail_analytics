@@ -9,6 +9,7 @@ from people import (faturamento_diario_mes      as _faturamento_diario_mes,
                     top10_produtos_vendedor     as _top10_produtos_vendedor,
                     top10_clientes_loja         as _top10_clientes_loja,
                     top10_produtos_cliente      as _top10_produtos_cliente,
+                    top10_inadimplentes         as _top10_inadimplentes,
                     estoque_maior_volume        as _estoque_maior_volume,
                     estoque_maior_faturamento   as _estoque_maior_faturamento,
                     estoque_valor_parado        as _estoque_valor_parado)
@@ -320,11 +321,16 @@ def vendas():
     selected_vendedor = request.args.get('vendedor')
     selected_cliente  = request.args.get('cliente')
 
+    inadimplentes_order = request.args.get('inadimplentes_order', 'valor')
+    if inadimplentes_order not in ('valor', 'prazo'):
+        inadimplentes_order = 'valor'
+
     vendedores          = []
     top_clientes        = []
     top_produtos        = []
     top10_clientes      = []
     top10_prod_cliente  = []
+    top10_inadimplentes = []
 
     if ctx['active_store'] and ctx['active_microvix_portal'] and ctx['active_store_cnpj']:
         portal   = ctx['active_microvix_portal']
@@ -361,6 +367,8 @@ def vendas():
                 m2['ini'], m2['fim'],
                 m3['ini'], m3['fim'])
 
+        top10_inadimplentes = _top10_inadimplentes(portal, cnpj, inadimplentes_order)
+
     return render_template(
         'motor/vendas.html',
         **ctx,
@@ -376,6 +384,8 @@ def vendas():
         top10_clientes=top10_clientes,
         selected_cliente=selected_cliente,
         top10_prod_cliente=top10_prod_cliente,
+        top10_inadimplentes=top10_inadimplentes,
+        inadimplentes_order=inadimplentes_order,
     )
 
 

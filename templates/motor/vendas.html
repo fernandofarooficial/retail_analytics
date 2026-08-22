@@ -418,6 +418,49 @@
 </div>
 {% endif %}
 
+<!-- ── Top 10 Inadimplentes ─────────────────────────────────────────── -->
+{% if top10_inadimplentes is defined and active_store %}
+<div style="margin-top:1.5rem;">
+  <div class="gest-chart-card">
+    <div class="gest-chart-header">
+      <span class="gest-chart-title">Top 10 Inadimplentes</span>
+      <div style="display:flex;align-items:center;gap:0.375rem;">
+        <a href="#" onclick="ordenarInadimplentes('valor'); return false;"
+           class="gest-tab{% if inadimplentes_order == 'valor' %} active{% endif %}"
+           style="padding:0.3rem 0.85rem; font-size:0.75rem;">Valor</a>
+        <a href="#" onclick="ordenarInadimplentes('prazo'); return false;"
+           class="gest-tab{% if inadimplentes_order == 'prazo' %} active{% endif %}"
+           style="padding:0.3rem 0.85rem; font-size:0.75rem;">Prazo</a>
+      </div>
+    </div>
+    {% if not top10_inadimplentes %}
+    <p class="kpi-hint" style="margin:0.5rem 0;">Nenhum cliente inadimplente no momento.</p>
+    {% else %}
+    <table class="vend-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th class="text-right">Faturas</th>
+          <th class="text-right">Valor em aberto</th>
+          <th class="text-right">Atraso</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in top10_inadimplentes %}
+        <tr>
+          <td>{{ c.nome }}</td>
+          <td class="text-right">{{ c.qtde_faturas }}</td>
+          <td class="text-right vend-val">{{ "%.1f"|format(c.valor_total / 1000)|replace('.', ',') }}k</td>
+          <td class="text-right vend-val">{{ c.dias_atraso }} dias</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
 {% endif %}
 {% endblock %}
 
@@ -440,6 +483,11 @@ function selecionarCliente(cod) {
   } else {
     url.searchParams.set('cliente', cod);
   }
+  window.location.href = url.toString();
+}
+function ordenarInadimplentes(order) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('inadimplentes_order', order);
   window.location.href = url.toString();
 }
 function selecionarEmpresa(id) {
