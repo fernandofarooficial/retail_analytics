@@ -35,7 +35,7 @@ git pull origin main && sudo systemctl restart retail_analytics
 - `usuarios.py` — gestão de usuários e permissões
 - `conta.py` — troca de senha
 - `metas.py` — módulo de metas, calendário, exceções, feriados regionais e perfis de calendário (admin only). Prefix: `/retail_analytics/metas`
-- `motor.py` — Motor Operacional (`/faturamento`, `/vendas`, `/estoque`). Prefix: `/retail_analytics/motor`. Em `/vendas`, ao selecionar um vendedor mostra Top 10 (clientes e produtos, aumentado de Top 5 em 2026-08) por faturamento do mês anterior com comparativo mês atual — `people.top10_clientes_vendedor`/`top10_produtos_vendedor`, também usado em `mobile.py`
+- `motor.py` — Motor Operacional (`/faturamento`, `/vendas`, `/estoque`). Prefix: `/retail_analytics/motor`. Em `/vendas`, ao selecionar um vendedor mostra Top 10 (clientes e produtos, aumentado de Top 5 em 2026-08) por faturamento do mês anterior com comparativo mês atual — `people.top10_clientes_vendedor`/`top10_produtos_vendedor`, também usado em `mobile.py`. `/vendas` também tem o quadro "Top 10 Inadimplentes" (2026-08) — ver seção "Inadimplência" abaixo
 - `gestao.py` — Gestão Estratégica (`/faturamento`, `/vendas`, `/estoque`). Prefix: `/retail_analytics/gestao`
 - `relatorios.py` (2026-08) — Relatórios, web only (sem equivalente mobile). Hoje só `/pedidos`
   (quadro de pedidos por vendedor — mês atual em R$ + meta/realizado semanal de Pedidos Gerados —
@@ -70,6 +70,22 @@ AND cod_natureza_operacao = '10030'
 ```
 
 **Séries PF vs. PJ:** `faciais.store_serie_rules` mapeia, por loja, quais séries de NF (`serie`) correspondem a Pessoa Física ou Jurídica (`person_kind`). `people.get_store_series(store_id)` retorna `(series_pf, series_pj)`; a maioria das queries analíticas (faturamento, ticket médio, ranking de clientes) filtra `microvix_movimento.serie = ANY(series_pf)` para considerar só vendas a PF, enquanto concentração/venda por vendedor a PJ usa `series_pj`. Existe também a view `faciais.vw_store_series` com o mesmo dado agregado em array, mas as queries em `people.py` consultam `store_serie_rules` diretamente.
+
+**Inadimplência — `people.top10_inadimplentes` (2026-08):** quadro "Top 10 Inadimplentes" em
+Motor > Vendas (web e mobile), com toggle de ordenação por valor em aberto ou dias de atraso
+(`?inadimplentes_order=valor|prazo`). Fonte: `microvix.microvix_faturas` (Web Service
+`LinxFaturas`), filtrando `receber_pagar='R'`, `cancelado='N'`, `excluido='N'`,
+`data_baixa IS NULL` e `data_vencimento < CURRENT_DATE`, agregado por `cod_cliente`.
+**Exclui `forma_pgto = 'Cartão'`:** nessas faturas o `cod_cliente` aponta pra adquirente/bandeira
+do cartão (ex: "REDE SA", "SICREDI CARTOES", "Banrisul", "VISA OPERADORA CARTÃO CRÉDITO") — é
+repasse de maquininha em trânsito, não dívida de cliente. Confirmado por investigação (2026-08):
+o link `documento`+`serie` entre `microvix_faturas` e `microvix_movimento` bate em 99,5% dos casos
+(as poucas divergências são só itens com `excluido='S'`), então não é problema de sincronização —
+é conceitual: só `Crediário`/`Chq.Prazo`/`Chq.Vista`/`Convênio` têm `cod_cliente` apontando pro
+cliente real. Ressalva conhecida: `data_baixa` praticamente não é preenchida pra faturas emitidas
+a partir de mai/2025 (em ambas as lojas testadas) — pode ser processo de cobrança real da loja
+(não reconciliam baixa no financeiro do Microvix) ou lacuna a confirmar com o lojista; os valores
+do quadro podem estar superestimados por conta disso.
 
 **Visitação — edição de `faciais.people` (2026-08):** na tela `/visitacao` (web e mobile), cada
 card de cliente tem um botão de editar (&#9998;) que abre um formulário (modal `<dialog>` na web,
@@ -241,7 +257,7 @@ Dados sincronizados do ERP Microvix via API. Chaves compostas geralmente incluem
 | `microvix_produtos_detalhes` | `(portal, empresa, cod_produto)` | Estoque atual por empresa: `quantidade`, `preco_venda`, `preco_custo`, `custo_medio` |
 | `microvix_clientes_fornecedores` | `(portal, cod_cliente)` | Clientes e fornecedores: nome, CPF/CNPJ, endereço, data nascimento, sexo |
 | `microvix_vendedores` | `(portal, cod_vendedor)` | Vendedores: nome, CPF, cargo, ativo, datas admissão/saída |
-| `microvix_faturas` | `(portal, cnpj_emp, codigo_fatura)` | Faturas e recebimentos |
+| `microvix_faturas` | `(portal, cnpj_emp, codigo_fatura)` | Faturas e recebimentos. Ver seção "Inadimplência" acima — `forma_pgto='Cartão'` tem `cod_cliente` de adquirente, não de cliente real |
 | `microvix_pedidos_venda` | `(portal, cnpj_emp, transacao, cod_produto)` | Pedidos de venda |
 | `microvix_pedidos_compra` | `(portal, cnpj_emp, cod_pedido, cod_produto)` | Pedidos de compra |
 | `microvix_produtos_inventario` | `(portal, cnpj_emp, cod_produto)` | Inventário por empresa |
