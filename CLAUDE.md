@@ -76,16 +76,19 @@ Motor > Vendas (web e mobile), com toggle de ordenação por valor em aberto ou 
 (`?inadimplentes_order=valor|prazo`). Fonte: `microvix.microvix_faturas` (Web Service
 `LinxFaturas`), filtrando `receber_pagar='R'`, `cancelado='N'`, `excluido='N'`,
 `data_baixa IS NULL` e `data_vencimento < CURRENT_DATE`, agregado por `cod_cliente`.
-**Exclui `forma_pgto = 'Cartão'`:** nessas faturas o `cod_cliente` aponta pra adquirente/bandeira
-do cartão (ex: "REDE SA", "SICREDI CARTOES", "Banrisul", "VISA OPERADORA CARTÃO CRÉDITO") — é
-repasse de maquininha em trânsito, não dívida de cliente. Confirmado por investigação (2026-08):
-o link `documento`+`serie` entre `microvix_faturas` e `microvix_movimento` bate em 99,5% dos casos
-(as poucas divergências são só itens com `excluido='S'`), então não é problema de sincronização —
-é conceitual: só `Crediário`/`Chq.Prazo`/`Chq.Vista`/`Convênio` têm `cod_cliente` apontando pro
-cliente real. Ressalva conhecida: `data_baixa` praticamente não é preenchida pra faturas emitidas
-a partir de mai/2025 (em ambas as lojas testadas) — pode ser processo de cobrança real da loja
-(não reconciliam baixa no financeiro do Microvix) ou lacuna a confirmar com o lojista; os valores
-do quadro podem estar superestimados por conta disso.
+**Restrito a `forma_pgto = 'Crediário'`** (2026-08, ajustado de "excluir só Cartão" pra essa
+forma mais estrita): é a única forma onde o `cod_cliente` aponta de modo confiável pro cliente
+real que comprou a prazo direto da loja. As demais ficam de fora — `Cartão` em especial tem
+`cod_cliente` apontando pra adquirente/bandeira (ex: "REDE SA", "SICREDI CARTOES", "Banrisul",
+"VISA OPERADORA CARTÃO CRÉDITO"), não pro cliente real: é repasse de maquininha em trânsito, não
+dívida de cliente; `Chq.Vista`/`Convênio` têm cliente real mas volume marginal (poucas dezenas de
+faturas no total). Confirmado por investigação (2026-08): o link `documento`+`serie` entre
+`microvix_faturas` e `microvix_movimento` bate em 99,5% dos casos (as poucas divergências são só
+itens com `excluido='S'`), então não é problema de sincronização — é conceitual, de qual
+`forma_pgto` tem `cod_cliente` confiável. Ressalva conhecida: `data_baixa` praticamente não é
+preenchida pra faturas emitidas a partir de mai/2025 (em ambas as lojas testadas) — pode ser
+processo de cobrança real da loja (não reconciliam baixa no financeiro do Microvix) ou lacuna a
+confirmar com o lojista; os valores do quadro podem estar superestimados por conta disso.
 
 **Visitação — edição de `faciais.people` (2026-08):** na tela `/visitacao` (web e mobile), cada
 card de cliente tem um botão de editar (&#9998;) que abre um formulário (modal `<dialog>` na web,
@@ -257,7 +260,7 @@ Dados sincronizados do ERP Microvix via API. Chaves compostas geralmente incluem
 | `microvix_produtos_detalhes` | `(portal, empresa, cod_produto)` | Estoque atual por empresa: `quantidade`, `preco_venda`, `preco_custo`, `custo_medio` |
 | `microvix_clientes_fornecedores` | `(portal, cod_cliente)` | Clientes e fornecedores: nome, CPF/CNPJ, endereço, data nascimento, sexo |
 | `microvix_vendedores` | `(portal, cod_vendedor)` | Vendedores: nome, CPF, cargo, ativo, datas admissão/saída |
-| `microvix_faturas` | `(portal, cnpj_emp, codigo_fatura)` | Faturas e recebimentos. Ver seção "Inadimplência" acima — `forma_pgto='Cartão'` tem `cod_cliente` de adquirente, não de cliente real |
+| `microvix_faturas` | `(portal, cnpj_emp, codigo_fatura)` | Faturas e recebimentos. Ver seção "Inadimplência" acima — só `forma_pgto='Crediário'` tem `cod_cliente` confiável (Cartão aponta pra adquirente, não pro cliente) |
 | `microvix_pedidos_venda` | `(portal, cnpj_emp, transacao, cod_produto)` | Pedidos de venda |
 | `microvix_pedidos_compra` | `(portal, cnpj_emp, cod_pedido, cod_produto)` | Pedidos de compra |
 | `microvix_produtos_inventario` | `(portal, cnpj_emp, cod_produto)` | Inventário por empresa |
