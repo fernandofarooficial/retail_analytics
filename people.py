@@ -690,9 +690,11 @@ def top10_inadimplentes(portal, cnpj, order_by='valor'):
     """Top 10 clientes inadimplentes da loja: faturas a receber (microvix_faturas)
     vencidas e ainda não baixadas, agregadas por cliente.
 
-    Exclui faturas com forma_pgto='Cartão': nessas, o cod_cliente aponta pra
-    adquirente/bandeira (ex: "REDE SA", "SICREDI CARTOES"), não pro cliente real —
-    é repasse de maquininha em trânsito, não inadimplência de cliente (2026-08).
+    Restrito a forma_pgto='Crediário' (2026-08): é a única forma onde o cod_cliente
+    aponta de forma confiável pro cliente real que comprou a prazo direto da loja.
+    Cartão/Chq.Vista/Convênio ficaram de fora (Cartão em especial tem cod_cliente
+    apontando pra adquirente/bandeira, ex: "REDE SA", "SICREDI CARTOES" — não é
+    cliente real, é repasse de maquininha em trânsito).
 
     order_by: 'prazo' ordena pelo maior atraso (dias); qualquer outro valor
     (padrão 'valor') ordena pelo maior valor total em aberto.
@@ -714,7 +716,7 @@ def top10_inadimplentes(portal, cnpj, order_by='valor'):
           AND  f.receber_pagar      = 'R'
           AND  f.cancelado          = 'N'
           AND  f.excluido           = 'N'
-          AND  f.forma_pgto        <> 'Cartão'
+          AND  f.forma_pgto         = 'Crediário'
           AND  f.data_baixa IS NULL
           AND  f.data_vencimento    < CURRENT_DATE
         GROUP  BY f.cod_cliente, cf.nome_cliente, cf.razao_cliente, f.nome_cliente
