@@ -85,10 +85,18 @@ dívida de cliente; `Chq.Vista`/`Convênio` têm cliente real mas volume margina
 faturas no total). Confirmado por investigação (2026-08): o link `documento`+`serie` entre
 `microvix_faturas` e `microvix_movimento` bate em 99,5% dos casos (as poucas divergências são só
 itens com `excluido='S'`), então não é problema de sincronização — é conceitual, de qual
-`forma_pgto` tem `cod_cliente` confiável. Ressalva conhecida: `data_baixa` praticamente não é
-preenchida pra faturas emitidas a partir de mai/2025 (em ambas as lojas testadas) — pode ser
-processo de cobrança real da loja (não reconciliam baixa no financeiro do Microvix) ou lacuna a
-confirmar com o lojista; os valores do quadro podem estar superestimados por conta disso.
+`forma_pgto` tem `cod_cliente` confiável. Causa raiz encontrada e corrigida (2026-08): `data_baixa`
+praticamente não era preenchida pra faturas emitidas a partir de mai/2025 (em ambas as lojas
+testadas) — não era processo de cobrança real da loja nem lacuna do Microvix, e sim a
+sincronização (`camera300`, fora deste repo) só consultar `LinxFaturas` pelo período de *emissão*
+(`data_inicial`/`data_fim`); a API só aceita um período por chamada, então faturas antigas nunca
+eram revisitadas pra pegar a baixa feita depois. Corrigido no `camera300` (`microvix_ingest.py`,
+função `_ingerir_faturas_pagamento`) com uma segunda consulta a `LinxFaturas` filtrando por
+`data_inicial_pag`/`data_fim_pag` (janela móvel de 90 dias, cursor de controle próprio
+`LinxFaturasPag`), fazendo upsert em `microvix_faturas` por `(portal, cnpj_emp, codigo_fatura)` —
+atualiza `data_baixa`/`valor_pago` de faturas antigas sem duplicar registro. A partir da entrada
+em produção dessa segunda consulta, o backlog de faturas antigas deve começar a ser baixado
+retroativamente; os valores do quadro podem seguir superestimados só até esse backfill completar.
 
 **Visitação — edição de `faciais.people` (2026-08):** na tela `/visitacao` (web e mobile), cada
 card de cliente tem um botão de editar (&#9998;) que abre um formulário (modal `<dialog>` na web,
