@@ -85,7 +85,7 @@ dívida de cliente; `Chq.Vista`/`Convênio` têm cliente real mas volume margina
 faturas no total). Confirmado por investigação (2026-08): o link `documento`+`serie` entre
 `microvix_faturas` e `microvix_movimento` bate em 99,5% dos casos (as poucas divergências são só
 itens com `excluido='S'`), então não é problema de sincronização — é conceitual, de qual
-`forma_pgto` tem `cod_cliente` confiável. Causa raiz encontrada e corrigida (2026-08): `data_baixa`
+`forma_pgto` tem `cod_cliente` confiável. Causa raiz encontrada (2026-08): `data_baixa`
 praticamente não era preenchida pra faturas emitidas a partir de mai/2025 (em ambas as lojas
 testadas) — não era processo de cobrança real da loja nem lacuna do Microvix, e sim a
 sincronização (`camera300`, fora deste repo) só consultar `LinxFaturas` pelo período de *emissão*
@@ -93,10 +93,25 @@ sincronização (`camera300`, fora deste repo) só consultar `LinxFaturas` pelo 
 eram revisitadas pra pegar a baixa feita depois. Corrigido no `camera300` (`microvix_ingest.py`,
 função `_ingerir_faturas_pagamento`) com uma segunda consulta a `LinxFaturas` filtrando por
 `data_inicial_pag`/`data_fim_pag` (janela móvel de 90 dias, cursor de controle próprio
-`LinxFaturasPag`), fazendo upsert em `microvix_faturas` por `(portal, cnpj_emp, codigo_fatura)` —
-atualiza `data_baixa`/`valor_pago` de faturas antigas sem duplicar registro. A partir da entrada
-em produção dessa segunda consulta, o backlog de faturas antigas deve começar a ser baixado
-retroativamente; os valores do quadro podem seguir superestimados só até esse backfill completar.
+`LinxFaturasPag`), fazendo upsert em `microvix_faturas` por `(portal, cnpj_emp, codigo_fatura)`.
+
+**⚠️ Pendência em aberto (2026-08):** a correção acima e um backfill único (mai/2025→hoje) foram
+aplicados, mas **não resolveram o quadro pro portal `18922` (Ecoville POA, `cnpj 49104467000170`
+— a loja com o maior volume de "inadimplentes" hoje)**. Reconferido após o backfill: `Crediário`
+`receber_pagar='R'` desse portal segue com **0% de baixa em todo mês de mar/2025 a jun/2026**, sem
+nenhuma melhora (testado dez/2025 e jan/2026 especificamente, os meses que o backfill reportou
+como corrigidos na agregação geral — mas essa melhora veio de outro lugar, não daqui: os +44
+registros do backfill caíram em `receber_pagar='P'`, não `R`). Evidência de que o valor do quadro
+não reflete dívida real: o cliente `cod_cliente=1000040` ("LG - SERVICOS"/"Líder Gravataí", hoje
+#1 do ranking com R$ 310 mil / 307 faturas) tinha taxa de baixa normal de 80–100% entre jan/2024 e
+fev/2025, caiu pra 0% a partir de mar/2025 e **segue exatamente em 0% até hoje** — não é
+comportamento real de inadimplência, é o mesmo apagão de sincronização, ainda não corrigido nesse
+portal especificamente. Separadamente, o portal `19926` (Ecoville Itapema, `cnpj
+34881719000109`) nunca teve **nenhuma** baixa de `receber_pagar='R'` em toda a história
+sincronizada (não é um gap desde mai/2025, é ausência total) — pode ser processo de cobrança fora
+do Microvix pra essa loja, a confirmar com o lojista. **Enquanto isso não for resolvido no
+`camera300`, os valores do quadro "Top 10 Inadimplentes" não são confiáveis como dívida real —
+refletem principalmente o buraco de sincronização, não inadimplência de fato.**
 
 **Visitação — edição de `faciais.people` (2026-08):** na tela `/visitacao` (web e mobile), cada
 card de cliente tem um botão de editar (&#9998;) que abre um formulário (modal `<dialog>` na web,
