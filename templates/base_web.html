@@ -27,12 +27,14 @@
            href="{{ url_for('auth.ranking') }}">Ranking</a>
         <a class="nav-link {% if request.endpoint == 'auth.mapa_calor' %}active{% endif %}"
            href="{{ url_for('auth.mapa_calor') }}">Mapa de Calor</a>
+        {% if session.get('user_type_id') != 'emp' %}
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('gestao.') %}active{% endif %}"
            href="{{ url_for('gestao.faturamento') }}">Gestão</a>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('motor.') %}active{% endif %}"
            href="{{ url_for('motor.faturamento') }}">Motor</a>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('relatorios.') %}active{% endif %}"
            href="{{ url_for('relatorios.pedidos') }}">Relatórios</a>
+        {% endif %}
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('conta.') %}active{% endif %}"
            href="{{ url_for('conta.trocar_senha') }}">Trocar Senha</a>
     </div>

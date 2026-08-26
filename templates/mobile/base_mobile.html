@@ -29,10 +29,13 @@
   {% if _cid %}{% set _vis_url = _vis_url + '?company_id=' + _cid %}{% if _sid %}{% set _vis_url = _vis_url + '&store_id=' + _sid %}{% endif %}{% elif _sid %}{% set _vis_url = _vis_url + '?store_id=' + _sid %}{% endif %}
   {% set _heat_url = url_for('mobile.mapa_calor') %}
   {% if _cid %}{% set _heat_url = _heat_url + '?company_id=' + _cid %}{% if _sid %}{% set _heat_url = _heat_url + '&store_id=' + _sid %}{% endif %}{% elif _sid %}{% set _heat_url = _heat_url + '?store_id=' + _sid %}{% endif %}
+  {% set _pode_gestao_motor = session.get('user_type_id') != 'emp' %}
+  {% if _pode_gestao_motor %}
   {% set _gest_url = url_for('mobile.gestao_faturamento') %}
   {% if _cid %}{% set _gest_url = _gest_url + '?company_id=' + _cid %}{% if _sid %}{% set _gest_url = _gest_url + '&store_id=' + _sid %}{% endif %}{% elif _sid %}{% set _gest_url = _gest_url + '?store_id=' + _sid %}{% endif %}
   {% set _motor_url = url_for('mobile.motor_faturamento') %}
   {% if _cid %}{% set _motor_url = _motor_url + '?company_id=' + _cid %}{% if _sid %}{% set _motor_url = _motor_url + '&store_id=' + _sid %}{% endif %}{% elif _sid %}{% set _motor_url = _motor_url + '?store_id=' + _sid %}{% endif %}
+  {% endif %}
 
   <div class="m-more-backdrop" id="m-more-backdrop" onclick="fecharMais()"></div>
   <div class="m-more-menu" id="m-more-menu">
@@ -95,6 +98,7 @@
       </svg>
       <span class="m-bn-label">Mapa Calor</span>
     </a>
+    {% if _pode_gestao_motor %}
     <!-- Motor -->
     <a href="{{ _motor_url }}" class="m-bn-item {% if 'motor' in _ep %}active{% endif %}">
       <svg class="m-bn-icon" viewBox="0 0 24 24" fill="currentColor">
@@ -113,6 +117,7 @@
       </svg>
       <span class="m-bn-label">Gestão</span>
     </a>
+    {% endif %}
   </nav>
   {% endif %}
 

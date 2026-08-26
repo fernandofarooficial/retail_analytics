@@ -45,7 +45,7 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     cobertura_estoque as _cobertura_estoque,
                     produtos_por_pessoa as _produtos_por_pessoa)
 from routes.utils import (fmt_permanencia, kpi_tempo_loja, kpi_tempo_loja_range,
-                           tempo_gauge, HEIMDALL_IMAGE_BASE)
+                           tempo_gauge, HEIMDALL_IMAGE_BASE, block_user_types)
 
 mobile_bp = Blueprint('mobile', __name__)
 
@@ -2395,6 +2395,7 @@ def _gestao_mobile_ctx(endpoint):
 
 @mobile_bp.route('/gestao/faturamento')
 @_login_required
+@block_user_types('emp')
 def gestao_faturamento():
     ctx, redir = _gestao_mobile_ctx('mobile.gestao_faturamento')
     if redir:
@@ -2438,6 +2439,7 @@ def gestao_faturamento():
 
 @mobile_bp.route('/gestao/vendas')
 @_login_required
+@block_user_types('emp')
 def gestao_vendas():
     ctx, redir = _gestao_mobile_ctx('mobile.gestao_vendas')
     if redir:
@@ -2470,6 +2472,7 @@ def gestao_vendas():
 
 @mobile_bp.route('/gestao/estoque')
 @_login_required
+@block_user_types('emp')
 def gestao_estoque():
     ctx, redir = _gestao_mobile_ctx('mobile.gestao_estoque')
     if redir:
@@ -2491,6 +2494,7 @@ def gestao_estoque():
 
 @mobile_bp.route('/motor/faturamento')
 @_login_required
+@block_user_types('emp')
 def motor_faturamento():
     ctx, redir = _gestao_mobile_ctx('mobile.motor_faturamento')
     if redir:
@@ -2559,6 +2563,7 @@ def motor_faturamento():
 
 @mobile_bp.route('/motor/vendas')
 @_login_required
+@block_user_types('emp')
 def motor_vendas():
     ctx, redir = _gestao_mobile_ctx('mobile.motor_vendas')
     if redir:
@@ -2663,6 +2668,7 @@ def motor_vendas():
 
 @mobile_bp.route('/motor/estoque')
 @_login_required
+@block_user_types('emp')
 def motor_estoque():
     ctx, redir = _gestao_mobile_ctx('mobile.motor_estoque')
     if redir:

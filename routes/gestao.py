@@ -1,6 +1,6 @@
 from datetime import date as date_type
 from flask import Blueprint, render_template, request, redirect, url_for, session
-from routes.utils import login_required
+from routes.utils import login_required, block_user_types
 import db
 from people import (faturamento_mensal as _faturamento_mensal,
                     faturamento_periodos_mes as _faturamento_periodos_mes,
@@ -244,6 +244,7 @@ def _store_context(endpoint):
 
 @gestao_bp.route('/faturamento')
 @login_required
+@block_user_types('emp')
 def faturamento():
     ctx, redir = _store_context('gestao.faturamento')
     if redir:
@@ -290,6 +291,7 @@ def faturamento():
 
 @gestao_bp.route('/vendas')
 @login_required
+@block_user_types('emp')
 def vendas():
     ctx, redir = _store_context('gestao.vendas')
     if redir:
@@ -324,6 +326,7 @@ def vendas():
 
 @gestao_bp.route('/estoque')
 @login_required
+@block_user_types('emp')
 def estoque():
     ctx, redir = _store_context('gestao.estoque')
     if redir:

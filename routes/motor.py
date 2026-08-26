@@ -1,7 +1,7 @@
 import calendar
 from datetime import date as date_type
 from flask import Blueprint, render_template, request, redirect, url_for, session
-from routes.utils import login_required
+from routes.utils import login_required, block_user_types
 import db
 from people import (faturamento_diario_mes      as _faturamento_diario_mes,
                     vendedores_mes              as _vendedores_mes,
@@ -223,6 +223,7 @@ def _store_context(endpoint):
 
 @motor_bp.route('/faturamento')
 @login_required
+@block_user_types('emp')
 def faturamento():
     ctx, redir = _store_context('motor.faturamento')
     if redir:
@@ -290,6 +291,7 @@ def faturamento():
 
 @motor_bp.route('/vendas')
 @login_required
+@block_user_types('emp')
 def vendas():
     ctx, redir = _store_context('motor.vendas')
     if redir:
@@ -393,6 +395,7 @@ def vendas():
 
 @motor_bp.route('/estoque')
 @login_required
+@block_user_types('emp')
 def estoque():
     ctx, redir = _store_context('motor.estoque')
     if redir:

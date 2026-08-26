@@ -99,6 +99,19 @@ def screen_required(screen_id):
     return decorator
 
 
+def block_user_types(*user_types):
+    """Decorator que bloqueia (403) o acesso à rota para os tipos de usuário informados.
+    Usar após @login_required (ou equivalente) para garantir que a sessão já existe."""
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            if session.get('user_type_id') in user_types:
+                abort(403)
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
+
+
 def check_screen(screen_id):
     """Verificação inline de acesso à tela. Usar dentro de views com slug dinâmico."""
     row = db.query_one(

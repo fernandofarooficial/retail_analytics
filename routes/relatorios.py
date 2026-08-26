@@ -1,7 +1,7 @@
 import calendar
 from datetime import date as date_type, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, session
-from routes.utils import login_required
+from routes.utils import login_required, block_user_types
 import db
 from people import (pedidos_venda_por_vendedor as _pedidos_venda_por_vendedor,
                     pedidos_gerados_por_loja   as _pedidos_gerados_por_loja)
@@ -218,6 +218,7 @@ def _store_context(endpoint):
 
 @relatorios_bp.route('/pedidos')
 @login_required
+@block_user_types('emp')
 def pedidos():
     ctx, redir = _store_context('relatorios.pedidos')
     if redir:
