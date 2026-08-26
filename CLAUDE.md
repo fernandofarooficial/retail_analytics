@@ -136,6 +136,9 @@ que faz `UPDATE faciais.people` e redireciona de volta pra `/visitacao` preserva
 `company_id`/`store_id`/`date` (enviados como campos hidden no form). Web usa `flash()` pra
 confirmar sucesso/erro; mobile não tem `flash()` (base mobile não renderiza flashed messages) —
 em caso de erro no `UPDATE`, redireciona com `?pessoa_erro=1` e a página mostra um banner inline.
+Cada card também exibe `person_id` (ex: `#1234`) centralizado abaixo da foto/placeholder (2026-08,
+`.vis-photo-wrap`/`.vis-person-id` na web, `.m-vis-photo-wrap`/`.m-vis-person-id` no mobile) —
+identificador visual rápido do cadastro em `faciais.people`, sem link/ação associada.
 
 ## Template filters registrados em `app.py`
 
