@@ -1577,12 +1577,8 @@ def clientes():
 
     precisa_empresa = user_type in ('adm', 'man') and companies and not selected_company_id
 
-    # ── Data selecionada (padrão: hoje) ───────────────────────────────────────
-    data_str = request.args.get('date', date_type.today().strftime('%Y-%m-%d'))
-    try:
-        date_type.fromisoformat(data_str)
-    except ValueError:
-        data_str = date_type.today().strftime('%Y-%m-%d')
+    # ── Tela é sempre do dia atual (sem seletor de data) ────────────────────────
+    data_str = date_type.today().strftime('%Y-%m-%d')
 
     # ── Clientes do dia (ordem de chegada) ──────────────────────────────────────
     clientes_list = []

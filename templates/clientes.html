@@ -210,9 +210,7 @@
 {% else %}
 
 <div class="kpi-toolbar">
-  <label for="cli-date">Data</label>
-  <input type="date" id="cli-date" value="{{ data_str }}" onchange="mudarData(this.value)">
-  <span class="kpi-store-label">{{ active_store.store_name if active_store else 'Todas as lojas' }}</span>
+  <span class="kpi-store-label">Hoje · {{ active_store.store_name if active_store else 'Todas as lojas' }}</span>
 </div>
 
 <div class="cli-count-bar">
@@ -330,7 +328,6 @@
     <input type="hidden" name="origin" value="auth.clientes">
     <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
     <input type="hidden" name="store_id" value="{{ selected_store_id or '' }}">
-    <input type="hidden" name="date" value="{{ data_str }}">
     <div class="modal-header">
       <h2>Editar Cliente</h2>
       <button type="button" class="modal-close" onclick="fecharPessoaModal()">&times;</button>
@@ -432,11 +429,6 @@ function fecharPessoaModal() { cliModalAberto = false; pessoaModal.close(); }
 pessoaModal.addEventListener('click', e => { if (e.target === pessoaModal) fecharPessoaModal(); });
 pessoaModal.addEventListener('close', () => { cliModalAberto = false; });
 
-function mudarData(valor) {
-  const url = new URL(window.location.href);
-  url.searchParams.set('date', valor);
-  window.location.href = url.toString();
-}
 function selecionarEmpresa(id) {
   const url = new URL(window.location.href);
   if (id) url.searchParams.set('company_id', id);

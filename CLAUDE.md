@@ -145,8 +145,9 @@ identificador visual rápido do cadastro em `faciais.people`, sem link/ação as
 mobile (bottom-nav não tinha espaço pro 6º ícone). Mesma permissão de Visitação —
 `screen_required('dashboard')`, sem `screen_id` novo cadastrado. Lista vertical dos clientes
 (`person_type_id='C'`) por ordem de chegada decrescente (1ª detecção do dia, `MIN(created_at)`,
-recapturas no mesmo dia não alteram), foto grande em destaque. Filtro de loja com opção "Todas as
-lojas" — diferente de Visitação, que exige escolher uma loja específica; adm/man mantêm o fluxo
+recapturas no mesmo dia não alteram), foto grande em destaque. **Sem seletor de data** (diferente
+de Visitação) — a tela é sempre do dia atual, cada card mostra só a hora de chegada (`HH:MM`).
+Filtro de loja com opção "Todas as lojas" — diferente de Visitação, que exige escolher uma loja específica; adm/man mantêm o fluxo
 empresa→loja em 2 níveis, ret/emp não têm seletor de empresa e o escopo default já é "todas as
 lojas visíveis pro usuário". O dropdown grava `store_id=''` (não remove o parâmetro) ao selecionar
 "Todas as lojas", pra não disparar por engano a lógica de "restaurar última loja salva" (mesma de

@@ -169,12 +169,6 @@
     <div class="m-pessoa-erro">Não foi possível salvar os dados do cliente. Tente novamente.</div>
     {% endif %}
 
-    <div class="m-date-row">
-      <span class="m-date-label">Data</span>
-      <input type="date" class="m-date-input" value="{{ data_str }}"
-             onchange="mudarData(this.value)">
-    </div>
-
     <div class="m-cli-count-bar">
       <span class="m-cli-count">
         {% if clientes %}
@@ -332,7 +326,6 @@
     <input type="hidden" name="origin" value="mobile.clientes">
     <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
     <input type="hidden" name="store_id" value="{{ selected_store_id or '' }}">
-    <input type="hidden" name="date" value="{{ data_str }}">
 
     <div class="m-field" style="margin-bottom:0.75rem;">
       <label class="m-label">Nome completo</label>
@@ -388,11 +381,6 @@
 <script>
 let cliModalAberto = false;
 
-function mudarData(valor) {
-  const url = new URL(window.location.href);
-  url.searchParams.set('date', valor);
-  window.location.href = url.toString();
-}
 function abrirSeletorLoja() {
   document.getElementById('m-sheet-overlay').classList.add('open');
   document.getElementById('m-store-sheet').classList.add('open');
