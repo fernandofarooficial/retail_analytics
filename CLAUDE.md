@@ -42,9 +42,9 @@ git pull origin main && sudo systemctl restart retail_analytics
   movido de dentro de Motor > Vendas). Prefix: `/retail_analytics/relatorios`. Estrutura pensada
   pra crescer: menu "Relatórios" na navbar + sub-tabs (`.gest-tabs`) dentro da página pros
   relatórios futuros.
-- `utils.py` — decorators `@login_required`, `@screen_required(screen_id)`, helpers de KPI de tempo de permanência
+- `utils.py` — decorators `@login_required`, `@screen_required(screen_id)`, `@block_user_types(*user_types)` (2026-08, ver seção "Papéis de usuário" abaixo), helpers de KPI de tempo de permanência
 
-**Padrão `_store_context(endpoint)`:** centraliza carregamento de empresa/loja/tema/cnpj/portal em `motor.py`, `gestao.py` e `relatorios.py` (cada um com sua própria cópia local da função — não é compartilhada via import). Retorna `(ctx_dict, redirect_ou_None)`. `motor.py`, `gestao.py` e `relatorios.py` usam apenas `@login_required` (sem `@screen_required`); `cadastros.py`, `conta.py`, `usuarios.py` e as rotas de dashboard/ranking em `auth.py` usam `@screen_required(screen_id)`.
+**Padrão `_store_context(endpoint)`:** centraliza carregamento de empresa/loja/tema/cnpj/portal em `motor.py`, `gestao.py` e `relatorios.py` (cada um com sua própria cópia local da função — não é compartilhada via import). Retorna `(ctx_dict, redirect_ou_None)`. `motor.py`, `gestao.py` e `relatorios.py` usam `@login_required` (sem `@screen_required`) + `@block_user_types('emp')` em toda rota (2026-08); `cadastros.py`, `conta.py`, `usuarios.py` e as rotas de dashboard/ranking em `auth.py` usam `@screen_required(screen_id)`.
 
 **Queries analíticas:** `people.py` (~910 linhas) — funções de KPI Microvix, ranking, estoque; usa `get_store_series(store_id)` para obter `(series_pf, series_pj)` de `faciais.store_serie_rules`  
 **Lógica de metas:** `metas.py` (module, ~230 linhas) — resolução de meta efetiva (`_goal_value`), acumulado YTD, distribuição diária/semanal em tempo real a partir do valor mensal (`_distribuir_mensal`, `_weekly_target`)
@@ -59,6 +59,16 @@ git pull origin main && sudo systemctl restart retail_analytics
 | `man` | Grupos de empresas vinculados (`user_company_groups`) |
 | `ret` | Grupos de lojistas vinculados (`user_retailer_groups`) |
 | `emp` | Lojas específicas vinculadas (`user_stores`) |
+
+**Restrição `emp` a Gestão/Motor/Relatórios (2026-08):** usuários `emp` não têm acesso aos módulos
+Gestão Estratégica, Motor Operacional e Relatórios (nem web nem mobile) — só Dashboard, Visitação,
+Ranking e Mapa de Calor. Implementado via decorator `@block_user_types('emp')` (`routes/utils.py`)
+aplicado em toda rota de `motor.py`, `gestao.py`, `relatorios.py` e nos equivalentes mobile
+(`mobile.gestao_*`/`mobile.motor_*`) — retorna 403 se `session['user_type_id'] == 'emp'`. Os links
+correspondentes também somem da navbar (`base_web.html`) e da bottom nav (`base_mobile.html`) pra
+esse tipo de usuário. Diferente do mecanismo de `screens`/`user_type_screens` (que não tem
+`screen_id` cadastrado pra esses três módulos) — é uma checagem direta de `user_type_id`, não
+baseada em `vw_user_screen_access`.
 
 ## Filtro padrão Microvix (vendas)
 
