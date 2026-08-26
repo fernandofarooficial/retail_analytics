@@ -79,6 +79,18 @@
     color: #9CA3AF;
     font-size: 1.75rem;
   }
+  .vis-photo-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    flex-shrink: 0;
+  }
+  .vis-person-id {
+    font-size: 0.6875rem;
+    color: #9CA3AF;
+    text-align: center;
+  }
   .vis-info { flex: 1; min-width: 0; }
   .vis-name {
     font-size: 0.9375rem;
@@ -246,13 +258,16 @@
               data-gender-id="{{ c.gender_id or '' }}"
               data-notes="{{ c.notes or '' }}">&#9998;</button>
 
-      {% if c.img_url %}
-      <img class="vis-photo" src="{{ c.img_url }}" alt="Foto"
-           onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-      <div class="vis-photo-placeholder" style="display:none;">&#128100;</div>
-      {% else %}
-      <div class="vis-photo-placeholder">&#128100;</div>
-      {% endif %}
+      <div class="vis-photo-wrap">
+        {% if c.img_url %}
+        <img class="vis-photo" src="{{ c.img_url }}" alt="Foto"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="vis-photo-placeholder" style="display:none;">&#128100;</div>
+        {% else %}
+        <div class="vis-photo-placeholder">&#128100;</div>
+        {% endif %}
+        <div class="vis-person-id">#{{ c.person_id }}</div>
+      </div>
 
       <div class="vis-info">
         <div class="vis-name">{{ c.full_name or '(sem nome)' }}</div>
