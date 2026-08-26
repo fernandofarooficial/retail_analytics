@@ -13,7 +13,10 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     ticket_por_tipo as _ticket_por_tipo,
                     top5_por_tipo as _top5_por_tipo,
                     produtos_por_pessoa as _produtos_por_pessoa,
-                    get_store_series as _get_store_series)
+                    get_store_series as _get_store_series,
+                    clientes_do_dia as _clientes_do_dia,
+                    visitas_anteriores as _visitas_anteriores,
+                    compras_recentes_pessoa as _compras_recentes_pessoa)
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -1417,10 +1420,240 @@ def visitacao_editar_pessoa(person_id):
     except Exception as e:
         flash(f'Erro ao atualizar cliente: {e}', 'error')
 
-    return redirect(url_for('auth.visitacao',
+    origin = request.form.get('origin')
+    if origin not in ('auth.visitacao', 'auth.clientes'):
+        origin = 'auth.visitacao'
+    return redirect(url_for(origin,
                             company_id=request.form.get('company_id') or None,
                             store_id=request.form.get('store_id') or None,
                             date=request.form.get('date') or None))
+
+
+# ── Clientes (ordem de chegada do dia) ────────────────────────────────────────
+
+
+@auth_bp.route('/clientes')
+@login_required
+@screen_required('dashboard')
+def clientes():
+    user_id   = session['user_id']
+    user_type = session['user_type_id']
+    company_logo        = None
+    company_name        = None
+    companies            = []
+    selected_company_id = None
+    stores               = []
+    selected_store_id    = request.args.get('store_id', type=int)
+
+    # ── Restaurar última seleção ──────────────────────────────────────────────
+    if not selected_store_id and 'company_id' not in request.args and 'store_id' not in request.args:
+        saved = db.query_one(
+            "SELECT last_store_id FROM faciais.users WHERE user_id = %s",
+            (user_id,)
+        )
+        if saved and saved['last_store_id']:
+            last_sid = saved['last_store_id']
+            if user_type in ('adm', 'man'):
+                if user_type == 'adm':
+                    row = db.query_one(
+                        "SELECT company_id FROM faciais.stores WHERE store_id = %s",
+                        (last_sid,)
+                    )
+                else:
+                    row = db.query_one("""
+                        SELECT s.company_id
+                        FROM   faciais.stores s
+                        JOIN   faciais.companies c ON c.company_id = s.company_id
+                        JOIN   faciais.user_company_groups ucg
+                               ON ucg.company_group_id = c.company_group_id
+                        WHERE  s.store_id = %s AND ucg.user_id = %s
+                    """, (last_sid, user_id))
+                if row:
+                    return redirect(url_for('auth.clientes', company_id=row['company_id']))
+            # ret/emp: escopo já é 'todas as lojas' por padrão, não precisa redirecionar
+
+    # ── Carrega empresas e lojas ──────────────────────────────────────────────
+    if user_type == 'adm':
+        companies = db.query_all("""
+            SELECT c.company_id, c.company_name, ct.logo_url
+            FROM   faciais.companies c
+            JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
+            WHERE  ct.logo_url IS NOT NULL
+            ORDER  BY c.company_name
+        """)
+        selected_company_id = request.args.get('company_id', type=int)
+        if selected_company_id:
+            match = next((c for c in companies if c['company_id'] == selected_company_id), None)
+            if match:
+                company_logo = match['logo_url']
+                company_name = match['company_name']
+            stores = db.query_all("""
+                SELECT store_id, store_name, cnpj
+                FROM   faciais.stores
+                WHERE  company_id = %s
+                ORDER  BY store_name
+            """, (selected_company_id,))
+
+    elif user_type == 'man':
+        companies = db.query_all("""
+            SELECT DISTINCT c.company_id, c.company_name, ct.logo_url
+            FROM   faciais.user_company_groups ucg
+            JOIN   faciais.companies c        ON c.company_group_id = ucg.company_group_id
+            LEFT   JOIN faciais.company_themes ct ON ct.company_id  = c.company_id
+            WHERE  ucg.user_id = %s
+            ORDER  BY c.company_name
+        """, (user_id,))
+        selected_company_id = request.args.get('company_id', type=int)
+        if selected_company_id:
+            match = next((c for c in companies if c['company_id'] == selected_company_id), None)
+            if match:
+                company_logo = match['logo_url']
+                company_name = match['company_name']
+            stores = db.query_all("""
+                SELECT store_id, store_name, cnpj
+                FROM   faciais.stores
+                WHERE  company_id = %s
+                ORDER  BY store_name
+            """, (selected_company_id,))
+        else:
+            first = next((c for c in companies if c.get('logo_url')), None)
+            if first:
+                company_logo = first['logo_url']
+                company_name = first['company_name']
+
+    elif user_type == 'ret':
+        row = db.query_one("""
+            SELECT c.company_name, ct.logo_url
+            FROM   faciais.user_retailer_groups urg
+            JOIN   faciais.stores s          ON s.retailer_group_id = urg.retailer_group_id
+            JOIN   faciais.companies c       ON c.company_id = s.company_id
+            JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
+            WHERE  urg.user_id = %s AND ct.logo_url IS NOT NULL
+            LIMIT  1
+        """, (user_id,))
+        if row:
+            company_logo = row['logo_url']
+            company_name = row['company_name']
+        stores = db.query_all("""
+            SELECT DISTINCT s.store_id, s.store_name, s.cnpj
+            FROM   faciais.user_retailer_groups urg
+            JOIN   faciais.stores s ON s.retailer_group_id = urg.retailer_group_id
+            WHERE  urg.user_id = %s
+            ORDER  BY s.store_name
+        """, (user_id,))
+
+    elif user_type == 'emp':
+        row = db.query_one("""
+            SELECT c.company_name, ct.logo_url
+            FROM   faciais.user_stores us
+            JOIN   faciais.stores s          ON s.store_id = us.store_id
+            JOIN   faciais.companies c       ON c.company_id = s.company_id
+            JOIN   faciais.company_themes ct ON ct.company_id = c.company_id
+            WHERE  us.user_id = %s AND ct.logo_url IS NOT NULL
+            LIMIT  1
+        """, (user_id,))
+        if row:
+            company_logo = row['logo_url']
+            company_name = row['company_name']
+        stores = db.query_all("""
+            SELECT s.store_id, s.store_name, s.cnpj
+            FROM   faciais.user_stores us
+            JOIN   faciais.stores s ON s.store_id = us.store_id
+            WHERE  us.user_id = %s
+            ORDER  BY s.store_name
+        """, (user_id,))
+
+    # ── Resolve escopo: loja específica ou todas as lojas visíveis ─────────────
+    active_store    = None
+    store_scope_ids = []
+    if stores:
+        if selected_store_id:
+            active_store = next((s for s in stores if s['store_id'] == selected_store_id), None)
+        if active_store:
+            store_scope_ids = [active_store['store_id']]
+        else:
+            selected_store_id = None
+            store_scope_ids   = [s['store_id'] for s in stores]
+
+    precisa_empresa = user_type in ('adm', 'man') and companies and not selected_company_id
+
+    # ── Data selecionada (padrão: hoje) ───────────────────────────────────────
+    data_str = request.args.get('date', date_type.today().strftime('%Y-%m-%d'))
+    try:
+        date_type.fromisoformat(data_str)
+    except ValueError:
+        data_str = date_type.today().strftime('%Y-%m-%d')
+
+    # ── Clientes do dia (ordem de chegada) ──────────────────────────────────────
+    clientes_list = []
+    if store_scope_ids:
+        rows = _clientes_do_dia(store_scope_ids, data_str)
+        person_ids = [r['person_id'] for r in rows]
+        visitas_map = _visitas_anteriores(person_ids, data_str)
+
+        for r in rows:
+            visitas = visitas_map.get(r['person_id'])
+            is_recorrente = bool(visitas)
+            compras = _compras_recentes_pessoa(r['person_id']) if is_recorrente else []
+            clientes_list.append({
+                'person_id':         r['person_id'],
+                'full_name':         r['full_name'],
+                'nickname':          r['nickname'],
+                'document':          r['document'],
+                'phone':             r['phone'],
+                'email':             r['email'],
+                'birth_date':        r['birth_date'].strftime('%Y-%m-%d') if r['birth_date'] else '',
+                'age':               r['age'],
+                'gender_id':         r['gender_id'],
+                'gender_name':       r['gender_name'],
+                'person_type_name':  r['person_type_name'],
+                'notes':             r['notes'],
+                'store_name':        r['store_name'],
+                'is_recorrente':     is_recorrente,
+                'visitas_anteriores': visitas['datas'] if visitas else [],
+                'visitas_total':     visitas['total'] if visitas else 0,
+                'compras':           compras,
+                'primeiro_registro': r['primeiro_registro'].strftime('%H:%M') if r['primeiro_registro'] else None,
+                'img_url':           (HEIMDALL_IMAGE_BASE + r['image_path']) if r['image_path'] else None,
+            })
+
+    # ── Tema da empresa ───────────────────────────────────────────────────────
+    theme = dict(primary_color='#F47B20')
+    theme_company_id = selected_company_id
+    if not theme_company_id and active_store:
+        row = db.query_one(
+            "SELECT company_id FROM faciais.stores WHERE store_id = %s",
+            (active_store['store_id'],)
+        )
+        if row:
+            theme_company_id = row['company_id']
+    if theme_company_id:
+        row = db.query_one(
+            "SELECT primary_color FROM faciais.company_themes WHERE company_id = %s",
+            (theme_company_id,)
+        )
+        if row:
+            theme['primary_color'] = row['primary_color']
+
+    genders = db.query_all(
+        "SELECT gender_id, gender_name FROM faciais.genders WHERE gender_id <> 'A' ORDER BY gender_name"
+    )
+
+    return render_template(
+        'clientes.html',
+        company_logo=company_logo,
+        company_name=company_name,
+        companies=companies,
+        stores=stores,
+        selected_company_id=selected_company_id,
+        selected_store_id=selected_store_id,
+        active_store=active_store,
+        precisa_empresa=precisa_empresa,
+        data_str=data_str,
+        theme=theme,
+        clientes=clientes_list,
+        genders=genders,
+    )
 
 
 # ── Mapa de Calor ─────────────────────────────────────────────────────────────

@@ -27,6 +27,8 @@
   {% if _cid %}{% set _dash_url = _dash_url + '?company_id=' + _cid %}{% if _sid %}{% set _dash_url = _dash_url + '&store_id=' + _sid %}{% endif %}{% elif _sid %}{% set _dash_url = _dash_url + '?store_id=' + _sid %}{% endif %}
   {% set _vis_url = url_for('mobile.visitacao') %}
   {% if _cid %}{% set _vis_url = _vis_url + '?company_id=' + _cid %}{% if _sid %}{% set _vis_url = _vis_url + '&store_id=' + _sid %}{% endif %}{% elif _sid %}{% set _vis_url = _vis_url + '?store_id=' + _sid %}{% endif %}
+  {% set _cli_url = url_for('mobile.clientes') %}
+  {% if _cid %}{% set _cli_url = _cli_url + '?company_id=' + _cid %}{% if _sid %}{% set _cli_url = _cli_url + '&store_id=' + _sid %}{% endif %}{% elif _sid %}{% set _cli_url = _cli_url + '?store_id=' + _sid %}{% endif %}
   {% set _heat_url = url_for('mobile.mapa_calor') %}
   {% if _cid %}{% set _heat_url = _heat_url + '?company_id=' + _cid %}{% if _sid %}{% set _heat_url = _heat_url + '&store_id=' + _sid %}{% endif %}{% elif _sid %}{% set _heat_url = _heat_url + '?store_id=' + _sid %}{% endif %}
   {% set _pode_gestao_motor = session.get('user_type_id') != 'emp' %}
@@ -47,6 +49,13 @@
         <line x1="15" y1="18.5" x2="19" y2="18.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
       </svg>
       Visitas
+    </a>
+    <a href="{{ _cli_url }}" class="m-more-link">
+      <svg class="m-more-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      Clientes
     </a>
     <a href="{{ url_for('mobile.ranking') }}" class="m-more-link">
       <svg class="m-more-link-icon" viewBox="0 0 24 24" fill="currentColor">

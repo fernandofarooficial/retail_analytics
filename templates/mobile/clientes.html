@@ -1,0 +1,465 @@
+{% extends 'mobile/base_mobile.html' %}
+{% block title %}Clientes — Retail Analytics{% endblock %}
+
+{% block body %}
+<style>
+  :root {
+    --theme-primary: {{ theme.primary_color }};
+    --secondary:     {{ theme.secondary_color }};
+    --accent:        {{ theme.accent_color }};
+    --bg:            {{ theme.background_color }};
+  }
+  .m-header { background: var(--bg); border-bottom: 1px solid var(--border); justify-content: space-between; }
+  .m-hdr-left { display: flex; align-items: center; flex-shrink: 0; min-width: 0; max-width: 110px; }
+  .m-hdr-left .m-header-company-logo { max-width: 100%; }
+  .m-header-logo { flex: 32 0 0; min-width: 0; height: 40px; width: 100%; object-fit: contain; }
+  .m-hdr-right { display: flex; align-items: center; gap: 0.2rem; flex-shrink: 0; position: relative; }
+  .m-hdr-sep { width: 1px; height: 28px; background: var(--border, #E5E7EB); flex-shrink: 0; margin: 0; }
+  .m-hdr-info { display: flex; flex-direction: column; gap: 0; cursor: pointer; padding: 0.15rem 0.3rem; border-radius: 5px; transition: background .15s; }
+  .m-hdr-info:active { background: rgba(0,0,0,.06); }
+  .m-hdr-info-row { display: flex; align-items: baseline; gap: 0.2rem; line-height: 1.45; }
+  .m-hdr-info-lbl { font-size: 0.6rem; color: var(--accent); white-space: nowrap; }
+  .m-hdr-info-val { font-size: 0.68rem; font-weight: 700; color: var(--secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+
+  .m-cli-card {
+    position: relative;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: 1rem;
+    margin: 0 0 0.85rem 0;
+  }
+  .m-cli-edit-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9CA3AF;
+    font-size: 1.05rem;
+    line-height: 1;
+    padding: 0.35rem;
+    border-radius: 6px;
+  }
+  .m-cli-edit-btn:active { color: var(--theme-primary); background: #F9FAFB; }
+  .m-pessoa-erro {
+    background: #FEE2E2;
+    color: #991B1B;
+    font-size: 0.8rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+  }
+
+  .m-cli-top { display: flex; gap: 0.85rem; align-items: flex-start; }
+  .m-cli-photo-wrap { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; flex-shrink: 0; }
+  .m-cli-photo {
+    width: 108px;
+    height: 108px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #E5E7EB;
+  }
+  .m-cli-placeholder {
+    width: 108px;
+    height: 108px;
+    border-radius: 10px;
+    background: #E5E7EB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9CA3AF;
+    font-size: 2.5rem;
+  }
+  .m-cli-person-id { font-size: 0.65rem; color: #9CA3AF; }
+
+  .m-cli-info { flex: 1; min-width: 0; }
+  .m-cli-name { font-size: 0.95rem; font-weight: 700; color: #111827; }
+  .m-cli-nickname { font-size: 0.8rem; color: #6B7280; margin-top: 0.1rem; }
+  .m-cli-tags { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.35rem; }
+  .m-cli-tag { font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; background: #F3F4F6; color: #374151; }
+  .m-cli-tag-rec  { background: #D1FAE5; color: #065F46; }
+  .m-cli-tag-novo { background: #DBEAFE; color: #1E40AF; }
+  .m-cli-row { font-size: 0.78rem; color: #374151; margin-top: 0.25rem; display: flex; gap: 0.3rem; }
+  .m-cli-row-label { color: #9CA3AF; }
+
+  .m-cli-notes { font-size: 0.75rem; color: #6B7280; font-style: italic; margin-top: 0.5rem; word-break: break-word; }
+
+  .m-cli-visitas { margin-top: 0.6rem; padding-top: 0.55rem; border-top: 1px solid #F3F4F6; font-size: 0.78rem; color: #374151; }
+  .m-cli-visitas-titulo { font-weight: 600; color: #111827; margin-bottom: 0.25rem; }
+  .m-cli-visitas-datas { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .m-cli-visita-data { font-size: 0.7rem; padding: 0.08rem 0.4rem; border-radius: 4px; background: #F3F4F6; color: #374151; }
+
+  .m-cli-compra-dia { margin-top: 0.4rem; padding: 0.5rem 0.6rem; background: #F9FAFB; border-radius: 8px; }
+  .m-cli-compra-dia-header { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; color: #111827; gap: 0.4rem; }
+  .m-cli-compra-dia-valor { color: var(--theme-primary); white-space: nowrap; }
+  .m-cli-compra-produtos { margin-top: 0.3rem; font-size: 0.7rem; color: #6B7280; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .m-cli-compra-produto { background: #fff; border: 1px solid #E5E7EB; border-radius: 4px; padding: 0.08rem 0.35rem; }
+
+  .m-cli-empty { text-align: center; padding: 2.5rem 1rem; color: #9CA3AF; font-size: 0.875rem; }
+  .m-cli-count-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
+  .m-cli-count { font-size: 0.78rem; color: #6B7280; }
+  .m-cli-refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--theme-primary);
+    border: none;
+    border-radius: 6px;
+    padding: 0.3rem 0.65rem;
+    cursor: pointer;
+  }
+  .m-cli-refresh-btn:active { opacity: 0.8; }
+
+  .m-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; display: none; }
+  .m-sheet-overlay.open { display: block; }
+  .m-store-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-radius: 16px 16px 0 0; padding: 1rem 1.25rem calc(1.25rem + var(--safe-bottom, 0px)); z-index: 301; transform: translateY(100%); transition: transform .25s ease; }
+  .m-store-sheet.open { transform: translateY(0); }
+  .m-sheet-handle { width: 36px; height: 4px; background: #D1D5DB; border-radius: 2px; margin: 0 auto 1rem; }
+  .m-sheet-title { font-size: 0.95rem; font-weight: 700; color: #111827; margin-bottom: 1rem; }
+  .m-sheet-row { display: flex; align-items: center; gap: 0.625rem; margin-bottom: 0.75rem; }
+  .m-sheet-close { width: 100%; margin-top: 0.5rem; padding: 0.75rem; background: #F3F4F6; border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 600; color: #374151; cursor: pointer; }
+</style>
+
+<div class="m-app">
+
+  <!-- ── Header ───────────────────────────────────────────────────────── -->
+  <header class="m-header">
+    <div class="m-hdr-left">
+      {% if company_logo %}
+      <img src="/retail_analytics/static/{{ company_logo }}"
+           alt="{{ company_name }}" class="m-header-company-logo">
+      {% endif %}
+    </div>
+
+    <img src="/retail_analytics/static/img/logo_retail_analytics_br_1.png"
+         alt="Retail Analytics" class="m-header-logo">
+
+    <div class="m-hdr-right">
+      <span class="m-hdr-sep"></span>
+      {% set _pode_trocar = (session.get('user_type_id') in ('adm', 'man') and companies) or (stores and stores|length > 1) %}
+      <div class="m-hdr-info" {% if _pode_trocar %}onclick="abrirSeletorLoja()"{% endif %}>
+        <div class="m-hdr-info-row">
+          <span class="m-hdr-info-lbl">Empresa:</span>
+          <span class="m-hdr-info-val">{{ company_name or '—' }}</span>
+        </div>
+        <div class="m-hdr-info-row">
+          <span class="m-hdr-info-lbl">Loja:</span>
+          <span class="m-hdr-info-val">
+            {% if active_store %}{{ active_store.store_short_name or '—' }}
+            {% else %}Todas{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Conteúdo ──────────────────────────────────────────────────────── -->
+  <main class="m-content">
+
+    {% if precisa_empresa %}
+    <p class="m-hint">Selecione uma empresa para visualizar os clientes.</p>
+    {% else %}
+
+    {% if pessoa_erro %}
+    <div class="m-pessoa-erro">Não foi possível salvar os dados do cliente. Tente novamente.</div>
+    {% endif %}
+
+    <div class="m-date-row">
+      <span class="m-date-label">Data</span>
+      <input type="date" class="m-date-input" value="{{ data_str }}"
+             onchange="mudarData(this.value)">
+    </div>
+
+    <div class="m-cli-count-bar">
+      <span class="m-cli-count">
+        {% if clientes %}
+          {{ clientes|length }} cliente{{ 's' if clientes|length != 1 else '' }}
+        {% else %}
+          0 clientes
+        {% endif %}
+      </span>
+      <button class="m-cli-refresh-btn" onclick="window.location.reload()">&#8635; Atualizar</button>
+    </div>
+
+    {% if clientes %}
+      {% for c in clientes %}
+      <div class="m-cli-card">
+
+        <button type="button" class="m-cli-edit-btn" title="Editar dados do cliente"
+                onclick="abrirEditarPessoa(this)"
+                data-id="{{ c.person_id }}"
+                data-full-name="{{ c.full_name or '' }}"
+                data-nickname="{{ c.nickname or '' }}"
+                data-document="{{ c.document or '' }}"
+                data-phone="{{ c.phone or '' }}"
+                data-email="{{ c.email or '' }}"
+                data-birth-date="{{ c.birth_date }}"
+                data-age="{{ c.age or '' }}"
+                data-gender-id="{{ c.gender_id or '' }}"
+                data-notes="{{ c.notes or '' }}">&#9998;</button>
+
+        <div class="m-cli-top">
+          <div class="m-cli-photo-wrap">
+            {% if c.img_url %}
+            <img class="m-cli-photo" src="{{ c.img_url }}" alt="Foto"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+            <div class="m-cli-placeholder" style="display:none;">&#128100;</div>
+            {% else %}
+            <div class="m-cli-placeholder">&#128100;</div>
+            {% endif %}
+            <div class="m-cli-person-id">#{{ c.person_id }}</div>
+          </div>
+
+          <div class="m-cli-info">
+            <div class="m-cli-name">{{ c.full_name or '(sem nome)' }}</div>
+            {% if c.nickname %}<div class="m-cli-nickname">"{{ c.nickname }}"</div>{% endif %}
+
+            <div class="m-cli-tags">
+              {% if c.is_recorrente %}
+              <span class="m-cli-tag m-cli-tag-rec">Recorrente</span>
+              {% else %}
+              <span class="m-cli-tag m-cli-tag-novo">1ª Visita</span>
+              {% endif %}
+              {% if c.person_type_name %}<span class="m-cli-tag">{{ c.person_type_name }}</span>{% endif %}
+              {% if c.gender_name %}<span class="m-cli-tag">{{ c.gender_name }}</span>{% endif %}
+              {% if c.age %}<span class="m-cli-tag">{{ c.age }} anos</span>{% endif %}
+            </div>
+
+            {% if c.primeiro_registro %}
+            <div class="m-cli-row"><span class="m-cli-row-label">Chegada:</span>{{ c.primeiro_registro }}{% if c.store_name %} · {{ c.store_name }}{% endif %}</div>
+            {% endif %}
+            {% if c.document %}
+            <div class="m-cli-row"><span class="m-cli-row-label">Doc:</span>{{ c.document }}</div>
+            {% endif %}
+            {% if c.phone %}
+            <div class="m-cli-row"><span class="m-cli-row-label">Tel:</span>{{ c.phone }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if c.email %}<div class="m-cli-row"><span class="m-cli-row-label">E-mail:</span>{{ c.email }}</div>{% endif %}
+        {% if c.notes %}<div class="m-cli-notes">{{ c.notes }}</div>{% endif %}
+
+        {% if c.is_recorrente %}
+        <div class="m-cli-visitas">
+          <div class="m-cli-visitas-titulo">Visitas anteriores ({{ c.visitas_total }})</div>
+          <div class="m-cli-visitas-datas">
+            {% for d in c.visitas_anteriores %}
+            <span class="m-cli-visita-data">{{ d.strftime('%d/%m/%Y') }}</span>
+            {% endfor %}
+          </div>
+
+          {% if c.compras %}
+          <div class="m-cli-visitas-titulo" style="margin-top:0.5rem;">Últimas compras</div>
+          {% for compra in c.compras %}
+          <div class="m-cli-compra-dia">
+            <div class="m-cli-compra-dia-header">
+              <span>{{ compra.data.strftime('%d/%m/%Y') }} · {{ compra.qtd_notas }} nota{{ 's' if compra.qtd_notas != 1 else '' }}</span>
+              <span class="m-cli-compra-dia-valor">{{ compra.valor_total|br_valor('R$') }}</span>
+            </div>
+            <div class="m-cli-compra-produtos">
+              {% for p in compra.produtos %}
+              <span class="m-cli-compra-produto">{{ p.nome }} ({{ p.quantidade|int }})</span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="m-cli-empty">Nenhum cliente registrado nesta data.</div>
+    {% endif %}
+
+    {% endif %}
+
+  </main>
+</div>
+
+<!-- ── Bottom-sheet: seletor de empresa/loja ──────────────────────── -->
+<div id="m-sheet-overlay" class="m-sheet-overlay" onclick="fecharSeletorLoja()"></div>
+<div id="m-store-sheet" class="m-store-sheet">
+  <div class="m-sheet-handle"></div>
+  <div class="m-sheet-title">Empresa / Loja</div>
+
+  {% if session.get('user_type_id') in ('adm', 'man') and companies %}
+  <div class="m-sheet-row">
+    <span class="m-select-label">Empresa</span>
+    <select class="m-select" onchange="selecionarEmpresa(this.value)">
+      <option value="">— Selecione —</option>
+      {% for c in companies %}
+      <option value="{{ c.company_id }}"
+          {% if c.company_id == selected_company_id %}selected{% endif %}>
+        {{ c.company_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  {% if stores %}
+  <div class="m-sheet-row">
+    <span class="m-select-label">Loja</span>
+    <select class="m-select" onchange="selecionarLoja(this.value)">
+      <option value="">— Todas as lojas —</option>
+      {% for s in stores %}
+      <option value="{{ s.store_id }}"
+          {% if s.store_id == selected_store_id %}selected{% endif %}>
+        {{ s.store_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <button class="m-sheet-close" onclick="fecharSeletorLoja()">Fechar</button>
+</div>
+
+<!-- ── Bottom-sheet: editar cliente (reaproveitado de Visitação) ────── -->
+<div id="m-pessoa-overlay" class="m-sheet-overlay" onclick="fecharPessoaSheet()"></div>
+<div id="m-pessoa-sheet" class="m-store-sheet" style="max-height:85vh; overflow-y:auto;">
+  <div class="m-sheet-handle"></div>
+  <div class="m-sheet-title">Editar Cliente</div>
+
+  <form method="POST" id="m-pessoa-form">
+    <input type="hidden" name="origin" value="mobile.clientes">
+    <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
+    <input type="hidden" name="store_id" value="{{ selected_store_id or '' }}">
+    <input type="hidden" name="date" value="{{ data_str }}">
+
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Nome completo</label>
+      <input class="m-input" type="text" id="mpf-full-name" name="full_name" maxlength="255">
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Apelido</label>
+      <input class="m-input" type="text" id="mpf-nickname" name="nickname" maxlength="50">
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Documento (CPF)</label>
+      <input class="m-input" type="text" id="mpf-document" name="document" maxlength="14">
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Data de nascimento</label>
+      <input class="m-input" type="date" id="mpf-birth-date" name="birth_date">
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Idade</label>
+      <input class="m-input" type="number" id="mpf-age" name="age" min="0" max="120">
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Telefone</label>
+      <input class="m-input" type="text" id="mpf-phone" name="phone" maxlength="16"
+             inputmode="numeric" placeholder="(00) 0-0000-0000"
+             oninput="mascararTelefone(this)">
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">E-mail</label>
+      <input class="m-input" type="email" id="mpf-email" name="email" maxlength="255">
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Gênero</label>
+      <select class="m-select" id="mpf-gender" name="gender_id" style="width:100%; flex:none;">
+        <option value="">— Não informado —</option>
+        {% for g in genders %}
+        <option value="{{ g.gender_id }}">{{ g.gender_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Observações</label>
+      <textarea class="m-input" id="mpf-notes" name="notes" rows="3" maxlength="255"></textarea>
+    </div>
+
+    <button type="submit" class="m-cli-refresh-btn" style="width:100%; justify-content:center; padding:0.75rem;">Salvar</button>
+  </form>
+  <button class="m-sheet-close" onclick="fecharPessoaSheet()">Cancelar</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let cliModalAberto = false;
+
+function mudarData(valor) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('date', valor);
+  window.location.href = url.toString();
+}
+function abrirSeletorLoja() {
+  document.getElementById('m-sheet-overlay').classList.add('open');
+  document.getElementById('m-store-sheet').classList.add('open');
+}
+function fecharSeletorLoja() {
+  document.getElementById('m-sheet-overlay').classList.remove('open');
+  document.getElementById('m-store-sheet').classList.remove('open');
+}
+function mascararTelefone(input) {
+  let v = input.value.replace(/\D/g, '').slice(0, 11);
+  if (v.length > 7)      v = '(' + v.slice(0,2) + ') ' + v.slice(2,3) + '-' + v.slice(3,7) + '-' + v.slice(7);
+  else if (v.length > 3) v = '(' + v.slice(0,2) + ') ' + v.slice(2,3) + '-' + v.slice(3);
+  else if (v.length > 2) v = '(' + v.slice(0,2) + ') ' + v.slice(2);
+  else if (v.length > 0) v = '(' + v;
+  input.value = v;
+}
+function abrirEditarPessoa(btn) {
+  const d = btn.dataset;
+  document.getElementById('m-pessoa-form').action    = '/retail_analytics/m/visitacao/pessoa/' + d.id;
+  document.getElementById('mpf-full-name').value      = d.fullName;
+  document.getElementById('mpf-nickname').value       = d.nickname;
+  document.getElementById('mpf-document').value       = d.document;
+  document.getElementById('mpf-phone').value           = d.phone;
+  mascararTelefone(document.getElementById('mpf-phone'));
+  document.getElementById('mpf-email').value           = d.email;
+  document.getElementById('mpf-birth-date').value     = d.birthDate;
+  document.getElementById('mpf-age').value            = d.age;
+  document.getElementById('mpf-gender').value         = d.genderId;
+  document.getElementById('mpf-notes').value          = d.notes;
+  cliModalAberto = true;
+  document.getElementById('m-pessoa-overlay').classList.add('open');
+  document.getElementById('m-pessoa-sheet').classList.add('open');
+}
+function fecharPessoaSheet() {
+  cliModalAberto = false;
+  document.getElementById('m-pessoa-overlay').classList.remove('open');
+  document.getElementById('m-pessoa-sheet').classList.remove('open');
+}
+function selecionarEmpresa(id) {
+  const url = new URL(window.location.href);
+  if (id) { url.searchParams.set('company_id', id); }
+  else    { url.searchParams.delete('company_id'); }
+  url.searchParams.delete('store_id');
+  window.location.href = url.toString();
+}
+function selecionarLoja(id) {
+  const url = new URL(window.location.href);
+  // string vazia (não delete): marca "Todas as lojas" explicitamente, distinto
+  // de uma navegação sem nenhuma loja escolhida (que dispara a restauração da
+  // última loja salva do usuário).
+  url.searchParams.set('store_id', id || '');
+  window.location.href = url.toString();
+}
+
+// ── Auto-refresh (30s), pausado com sheet aberto, preservando rolagem ──────
+(function() {
+  const SCROLL_KEY = 'clientesScrollY';
+  const saved = sessionStorage.getItem(SCROLL_KEY);
+  if (saved !== null) {
+    window.scrollTo(0, parseInt(saved, 10) || 0);
+    sessionStorage.removeItem(SCROLL_KEY);
+  }
+  setInterval(() => {
+    if (cliModalAberto) return;
+    sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+    window.location.reload();
+  }, 30000);
+})();
+</script>
+{% endblock %}

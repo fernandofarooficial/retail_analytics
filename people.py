@@ -1031,3 +1031,142 @@ def produtos_por_pessoa(store_id, person_id, cnpj, days):
         GROUP  BY mp.nome, mp.referencia, mp.desc_linha
         ORDER  BY total_qty DESC
     """, (cnpj, person_id, store_id, days))
+
+
+# ── Tela Clientes (ordem de chegada do dia) ────────────────────────────────────
+
+def clientes_do_dia(store_ids, data_str):
+    """Clientes (person_type_id='C') com chegada (1ª detecção) na data informada,
+    restrita às lojas em store_ids, ordenados por chegada decrescente."""
+    rows = db.query_all("""
+        WITH day_det AS (
+            SELECT dr.person_id, MIN(dr.created_at) AS primeiro_registro
+            FROM   faciais.detection_records dr
+            JOIN   faciais.people p ON p.person_id = dr.person_id
+            WHERE  dr.store_id = ANY(%(store_ids)s)
+              AND  dr.created_at >= %(data)s::date AND dr.created_at < %(data)s::date + INTERVAL '1 day'
+              AND  dr.person_id IS NOT NULL
+              AND  p.person_type_id = 'C'
+            GROUP  BY dr.person_id
+        ),
+        primeira_loja AS (
+            SELECT DISTINCT ON (dr.person_id) dr.person_id, s.store_name
+            FROM   faciais.detection_records dr
+            JOIN   faciais.stores s ON s.store_id = dr.store_id
+            WHERE  dr.store_id = ANY(%(store_ids)s)
+              AND  dr.created_at >= %(data)s::date AND dr.created_at < %(data)s::date + INTERVAL '1 day'
+              AND  dr.person_id IS NOT NULL
+            ORDER  BY dr.person_id, dr.created_at ASC
+        ),
+        ultima_img AS (
+            SELECT DISTINCT ON (dr.person_id) dr.person_id, dr.image_path
+            FROM   faciais.detection_records dr
+            WHERE  dr.store_id = ANY(%(store_ids)s)
+              AND  dr.created_at >= %(data)s::date AND dr.created_at < %(data)s::date + INTERVAL '1 day'
+              AND  dr.person_id IS NOT NULL
+              AND  dr.image_path IS NOT NULL
+            ORDER  BY dr.person_id, dr.created_at DESC
+        )
+        SELECT
+            dd.person_id, dd.primeiro_registro, pl.store_name, ui.image_path,
+            p.full_name, p.nickname, p.document, p.phone, p.email,
+            p.birth_date, p.age, p.gender_id, g.gender_name,
+            p.person_type_id, pt.person_type_name, p.notes
+        FROM   day_det dd
+        JOIN   faciais.people p ON p.person_id = dd.person_id
+        LEFT   JOIN faciais.genders g      ON g.gender_id = p.gender_id
+        LEFT   JOIN faciais.person_types pt ON pt.person_type_id = p.person_type_id
+        LEFT   JOIN primeira_loja pl ON pl.person_id = dd.person_id
+        LEFT   JOIN ultima_img    ui ON ui.person_id = dd.person_id
+        ORDER  BY dd.primeiro_registro DESC
+    """, {'store_ids': store_ids, 'data': data_str})
+    return rows
+
+
+def visitas_anteriores(person_ids, data_str):
+    """Datas de detecção anterior a data_str (qualquer loja) por pessoa.
+    Retorna dict {person_id: {'datas': [date,...] desc, 'total': n}}."""
+    if not person_ids:
+        return {}
+    rows = db.query_all("""
+        SELECT dr.person_id,
+               array_agg(DISTINCT DATE(dr.created_at) ORDER BY DATE(dr.created_at) DESC) AS datas
+        FROM   faciais.detection_records dr
+        WHERE  dr.person_id = ANY(%s)
+          AND  dr.created_at < %s::date
+        GROUP  BY dr.person_id
+    """, (person_ids, data_str))
+    return {
+        r['person_id']: {'datas': r['datas'], 'total': len(r['datas'])}
+        for r in rows
+    }
+
+
+def compras_recentes_pessoa(person_id, max_dias=5):
+    """Últimas compras confirmadas da pessoa (até max_dias dias mais recentes),
+    em qualquer loja, com valor/qtd_notas/produtos consistentes entre si (mesma
+    consulta a microvix_movimento, casada por cnpj_emp+serie+documento).
+    Ver CLAUDE.md — documento sozinho não identifica a NF."""
+    rows = db.query_all("""
+        WITH compras AS (
+            SELECT
+                mm.data_documento::date AS dia,
+                mm.cnpj_emp, mm.serie, mm.documento,
+                mm.cod_produto, mm.quantidade, mm.valor_total,
+                mp.nome AS produto_nome
+            FROM   faciais.person_purchases pp
+            JOIN   faciais.stores st ON st.store_id = pp.store_id
+            JOIN   microvix.microvix_movimento mm
+                   ON  mm.cnpj_emp::bigint = st.cnpj
+                  AND  mm.documento        = pp.bill
+            JOIN   faciais.store_serie_rules ssr
+                   ON  ssr.store_id    = pp.store_id
+                  AND  ssr.person_kind = 'PF'
+                  AND  ssr.serie       = mm.serie
+            LEFT   JOIN microvix.microvix_produtos mp
+                   ON  mp.portal = mm.portal AND mp.cod_produto = mm.cod_produto
+            WHERE  pp.person_id     = %(person_id)s
+              AND  pp.is_cancelled  = FALSE
+              AND  mm.cancelado    <> 'S'
+              AND  mm.excluido     <> 'S'
+              AND  mm.soma_relatorio = 'S'
+              AND  (mm.tipo_transacao = ANY(ARRAY['P','V','S']) OR mm.tipo_transacao IS NULL)
+              AND  mm.cod_natureza_operacao = '10030'
+        ),
+        dias AS (
+            SELECT DISTINCT dia FROM compras ORDER BY dia DESC LIMIT %(max_dias)s
+        )
+        SELECT c.*
+        FROM   compras c
+        JOIN   dias d ON d.dia = c.dia
+        ORDER  BY c.dia DESC
+    """, {'person_id': person_id, 'max_dias': max_dias})
+
+    dias = {}
+    for r in rows:
+        dia = r['dia']
+        entry = dias.setdefault(dia, {
+            'data': dia,
+            'valor_total': 0.0,
+            'notas': set(),
+            'produtos': {},
+        })
+        entry['valor_total'] += float(r['valor_total'] or 0)
+        entry['notas'].add((r['cnpj_emp'], r['serie'], r['documento']))
+        if r['cod_produto'] is not None:
+            nome = r['produto_nome'] or f"Produto {r['cod_produto']}"
+            entry['produtos'][nome] = entry['produtos'].get(nome, 0.0) + float(r['quantidade'] or 0)
+
+    resultado = []
+    for dia in sorted(dias.keys(), reverse=True):
+        e = dias[dia]
+        resultado.append({
+            'data':        e['data'],
+            'valor_total': round(e['valor_total'], 2),
+            'qtd_notas':   len(e['notas']),
+            'produtos': sorted(
+                [{'nome': nome, 'quantidade': qtd} for nome, qtd in e['produtos'].items()],
+                key=lambda x: -x['quantidade']
+            ),
+        })
+    return resultado

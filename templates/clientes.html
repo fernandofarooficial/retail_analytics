@@ -1,0 +1,471 @@
+{% extends 'base_web.html' %}
+{% block title %}Clientes — Retail Analytics{% endblock %}
+
+{% block content %}
+<style>
+  :root { --theme-primary: {{ theme.primary_color }}; }
+
+  .cli-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  .cli-card {
+    position: relative;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 5px rgba(0,0,0,.09);
+    padding: 1.25rem;
+    display: flex;
+    gap: 1.25rem;
+  }
+  .cli-edit-btn {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9CA3AF;
+    font-size: 1.15rem;
+    line-height: 1;
+    padding: 0.3rem;
+    border-radius: 6px;
+  }
+  .cli-edit-btn:hover { color: var(--theme-primary); background: #F9FAFB; }
+
+  .cli-photo-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+  }
+  .cli-photo {
+    width: 140px;
+    height: 140px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: #E5E7EB;
+  }
+  .cli-photo-placeholder {
+    width: 140px;
+    height: 140px;
+    border-radius: 12px;
+    background: #E5E7EB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9CA3AF;
+    font-size: 3.5rem;
+  }
+  .cli-person-id { font-size: 0.7rem; color: #9CA3AF; }
+
+  .cli-info { flex: 1; min-width: 0; }
+  .cli-name { font-size: 1.0625rem; font-weight: 700; color: #111827; }
+  .cli-nickname { font-size: 0.85rem; color: #6B7280; margin-top: 0.1rem; }
+
+  .cli-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+  .cli-tag {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 4px;
+    background: #F3F4F6;
+    color: #374151;
+  }
+  .cli-tag-rec  { background: #D1FAE5; color: #065F46; }
+  .cli-tag-novo { background: #DBEAFE; color: #1E40AF; }
+
+  .cli-datagrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.4rem 1.25rem;
+    margin-top: 0.65rem;
+  }
+  .cli-row { font-size: 0.8125rem; color: #374151; }
+  .cli-row-label { color: #9CA3AF; font-size: 0.75rem; display: block; }
+
+  .cli-notes {
+    font-size: 0.8125rem;
+    color: #6B7280;
+    margin-top: 0.5rem;
+    font-style: italic;
+    word-break: break-word;
+  }
+
+  .cli-visitas {
+    margin-top: 0.75rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid #F3F4F6;
+    font-size: 0.8125rem;
+    color: #374151;
+  }
+  .cli-visitas-titulo { font-weight: 600; color: #111827; margin-bottom: 0.3rem; }
+  .cli-visitas-datas { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .cli-visita-data {
+    font-size: 0.75rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    background: #F3F4F6;
+    color: #374151;
+  }
+
+  .cli-compras { margin-top: 0.75rem; }
+  .cli-compra-dia {
+    margin-top: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    background: #F9FAFB;
+    border-radius: 8px;
+  }
+  .cli-compra-dia-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #111827;
+  }
+  .cli-compra-dia-valor { color: var(--theme-primary); }
+  .cli-compra-produtos {
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: #6B7280;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+  .cli-compra-produto {
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+  }
+
+  .cli-empty {
+    text-align: center;
+    padding: 3rem;
+    color: #9CA3AF;
+    font-size: 0.9375rem;
+  }
+  .cli-count-bar { display: flex; align-items: center; gap: 0.75rem; margin-top: 1rem; }
+  .cli-count { font-size: 0.875rem; color: #6B7280; }
+  .cli-refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--theme-primary);
+    border: none;
+    border-radius: 6px;
+    padding: 0.3rem 0.75rem;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .cli-refresh-btn:hover { opacity: 0.88; }
+</style>
+
+<div class="page-header">
+  <h1>Clientes</h1>
+  <div class="dashboard-selectors">
+
+    {% if session.get('user_type_id') in ('adm', 'man') and companies %}
+    <div class="dashboard-company-select">
+      <label for="company-select">Empresa:</label>
+      <select id="company-select" onchange="selecionarEmpresa(this.value)">
+        <option value="">— Selecione —</option>
+        {% for c in companies %}
+        <option value="{{ c.company_id }}"
+            {% if c.company_id == selected_company_id %}selected{% endif %}>
+          {{ c.company_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    {% if stores %}
+    <div class="dashboard-company-select">
+      <label for="store-select">Loja:</label>
+      <select id="store-select" onchange="selecionarLoja(this.value)">
+        <option value="">— Todas as lojas —</option>
+        {% for s in stores %}
+        <option value="{{ s.store_id }}"
+            {% if s.store_id == selected_store_id %}selected{% endif %}>
+          {{ s.store_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% if precisa_empresa %}
+<p class="kpi-hint">Selecione uma empresa para visualizar os clientes.</p>
+{% else %}
+
+<div class="kpi-toolbar">
+  <label for="cli-date">Data</label>
+  <input type="date" id="cli-date" value="{{ data_str }}" onchange="mudarData(this.value)">
+  <span class="kpi-store-label">{{ active_store.store_name if active_store else 'Todas as lojas' }}</span>
+</div>
+
+<div class="cli-count-bar">
+  <span class="cli-count">
+    {% if clientes %}
+      {{ clientes|length }} cliente{{ 's' if clientes|length != 1 else '' }} encontrado{{ 's' if clientes|length != 1 else '' }}
+    {% else %}
+      0 clientes encontrados
+    {% endif %}
+  </span>
+  <button class="cli-refresh-btn" onclick="window.location.reload()">&#8635; Atualizar</button>
+</div>
+
+<div class="cli-list">
+  {% if clientes %}
+    {% for c in clientes %}
+    <div class="cli-card">
+
+      <button type="button" class="cli-edit-btn" title="Editar dados do cliente"
+              onclick="abrirEditarPessoa(this)"
+              data-id="{{ c.person_id }}"
+              data-full-name="{{ c.full_name or '' }}"
+              data-nickname="{{ c.nickname or '' }}"
+              data-document="{{ c.document or '' }}"
+              data-phone="{{ c.phone or '' }}"
+              data-email="{{ c.email or '' }}"
+              data-birth-date="{{ c.birth_date }}"
+              data-age="{{ c.age or '' }}"
+              data-gender-id="{{ c.gender_id or '' }}"
+              data-notes="{{ c.notes or '' }}">&#9998;</button>
+
+      <div class="cli-photo-wrap">
+        {% if c.img_url %}
+        <img class="cli-photo" src="{{ c.img_url }}" alt="Foto"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="cli-photo-placeholder" style="display:none;">&#128100;</div>
+        {% else %}
+        <div class="cli-photo-placeholder">&#128100;</div>
+        {% endif %}
+        <div class="cli-person-id">#{{ c.person_id }}</div>
+      </div>
+
+      <div class="cli-info">
+        <div class="cli-name">{{ c.full_name or '(sem nome)' }}</div>
+        {% if c.nickname %}<div class="cli-nickname">"{{ c.nickname }}"</div>{% endif %}
+
+        <div class="cli-tags">
+          {% if c.is_recorrente %}
+          <span class="cli-tag cli-tag-rec">Recorrente</span>
+          {% else %}
+          <span class="cli-tag cli-tag-novo">1ª Visita</span>
+          {% endif %}
+          {% if c.person_type_name %}<span class="cli-tag">{{ c.person_type_name }}</span>{% endif %}
+          {% if c.gender_name %}<span class="cli-tag">{{ c.gender_name }}</span>{% endif %}
+          {% if c.age %}<span class="cli-tag">{{ c.age }} anos</span>{% endif %}
+        </div>
+
+        <div class="cli-datagrid">
+          {% if c.primeiro_registro %}
+          <div class="cli-row"><span class="cli-row-label">Chegada</span>{{ c.primeiro_registro }}{% if c.store_name %} · {{ c.store_name }}{% endif %}</div>
+          {% endif %}
+          {% if c.document %}
+          <div class="cli-row"><span class="cli-row-label">Documento</span>{{ c.document }}</div>
+          {% endif %}
+          {% if c.phone %}
+          <div class="cli-row"><span class="cli-row-label">Telefone</span>{{ c.phone }}</div>
+          {% endif %}
+          {% if c.email %}
+          <div class="cli-row"><span class="cli-row-label">E-mail</span>{{ c.email }}</div>
+          {% endif %}
+        </div>
+
+        {% if c.notes %}<div class="cli-notes">{{ c.notes }}</div>{% endif %}
+
+        {% if c.is_recorrente %}
+        <div class="cli-visitas">
+          <div class="cli-visitas-titulo">Visitas anteriores ({{ c.visitas_total }})</div>
+          <div class="cli-visitas-datas">
+            {% for d in c.visitas_anteriores %}
+            <span class="cli-visita-data">{{ d.strftime('%d/%m/%Y') }}</span>
+            {% endfor %}
+          </div>
+
+          {% if c.compras %}
+          <div class="cli-compras">
+            <div class="cli-visitas-titulo">Últimas compras</div>
+            {% for compra in c.compras %}
+            <div class="cli-compra-dia">
+              <div class="cli-compra-dia-header">
+                <span>{{ compra.data.strftime('%d/%m/%Y') }} · {{ compra.qtd_notas }} nota{{ 's' if compra.qtd_notas != 1 else '' }}</span>
+                <span class="cli-compra-dia-valor">{{ compra.valor_total|br_valor('R$') }}</span>
+              </div>
+              <div class="cli-compra-produtos">
+                {% for p in compra.produtos %}
+                <span class="cli-compra-produto">{{ p.nome }} ({{ p.quantidade|int }})</span>
+                {% endfor %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="cli-empty">Nenhum cliente registrado nesta data.</div>
+  {% endif %}
+</div>
+
+<!-- ── Modal: editar dados do cliente (reaproveitado de Visitação) ────── -->
+<dialog id="pessoa-modal">
+  <form method="POST" id="pessoa-form">
+    <input type="hidden" name="origin" value="auth.clientes">
+    <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
+    <input type="hidden" name="store_id" value="{{ selected_store_id or '' }}">
+    <input type="hidden" name="date" value="{{ data_str }}">
+    <div class="modal-header">
+      <h2>Editar Cliente</h2>
+      <button type="button" class="modal-close" onclick="fecharPessoaModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label>Nome completo</label>
+          <input type="text" id="pf-full-name" name="full_name" maxlength="255">
+        </div>
+        <div class="form-group">
+          <label>Apelido</label>
+          <input type="text" id="pf-nickname" name="nickname" maxlength="50">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Documento (CPF)</label>
+          <input type="text" id="pf-document" name="document" maxlength="14">
+        </div>
+        <div class="form-group">
+          <label>Data de nascimento</label>
+          <input type="date" id="pf-birth-date" name="birth_date">
+        </div>
+        <div class="form-group" style="flex:0 0 100px">
+          <label>Idade</label>
+          <input type="number" id="pf-age" name="age" min="0" max="120">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Telefone</label>
+          <input type="text" id="pf-phone" name="phone" maxlength="16"
+                 inputmode="numeric" placeholder="(00) 0-0000-0000"
+                 oninput="mascararTelefone(this)">
+        </div>
+        <div class="form-group" style="flex:2">
+          <label>E-mail</label>
+          <input type="email" id="pf-email" name="email" maxlength="255">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Gênero</label>
+          <select id="pf-gender" name="gender_id">
+            <option value="">— Não informado —</option>
+            {% for g in genders %}
+            <option value="{{ g.gender_id }}">{{ g.gender_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label>Observações</label>
+          <textarea id="pf-notes" name="notes" rows="3" maxlength="255"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-secondary" onclick="fecharPessoaModal()">Cancelar</button>
+      <button type="submit" class="btn-primary">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+{% endif %}
+
+<script>
+const pessoaModal = document.getElementById('pessoa-modal');
+const pessoaForm  = document.getElementById('pessoa-form');
+let cliModalAberto = false;
+
+function abrirEditarPessoa(btn) {
+  const d = btn.dataset;
+  pessoaForm.action                       = '/retail_analytics/visitacao/pessoa/' + d.id;
+  document.getElementById('pf-full-name').value  = d.fullName;
+  document.getElementById('pf-nickname').value   = d.nickname;
+  document.getElementById('pf-document').value   = d.document;
+  document.getElementById('pf-phone').value      = d.phone;
+  mascararTelefone(document.getElementById('pf-phone'));
+  document.getElementById('pf-email').value      = d.email;
+  document.getElementById('pf-birth-date').value = d.birthDate;
+  document.getElementById('pf-age').value        = d.age;
+  document.getElementById('pf-gender').value     = d.genderId;
+  document.getElementById('pf-notes').value      = d.notes;
+  cliModalAberto = true;
+  pessoaModal.showModal();
+}
+function mascararTelefone(input) {
+  let v = input.value.replace(/\D/g, '').slice(0, 11);
+  if (v.length > 7)      v = '(' + v.slice(0,2) + ') ' + v.slice(2,3) + '-' + v.slice(3,7) + '-' + v.slice(7);
+  else if (v.length > 3) v = '(' + v.slice(0,2) + ') ' + v.slice(2,3) + '-' + v.slice(3);
+  else if (v.length > 2) v = '(' + v.slice(0,2) + ') ' + v.slice(2);
+  else if (v.length > 0) v = '(' + v;
+  input.value = v;
+}
+function fecharPessoaModal() { cliModalAberto = false; pessoaModal.close(); }
+pessoaModal.addEventListener('click', e => { if (e.target === pessoaModal) fecharPessoaModal(); });
+pessoaModal.addEventListener('close', () => { cliModalAberto = false; });
+
+function mudarData(valor) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('date', valor);
+  window.location.href = url.toString();
+}
+function selecionarEmpresa(id) {
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set('company_id', id);
+  else    url.searchParams.delete('company_id');
+  url.searchParams.delete('store_id');
+  window.location.href = url.toString();
+}
+function selecionarLoja(id) {
+  const url = new URL(window.location.href);
+  // string vazia (não delete): marca "Todas as lojas" explicitamente, distinto
+  // de uma navegação sem nenhuma loja escolhida (que dispara a restauração da
+  // última loja salva do usuário).
+  url.searchParams.set('store_id', id || '');
+  window.location.href = url.toString();
+}
+
+// ── Auto-refresh (30s), pausado com modal aberto, preservando rolagem ──────
+(function() {
+  const SCROLL_KEY = 'clientesScrollY';
+  const saved = sessionStorage.getItem(SCROLL_KEY);
+  if (saved !== null) {
+    window.scrollTo(0, parseInt(saved, 10) || 0);
+    sessionStorage.removeItem(SCROLL_KEY);
+  }
+  setInterval(() => {
+    if (cliModalAberto) return;
+    sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+    window.location.reload();
+  }, 30000);
+})();
+</script>
+{% endblock %}

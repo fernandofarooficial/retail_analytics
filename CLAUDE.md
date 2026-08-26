@@ -140,6 +140,43 @@ Cada card também exibe `person_id` (ex: `#1234`) centralizado abaixo da foto/pl
 `.vis-photo-wrap`/`.vis-person-id` na web, `.m-vis-photo-wrap`/`.m-vis-person-id` no mobile) —
 identificador visual rápido do cadastro em `faciais.people`, sem link/ação associada.
 
+**Clientes — ordem de chegada do dia (2026-08):** tela nova `/clientes` (web, `auth.clientes`) /
+`/m/clientes` (mobile, `mobile.clientes`), ao lado de Visitação na navbar web / no menu "Mais" do
+mobile (bottom-nav não tinha espaço pro 6º ícone). Mesma permissão de Visitação —
+`screen_required('dashboard')`, sem `screen_id` novo cadastrado. Lista vertical dos clientes
+(`person_type_id='C'`) por ordem de chegada decrescente (1ª detecção do dia, `MIN(created_at)`,
+recapturas no mesmo dia não alteram), foto grande em destaque. Filtro de loja com opção "Todas as
+lojas" — diferente de Visitação, que exige escolher uma loja específica; adm/man mantêm o fluxo
+empresa→loja em 2 níveis, ret/emp não têm seletor de empresa e o escopo default já é "todas as
+lojas visíveis pro usuário". O dropdown grava `store_id=''` (não remove o parâmetro) ao selecionar
+"Todas as lojas", pra não disparar por engano a lógica de "restaurar última loja salva" (mesma de
+Visitação/Dashboard) — que exige o parâmetro totalmente ausente da URL pra disparar.
+
+Reaproveita o modal/formulário de edição de pessoa já existente em Visitação —
+`POST /visitacao/pessoa/<person_id>` (mesma rota, sem rota nova de backend). O redirect após salvar
+lê um campo hidden `origin` (whitelist `auth.visitacao`/`auth.clientes` no web,
+`mobile.visitacao`/`mobile.clientes` no mobile; default visitacao) pra voltar pra tela de onde o
+form foi submetido.
+
+Se o cliente é recorrente (detecção em qualquer dia anterior a hoje, em qualquer loja — não só a
+filtrada), mostra as datas das visitas anteriores + contador (`people.visitas_anteriores`). Se além
+de recorrente já comprou antes, mostra as últimas compras (até 5 dias mais recentes) com
+valor total, qtd. de notas e produtos+quantidades por dia (`people.compras_recentes_pessoa`).
+
+**⚠️ Cuidado de banco ao consultar compras por pessoa:** `documento` em `microvix_movimento` não é
+chave confiável nem combinado com `cnpj_emp` — a mesma dupla `(cnpj_emp, documento)` se repete
+entre séries diferentes da mesma loja (medido: milhares de casos). A chave que identifica a NF é
+`(cnpj_emp, serie, documento)`. `people.compras_recentes_pessoa` junta `faciais.person_purchases` →
+`microvix_movimento` casando por `cnpj_emp`+`documento` e restringindo `serie` via
+`store_serie_rules` (`person_kind='PF'`) pra reduzir a ambiguidade — mas `person_purchases` só tem
+`(store_id, bill)` como chave (sem série), então um resíduo de casos com o mesmo `documento` em
+mais de uma série PF da mesma loja (raro, confirmado em produção — ex.: loja `store_id=2`,
+`documento=7`, séries `100` e `3` ambas PF, notas de dias diferentes) ainda pode juntar a compra à
+pessoa errada. Valor e produtos exibidos sempre vêm da mesma consulta (nunca duas separadas), então
+pelo menos ficam consistentes entre si mesmo nesse caso residual. **`people.produtos_por_pessoa`**
+(usado em Ranking > pessoa) tem esse mesmo problema de ambiguidade de `documento` só sem a
+mitigação de série — não corrigido, ficou fora do escopo da tela Clientes.
+
 ## Template filters registrados em `app.py`
 
 - `br_valor(value, symbol='')` — formata BR com R$, %, ou unidade
