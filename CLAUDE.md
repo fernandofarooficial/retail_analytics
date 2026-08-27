@@ -164,11 +164,18 @@ filtrada), mostra as datas das visitas anteriores + contador (`people.visitas_an
 de recorrente já comprou antes, mostra as últimas compras (até 5 dias mais recentes) com
 valor total, qtd. de notas e produtos+quantidades por dia (`people.compras_recentes_pessoa`).
 
+Todo cliente com pelo menos uma nota confirmada (recorrente ou não — pode ser a compra de hoje
+mesmo) mostra também o **ticket médio**: valor total de todas as compras da pessoa (todo o
+histórico, qualquer loja/data, não só as últimas 5 exibidas) dividido pela qtd. de notas
+(`people.ticket_medio_pessoas`, uma query em lote pra todos os clientes da lista de uma vez, ao
+contrário de `compras_recentes_pessoa` que é por pessoa).
+
 **⚠️ Cuidado de banco ao consultar compras por pessoa:** `documento` em `microvix_movimento` não é
 chave confiável nem combinado com `cnpj_emp` — a mesma dupla `(cnpj_emp, documento)` se repete
 entre séries diferentes da mesma loja (medido: milhares de casos). A chave que identifica a NF é
-`(cnpj_emp, serie, documento)`. `people.compras_recentes_pessoa` junta `faciais.person_purchases` →
-`microvix_movimento` casando por `cnpj_emp`+`documento` e restringindo `serie` via
+`(cnpj_emp, serie, documento)`. `people.compras_recentes_pessoa` e `people.ticket_medio_pessoas`
+juntam `faciais.person_purchases` → `microvix_movimento` casando por `cnpj_emp`+`documento` e
+restringindo `serie` via
 `store_serie_rules` (`person_kind='PF'`) pra reduzir a ambiguidade — mas `person_purchases` só tem
 `(store_id, bill)` como chave (sem série), então um resíduo de casos com o mesmo `documento` em
 mais de uma série PF da mesma loja (raro, confirmado em produção — ex.: loja `store_id=2`,

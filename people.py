@@ -1102,6 +1102,56 @@ def visitas_anteriores(person_ids, data_str):
     }
 
 
+def ticket_medio_pessoas(person_ids):
+    """Ticket médio (valor total / qtd. de notas) por pessoa, considerando todo o
+    histórico de compras confirmadas (qualquer loja/data). Só entram pessoas com
+    pelo menos uma nota. Mesmo cuidado de (cnpj_emp, serie, documento) de
+    compras_recentes_pessoa — ver CLAUDE.md."""
+    if not person_ids:
+        return {}
+    rows = db.query_all("""
+        WITH compras AS (
+            SELECT
+                pp.person_id,
+                mm.cnpj_emp, mm.serie, mm.documento,
+                mm.valor_total
+            FROM   faciais.person_purchases pp
+            JOIN   faciais.stores st ON st.store_id = pp.store_id
+            JOIN   microvix.microvix_movimento mm
+                   ON  mm.cnpj_emp::bigint = st.cnpj
+                  AND  mm.documento        = pp.bill
+            JOIN   faciais.store_serie_rules ssr
+                   ON  ssr.store_id    = pp.store_id
+                  AND  ssr.person_kind = 'PF'
+                  AND  ssr.serie       = mm.serie
+            WHERE  pp.person_id     = ANY(%s)
+              AND  pp.is_cancelled  = FALSE
+              AND  mm.cancelado    <> 'S'
+              AND  mm.excluido     <> 'S'
+              AND  mm.soma_relatorio = 'S'
+              AND  (mm.tipo_transacao = ANY(ARRAY['P','V','S']) OR mm.tipo_transacao IS NULL)
+              AND  mm.cod_natureza_operacao = '10030'
+        )
+        SELECT person_id,
+               SUM(valor_total)                                     AS valor_total,
+               COUNT(DISTINCT (cnpj_emp, serie, documento))          AS qtd_notas
+        FROM   compras
+        GROUP  BY person_id
+    """, (person_ids,))
+    result = {}
+    for r in rows:
+        notas = int(r['qtd_notas'] or 0)
+        if notas <= 0:
+            continue
+        valor = float(r['valor_total'] or 0)
+        result[r['person_id']] = {
+            'valor_total':  round(valor, 2),
+            'qtd_notas':    notas,
+            'ticket_medio': round(valor / notas, 2),
+        }
+    return result
+
+
 def compras_recentes_pessoa(person_id, max_dias=5):
     """Últimas compras confirmadas da pessoa (até max_dias dias mais recentes),
     em qualquer loja, com valor/qtd_notas/produtos consistentes entre si (mesma

@@ -86,6 +86,7 @@
   }
   .cli-row { font-size: 0.8125rem; color: #374151; }
   .cli-row-label { color: #9CA3AF; font-size: 0.75rem; display: block; }
+  .cli-row-sub { color: #9CA3AF; font-size: 0.75rem; }
 
   .cli-notes {
     font-size: 0.8125rem;
@@ -271,6 +272,9 @@
         <div class="cli-datagrid">
           {% if c.primeiro_registro %}
           <div class="cli-row"><span class="cli-row-label">Chegada</span>{{ c.primeiro_registro }}{% if c.store_name %} · {{ c.store_name }}{% endif %}</div>
+          {% endif %}
+          {% if c.ticket_medio is not none %}
+          <div class="cli-row"><span class="cli-row-label">Ticket médio</span>{{ c.ticket_medio|br_valor('R$') }} <span class="cli-row-sub">({{ c.qtd_notas }} nota{{ 's' if c.qtd_notas != 1 else '' }})</span></div>
           {% endif %}
           {% if c.document %}
           <div class="cli-row"><span class="cli-row-label">Documento</span>{{ c.document }}</div>

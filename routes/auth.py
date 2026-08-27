@@ -16,7 +16,8 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     get_store_series as _get_store_series,
                     clientes_do_dia as _clientes_do_dia,
                     visitas_anteriores as _visitas_anteriores,
-                    compras_recentes_pessoa as _compras_recentes_pessoa)
+                    compras_recentes_pessoa as _compras_recentes_pessoa,
+                    ticket_medio_pessoas as _ticket_medio_pessoas)
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -1586,11 +1587,13 @@ def clientes():
         rows = _clientes_do_dia(store_scope_ids, data_str)
         person_ids = [r['person_id'] for r in rows]
         visitas_map = _visitas_anteriores(person_ids, data_str)
+        ticket_map  = _ticket_medio_pessoas(person_ids)
 
         for r in rows:
             visitas = visitas_map.get(r['person_id'])
             is_recorrente = bool(visitas)
             compras = _compras_recentes_pessoa(r['person_id']) if is_recorrente else []
+            ticket = ticket_map.get(r['person_id'])
             clientes_list.append({
                 'person_id':         r['person_id'],
                 'full_name':         r['full_name'],
@@ -1609,6 +1612,8 @@ def clientes():
                 'visitas_anteriores': visitas['datas'] if visitas else [],
                 'visitas_total':     visitas['total'] if visitas else 0,
                 'compras':           compras,
+                'ticket_medio':      ticket['ticket_medio'] if ticket else None,
+                'qtd_notas':         ticket['qtd_notas'] if ticket else 0,
                 'primeiro_registro': r['primeiro_registro'].strftime('%H:%M') if r['primeiro_registro'] else None,
                 'img_url':           (HEIMDALL_IMAGE_BASE + r['image_path']) if r['image_path'] else None,
             })

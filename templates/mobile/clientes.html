@@ -83,6 +83,7 @@
   .m-cli-tag-novo { background: #DBEAFE; color: #1E40AF; }
   .m-cli-row { font-size: 0.78rem; color: #374151; margin-top: 0.25rem; display: flex; gap: 0.3rem; }
   .m-cli-row-label { color: #9CA3AF; }
+  .m-cli-row-sub { color: #9CA3AF; font-size: 0.7rem; }
 
   .m-cli-notes { font-size: 0.75rem; color: #6B7280; font-style: italic; margin-top: 0.5rem; word-break: break-word; }
 
@@ -226,6 +227,9 @@
 
             {% if c.primeiro_registro %}
             <div class="m-cli-row"><span class="m-cli-row-label">Chegada:</span>{{ c.primeiro_registro }}{% if c.store_name %} · {{ c.store_name }}{% endif %}</div>
+            {% endif %}
+            {% if c.ticket_medio is not none %}
+            <div class="m-cli-row"><span class="m-cli-row-label">Ticket médio:</span>{{ c.ticket_medio|br_valor('R$') }} <span class="m-cli-row-sub">({{ c.qtd_notas }} nota{{ 's' if c.qtd_notas != 1 else '' }})</span></div>
             {% endif %}
             {% if c.document %}
             <div class="m-cli-row"><span class="m-cli-row-label">Doc:</span>{{ c.document }}</div>
