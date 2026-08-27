@@ -24,6 +24,10 @@ git pull origin main && sudo systemctl restart retail_analytics
 
 **Cron job:** `scripts/recalcular_ranking.py` roda diariamente às 23:45 no VPS (`45 23 * * *`) para recalcular `faciais.customer_ranking`. Log em `logs/ranking_job.log`.
 
+**Cron job (2026-08):** `scripts/resolver_notas_manuais.py` roda diariamente às 23:50 (`50 23 * * *`,
+logo depois do ranking) — resolve/expira `faciais.manual_purchase_links` pendentes (ver seção
+"Clientes — vínculo manual de nota fiscal"). Log em `logs/notas_manuais_job.log`.
+
 **Índices de performance:** `migrations/indexes_performance.sql` — rodar manualmente com `psql $PG_DSN -f migrations/indexes_performance.sql` (usa `CREATE INDEX CONCURRENTLY`, um comando por vez, fora de transaction block).
 
 ## Arquitetura
@@ -185,6 +189,44 @@ pelo menos ficam consistentes entre si mesmo nesse caso residual. **`people.prod
 (usado em Ranking > pessoa) tem esse mesmo problema de ambiguidade de `documento` só sem a
 mitigação de série — não corrigido, ficou fora do escopo da tela Clientes.
 
+**Clientes — vínculo manual de nota fiscal (2026-08):** cada card da tela Clientes (web e mobile)
+tem um botão &#129534; que abre um formulário pra digitar **número + série** de uma nota fiscal e
+vinculá-la à pessoa. Motivação: o melhor momento pra fazer esse vínculo é logo após a emissão da
+nota, mas nesse momento ela ainda não existe em `microvix_movimento` — o camera300 sincroniza o
+Microvix de forma assíncrona ao longo do dia, fora do controle deste app. Por isso o vínculo entra
+em staging (`faciais.manual_purchase_links`, `status='pending'`) em vez de gravar direto em
+`faciais.person_purchases`.
+
+*Resolução:* preguiçosa — a cada carregamento da tela Clientes, `people.manual_purchase_links_resolver_lojas`
+tenta casar cada `pending` das lojas em vista contra `microvix_movimento` (por
+`cnpj_emp`+`serie`+`numero_nota`, não cancelada/excluída). Quando acha, grava/corrige
+`faciais.person_purchases` diretamente (insere se não existia, ou troca o `person_id` se o
+camera300 já tinha atribuído a nota a outra pessoa — **o vínculo manual sempre prevalece**) e marca
+`confirmed`. Como isso já escreve em `person_purchases`, nenhuma query de leitura (`compras_recentes_pessoa`,
+`ticket_medio_pessoas`, `produtos_por_pessoa`) precisou mudar. Uma vez `confirmed`, a correção é
+**permanente** — apagar o registro de `manual_purchase_links` depois não desfaz o que já foi
+gravado em `person_purchases`, só remove o rastro de auditoria (por isso um link `confirmed` não é
+editável, só apagável). Pendentes com mais de 3 dias (`MANUAL_LINK_EXPIRA_DIAS`) expiram pra
+`not_found` (provável erro de digitação). Cron diário `scripts/resolver_notas_manuais.py` (23:50)
+chama `people.manual_purchase_links_resolver_todas()`, que faz a mesma resolução/expiração pra
+**toda** loja com pendência — cobre quem não abriu a tela Clientes daquela loja no período.
+
+*Sugestão de preenchimento:* o form já vem com série + número pré-preenchidos a partir do último
+lançamento **daquela loja** (`people.manual_purchase_link_sugestao`, qualquer status, `entered_at`
+mais recente) — número sugerido é o último + 1, já que a numeração de NF é sequencial por série
+dentro da loja.
+
+*Painel de revisão:* seção retrátil "Notas pendentes de revisão" na própria tela Clientes (sem rota
+GET própria — reaproveita o `store_scope_ids` já calculado na view), listando `pending`+`not_found`
+das lojas em vista, com ação de corrigir (número/série, volta pra `pending`) ou apagar. Mesma
+permissão de Visitação/Clientes (`screen_required('dashboard')`), sem restrição por quem lançou —
+qualquer usuário com acesso pode revisar o lançamento de outro.
+
+**Cuidado de dado herdado do camera300:** `faciais.person_purchases` é escrita pelo camera300 (este
+repo só lia, até esta feature) — a decisão de gravar direto nela em vez de manter uma view de
+override foi tomada sabendo que a escrita do camera300 nessa tabela também é um processo manual
+(não um pipeline automático que poderia re-visitar e sobrescrever silenciosamente a correção).
+
 ## Template filters registrados em `app.py`
 
 - `br_valor(value, symbol='')` — formata BR com R$, %, ou unidade
@@ -306,7 +348,8 @@ formatadas em R$ via `br_valor_k`; clicar num vendedor mostra o dia a dia da sem
 
 | Tabela | Descrição |
 |---|---|
-| `person_purchases` | Vínculo NF × pessoa reconhecida. Campos: `person_purchase_id`, `person_id` (NULL=não identificado), `store_id`, `bill` (nº NF, único por loja), `is_cancelled`, `is_identified` |
+| `person_purchases` | Vínculo NF × pessoa reconhecida. Campos: `person_purchase_id`, `person_id` (NULL=não identificado), `store_id`, `bill` (nº NF, único por loja), `is_cancelled`, `is_identified`. Escrita pelo camera300; desde 2026-08 também escrita por este app (resolução de `manual_purchase_links`, ver seção "Clientes — vínculo manual de nota fiscal") |
+| `manual_purchase_links` | (2026-08) Staging do vínculo manual nota×pessoa da tela Clientes, até a nota aparecer em `microvix_movimento`. Campos: `link_id`, `person_id`, `store_id`, `numero_nota`, `serie`, `status` (`pending`/`confirmed`/`not_found`), `entered_by`, `entered_at`, `resolved_at`. Unique `(store_id, serie, numero_nota)`. Ver seção "Clientes — vínculo manual de nota fiscal" |
 
 #### Views e materialized views
 

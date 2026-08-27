@@ -1,4 +1,5 @@
 import math
+import psycopg2
 import db
 
 
@@ -1050,7 +1051,7 @@ def clientes_do_dia(store_ids, data_str):
             GROUP  BY dr.person_id
         ),
         primeira_loja AS (
-            SELECT DISTINCT ON (dr.person_id) dr.person_id, s.store_name
+            SELECT DISTINCT ON (dr.person_id) dr.person_id, dr.store_id, s.store_name
             FROM   faciais.detection_records dr
             JOIN   faciais.stores s ON s.store_id = dr.store_id
             WHERE  dr.store_id = ANY(%(store_ids)s)
@@ -1068,7 +1069,7 @@ def clientes_do_dia(store_ids, data_str):
             ORDER  BY dr.person_id, dr.created_at DESC
         )
         SELECT
-            dd.person_id, dd.primeiro_registro, pl.store_name, ui.image_path,
+            dd.person_id, dd.primeiro_registro, pl.store_id, pl.store_name, ui.image_path,
             p.full_name, p.nickname, p.document, p.phone, p.email,
             p.birth_date, p.age, p.gender_id, g.gender_name,
             p.person_type_id, pt.person_type_name, p.notes
@@ -1220,3 +1221,199 @@ def compras_recentes_pessoa(person_id, max_dias=5):
             ),
         })
     return resultado
+
+
+# ── Vínculo manual de nota fiscal (tela Clientes) ──────────────────────────────
+# Ver CLAUDE.md, seção "Clientes — vínculo manual de nota fiscal", pro desenho
+# completo. Resumo: a nota ainda não existe em microvix_movimento no momento em
+# que o funcionário digita número+série (o camera300 sincroniza depois, de forma
+# assíncrona) — por isso isso fica em staging (status='pending') até uma
+# resolução preguiçosa (a cada carregamento da tela Clientes daquela loja, e
+# também no cron diário pra cobrir lojas sem acesso recente) achar a nota e
+# então gravar/corrigir faciais.person_purchases diretamente. O vínculo manual
+# sempre prevalece sobre o que o camera300 já tiver gravado ali. Uma vez
+# 'confirmed', a correção em person_purchases é permanente — apagar o registro
+# de auditoria aqui não desfaz.
+
+MANUAL_LINK_EXPIRA_DIAS = 3
+
+
+def manual_purchase_link_sugestao(store_id):
+    """Sugestão de série + próximo número pro form de vínculo manual, com base no
+    último lançamento (qualquer status) daquela loja."""
+    row = db.query_one("""
+        SELECT serie, numero_nota
+        FROM   faciais.manual_purchase_links
+        WHERE  store_id = %s
+        ORDER  BY entered_at DESC
+        LIMIT  1
+    """, (store_id,))
+    if not row:
+        return {'serie': None, 'numero_nota': None}
+    return {'serie': row['serie'], 'numero_nota': row['numero_nota'] + 1}
+
+
+def manual_purchase_link_criar(person_id, store_id, numero_nota, serie, entered_by):
+    """Cria o vínculo manual em staging. Retorna (ok, mensagem_erro)."""
+    try:
+        db.execute("""
+            INSERT INTO faciais.manual_purchase_links
+                (person_id, store_id, numero_nota, serie, entered_by)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (person_id, store_id, numero_nota, serie, entered_by))
+        return True, None
+    except psycopg2.errors.UniqueViolation:
+        return False, 'Essa nota já está vinculada a outro cliente nesta loja.'
+
+
+def _resolver_link(link, store_cnpj):
+    """Tenta casar um manual_purchase_link pendente com microvix_movimento. Se
+    achar, grava/corrige faciais.person_purchases (o manual sempre prevalece
+    sobre o que já estiver lá) e marca 'confirmed'. Retorna True se resolveu."""
+    nota = db.query_one("""
+        SELECT 1
+        FROM   microvix.microvix_movimento
+        WHERE  cnpj_emp::bigint = %s
+          AND  serie            = %s
+          AND  documento        = %s
+          AND  cancelado       <> 'S'
+          AND  excluido        <> 'S'
+        LIMIT  1
+    """, (store_cnpj, link['serie'], link['numero_nota']))
+    if not nota:
+        return False
+
+    existing = db.query_one("""
+        SELECT person_purchase_id, person_id
+        FROM   faciais.person_purchases
+        WHERE  store_id = %s AND bill = %s
+    """, (link['store_id'], link['numero_nota']))
+
+    if existing is None:
+        db.execute("""
+            INSERT INTO faciais.person_purchases (person_id, store_id, bill, is_identified)
+            VALUES (%s, %s, %s, TRUE)
+        """, (link['person_id'], link['store_id'], link['numero_nota']))
+    elif existing['person_id'] != link['person_id']:
+        db.execute("""
+            UPDATE faciais.person_purchases
+            SET    person_id = %s, is_identified = TRUE, is_cancelled = FALSE
+            WHERE  person_purchase_id = %s
+        """, (link['person_id'], existing['person_purchase_id']))
+
+    db.execute("""
+        UPDATE faciais.manual_purchase_links
+        SET    status = 'confirmed', resolved_at = now()
+        WHERE  link_id = %s
+    """, (link['link_id'],))
+    return True
+
+
+def manual_purchase_links_resolver_lojas(store_ids):
+    """Resolução preguiçosa: tenta casar todo link 'pending' das lojas em
+    store_ids contra microvix_movimento, e expira (not_found) os com mais de
+    MANUAL_LINK_EXPIRA_DIAS dias. Chamado a cada carregamento da tela Clientes
+    (com o escopo de lojas em vista) e pelo cron diário (todas as lojas com
+    pendência, pra cobrir quem não abriu a tela)."""
+    if not store_ids:
+        return
+    pendentes = db.query_all("""
+        SELECT mpl.link_id, mpl.person_id, mpl.store_id, mpl.numero_nota, mpl.serie,
+               s.cnpj AS store_cnpj
+        FROM   faciais.manual_purchase_links mpl
+        JOIN   faciais.stores s ON s.store_id = mpl.store_id
+        WHERE  mpl.store_id = ANY(%s) AND mpl.status = 'pending'
+    """, (store_ids,))
+    for link in pendentes:
+        if link['store_cnpj']:
+            _resolver_link(link, link['store_cnpj'])
+
+    db.execute("""
+        UPDATE faciais.manual_purchase_links
+        SET    status = 'not_found', resolved_at = now()
+        WHERE  store_id = ANY(%s) AND status = 'pending'
+          AND  entered_at < now() - (%s || ' days')::interval
+    """, (store_ids, MANUAL_LINK_EXPIRA_DIAS))
+
+
+def manual_purchase_links_resolver_todas():
+    """Mesma resolução acima, mas pra toda loja que tenha link 'pending' —
+    usada pelo cron diário, que não depende de alguém ter aberto a tela
+    Clientes daquela loja recentemente."""
+    store_ids = [r['store_id'] for r in db.query_all(
+        "SELECT DISTINCT store_id FROM faciais.manual_purchase_links WHERE status = 'pending'"
+    )]
+    manual_purchase_links_resolver_lojas(store_ids)
+
+
+def manual_purchase_links_por_pessoa(person_ids):
+    """Contagem de vínculos manuais pendentes/não localizados por pessoa (não
+    inclui 'confirmed', que já vira compra normal). Dict {person_id: {'pending':
+    n, 'not_found': n}}."""
+    if not person_ids:
+        return {}
+    rows = db.query_all("""
+        SELECT person_id, status, COUNT(*) AS qtd
+        FROM   faciais.manual_purchase_links
+        WHERE  person_id = ANY(%s) AND status IN ('pending', 'not_found')
+        GROUP  BY person_id, status
+    """, (person_ids,))
+    result = {}
+    for r in rows:
+        entry = result.setdefault(r['person_id'], {'pending': 0, 'not_found': 0})
+        entry[r['status']] = r['qtd']
+    return result
+
+
+def manual_purchase_links_listar(store_ids, status=None):
+    """Lista vínculos manuais das lojas em store_ids pro painel de revisão, com
+    nome da pessoa/loja/quem lançou. status=None traz pending+not_found (o que
+    precisa de ação); passe um status explícito pra outros casos (ex:
+    'confirmed', histórico)."""
+    if not store_ids:
+        return []
+    statuses = [status] if status else ['pending', 'not_found']
+    return db.query_all("""
+        SELECT mpl.link_id, mpl.person_id, mpl.store_id, mpl.numero_nota, mpl.serie,
+               mpl.status, mpl.entered_at, mpl.resolved_at,
+               p.full_name, p.nickname,
+               s.store_name,
+               u.full_name AS entered_by_name
+        FROM   faciais.manual_purchase_links mpl
+        JOIN   faciais.people p ON p.person_id = mpl.person_id
+        JOIN   faciais.stores s ON s.store_id  = mpl.store_id
+        LEFT   JOIN faciais.users u ON u.user_id = mpl.entered_by
+        WHERE  mpl.store_id = ANY(%s) AND mpl.status = ANY(%s)
+        ORDER  BY mpl.entered_at DESC
+    """, (store_ids, statuses))
+
+
+def manual_purchase_link_editar(link_id, numero_nota, serie):
+    """Corrige número/série de um link 'pending'/'not_found' e volta ele pra
+    'pending' pra ser re-testado. Um link já 'confirmed' não é editável (a
+    correção em person_purchases já é permanente — apagar e lançar de novo se
+    for o caso). Retorna (ok, mensagem_erro)."""
+    row = db.query_one(
+        "SELECT status FROM faciais.manual_purchase_links WHERE link_id = %s",
+        (link_id,)
+    )
+    if not row:
+        return False, 'Vínculo não encontrado.'
+    if row['status'] == 'confirmed':
+        return False, 'Vínculo já confirmado não pode ser editado.'
+    try:
+        db.execute("""
+            UPDATE faciais.manual_purchase_links
+            SET    numero_nota = %s, serie = %s, status = 'pending', resolved_at = NULL
+            WHERE  link_id = %s
+        """, (numero_nota, serie, link_id))
+        return True, None
+    except psycopg2.errors.UniqueViolation:
+        return False, 'Essa nota já está vinculada a outro cliente nesta loja.'
+
+
+def manual_purchase_link_apagar(link_id):
+    """Apaga o registro de auditoria do vínculo manual. Se já estava
+    'confirmed', isso NÃO desfaz a correção já aplicada em person_purchases —
+    só remove o rastro de quem/quando lançou."""
+    db.execute("DELETE FROM faciais.manual_purchase_links WHERE link_id = %s", (link_id,))

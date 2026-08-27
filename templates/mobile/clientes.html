@@ -43,13 +43,54 @@
     border-radius: 6px;
   }
   .m-cli-edit-btn:active { color: var(--theme-primary); background: #F9FAFB; }
-  .m-pessoa-erro {
-    background: #FEE2E2;
-    color: #991B1B;
+  .m-cli-nota-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 2.15rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9CA3AF;
+    font-size: 0.95rem;
+    line-height: 1;
+    padding: 0.35rem;
+    border-radius: 6px;
+  }
+  .m-cli-nota-btn:active { color: var(--theme-primary); background: #F9FAFB; }
+  .m-pessoa-erro, .m-nota-msg-ok {
     font-size: 0.8rem;
     padding: 0.6rem 0.75rem;
     border-radius: 8px;
     margin-bottom: 0.75rem;
+  }
+  .m-pessoa-erro { background: #FEE2E2; color: #991B1B; }
+  .m-nota-msg-ok { background: #D1FAE5; color: #065F46; }
+
+  .m-cli-tag-nota-pend { background: #FEF3C7; color: #92400E; }
+  .m-cli-tag-nota-nf   { background: #FEE2E2; color: #991B1B; }
+
+  .m-notas-panel {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: 0.85rem 1rem;
+    margin-bottom: 0.85rem;
+  }
+  .m-notas-panel summary { cursor: pointer; font-weight: 700; color: #111827; font-size: 0.85rem; }
+  .m-nota-item {
+    padding: 0.55rem 0;
+    border-top: 1px solid #F3F4F6;
+    font-size: 0.78rem;
+  }
+  .m-nota-item-nome { font-weight: 600; color: #111827; }
+  .m-nota-item-sub { color: #6B7280; font-size: 0.7rem; margin-top: 0.1rem; }
+  .m-nota-item-actions { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
+  .m-nota-item-actions button {
+    font-size: 0.72rem;
+    border: 1px solid #E5E7EB;
+    background: #fff;
+    border-radius: 6px;
+    padding: 0.25rem 0.55rem;
   }
 
   .m-cli-top { display: flex; gap: 0.85rem; align-items: flex-start; }
@@ -169,6 +210,41 @@
     {% if pessoa_erro %}
     <div class="m-pessoa-erro">Não foi possível salvar os dados do cliente. Tente novamente.</div>
     {% endif %}
+    {% if nota_msg %}
+    <div class="{{ 'm-nota-msg-ok' if nota_status == 'ok' else 'm-pessoa-erro' }}">{{ nota_msg }}</div>
+    {% endif %}
+
+    {% if notas_pendentes %}
+    <details class="m-notas-panel">
+      <summary>Notas pendentes de revisão ({{ notas_pendentes|length }})</summary>
+      {% for n in notas_pendentes %}
+      <div class="m-nota-item">
+        <div class="m-nota-item-nome">
+          {{ n.full_name or '(sem nome)' }}
+          <span class="m-cli-tag {{ 'm-cli-tag-nota-nf' if n.status == 'not_found' else 'm-cli-tag-nota-pend' }}">
+            {{ 'Não localizada' if n.status == 'not_found' else 'Pendente' }}
+          </span>
+        </div>
+        <div class="m-nota-item-sub">
+          {{ n.store_name }} · Nota {{ n.numero_nota }} série {{ n.serie }}
+          · lançada {{ n.entered_at.strftime('%d/%m/%Y %H:%M') }}{% if n.entered_by_name %} por {{ n.entered_by_name }}{% endif %}
+        </div>
+        <div class="m-nota-item-actions">
+          <button type="button" onclick="abrirEditarNota(this)"
+                  data-link-id="{{ n.link_id }}"
+                  data-numero-nota="{{ n.numero_nota }}"
+                  data-serie="{{ n.serie }}">Corrigir</button>
+          <form method="POST" action="{{ url_for('mobile.clientes_apagar_nota', link_id=n.link_id) }}"
+                onsubmit="return confirm('Apagar este vínculo?');" style="display:inline;">
+            <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
+            <input type="hidden" name="store_id_scope" value="{{ selected_store_id or '' }}">
+            <button type="submit">Apagar</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </details>
+    {% endif %}
 
     <div class="m-cli-count-bar">
       <span class="m-cli-count">
@@ -198,6 +274,15 @@
                 data-gender-id="{{ c.gender_id or '' }}"
                 data-notes="{{ c.notes or '' }}">&#9998;</button>
 
+        {% if c.store_id %}
+        <button type="button" class="m-cli-nota-btn" title="Vincular nota fiscal"
+                onclick="abrirVincularNota(this)"
+                data-person-id="{{ c.person_id }}"
+                data-store-id="{{ c.store_id }}"
+                data-sugestao-numero="{{ c.nota_sugestao_numero or '' }}"
+                data-sugestao-serie="{{ c.nota_sugestao_serie or '' }}">&#129534;</button>
+        {% endif %}
+
         <div class="m-cli-top">
           <div class="m-cli-photo-wrap">
             {% if c.img_url %}
@@ -223,6 +308,12 @@
               {% if c.person_type_name %}<span class="m-cli-tag">{{ c.person_type_name }}</span>{% endif %}
               {% if c.gender_name %}<span class="m-cli-tag">{{ c.gender_name }}</span>{% endif %}
               {% if c.age %}<span class="m-cli-tag">{{ c.age }} anos</span>{% endif %}
+              {% if c.notas_pendentes %}
+              <span class="m-cli-tag m-cli-tag-nota-pend">{{ c.notas_pendentes }} nota{{ 's' if c.notas_pendentes != 1 else '' }} pend.</span>
+              {% endif %}
+              {% if c.notas_nao_localizadas %}
+              <span class="m-cli-tag m-cli-tag-nota-nf">{{ c.notas_nao_localizadas }} não localizada{{ 's' if c.notas_nao_localizadas != 1 else '' }}</span>
+              {% endif %}
             </div>
 
             {% if c.primeiro_registro %}
@@ -318,6 +409,31 @@
   {% endif %}
 
   <button class="m-sheet-close" onclick="fecharSeletorLoja()">Fechar</button>
+</div>
+
+<!-- ── Bottom-sheet: vincular / corrigir nota fiscal manualmente ────── -->
+<div id="m-nota-overlay" class="m-sheet-overlay" onclick="fecharNotaSheet()"></div>
+<div id="m-nota-sheet" class="m-store-sheet">
+  <div class="m-sheet-handle"></div>
+  <div class="m-sheet-title" id="m-nota-title">Vincular nota fiscal</div>
+
+  <form method="POST" id="m-nota-form">
+    <input type="hidden" name="store_id" id="mnf-store-id" value="">
+    <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
+    <input type="hidden" name="store_id_scope" value="{{ selected_store_id or '' }}">
+
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Número da nota</label>
+      <input class="m-input" type="number" id="mnf-numero" name="numero_nota" min="1" required>
+    </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Série</label>
+      <input class="m-input" type="text" id="mnf-serie" name="serie" maxlength="20" required>
+    </div>
+
+    <button type="submit" class="m-cli-refresh-btn" style="width:100%; justify-content:center; padding:0.75rem;">Salvar</button>
+  </form>
+  <button class="m-sheet-close" onclick="fecharNotaSheet()">Cancelar</button>
 </div>
 
 <!-- ── Bottom-sheet: editar cliente (reaproveitado de Visitação) ────── -->
@@ -422,6 +538,33 @@ function fecharPessoaSheet() {
   cliModalAberto = false;
   document.getElementById('m-pessoa-overlay').classList.remove('open');
   document.getElementById('m-pessoa-sheet').classList.remove('open');
+}
+function abrirVincularNota(btn) {
+  const d = btn.dataset;
+  document.getElementById('m-nota-form').action = '/retail_analytics/m/clientes/pessoa/' + d.personId + '/nota';
+  document.getElementById('m-nota-title').textContent = 'Vincular nota fiscal';
+  document.getElementById('mnf-store-id').value = d.storeId;
+  document.getElementById('mnf-numero').value    = d.sugestaoNumero || '';
+  document.getElementById('mnf-serie').value     = d.sugestaoSerie || '';
+  cliModalAberto = true;
+  document.getElementById('m-nota-overlay').classList.add('open');
+  document.getElementById('m-nota-sheet').classList.add('open');
+}
+function abrirEditarNota(btn) {
+  const d = btn.dataset;
+  document.getElementById('m-nota-form').action = '/retail_analytics/m/clientes/notas/' + d.linkId + '/editar';
+  document.getElementById('m-nota-title').textContent = 'Corrigir vínculo de nota';
+  document.getElementById('mnf-store-id').value = '';
+  document.getElementById('mnf-numero').value    = d.numeroNota;
+  document.getElementById('mnf-serie').value     = d.serie;
+  cliModalAberto = true;
+  document.getElementById('m-nota-overlay').classList.add('open');
+  document.getElementById('m-nota-sheet').classList.add('open');
+}
+function fecharNotaSheet() {
+  cliModalAberto = false;
+  document.getElementById('m-nota-overlay').classList.remove('open');
+  document.getElementById('m-nota-sheet').classList.remove('open');
 }
 function selecionarEmpresa(id) {
   const url = new URL(window.location.href);

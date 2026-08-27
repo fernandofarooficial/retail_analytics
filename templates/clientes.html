@@ -35,6 +35,54 @@
     border-radius: 6px;
   }
   .cli-edit-btn:hover { color: var(--theme-primary); background: #F9FAFB; }
+  .cli-nota-btn {
+    position: absolute;
+    top: 0.6rem;
+    right: 2.35rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9CA3AF;
+    font-size: 1.05rem;
+    line-height: 1;
+    padding: 0.3rem;
+    border-radius: 6px;
+  }
+  .cli-nota-btn:hover { color: var(--theme-primary); background: #F9FAFB; }
+
+  .cli-tag-nota-pend { background: #FEF3C7; color: #92400E; }
+  .cli-tag-nota-nf   { background: #FEE2E2; color: #991B1B; }
+
+  .cli-notas-panel {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 5px rgba(0,0,0,.09);
+    padding: 1rem 1.25rem;
+    margin-top: 1.5rem;
+  }
+  .cli-notas-panel summary { cursor: pointer; font-weight: 700; color: #111827; font-size: 0.9375rem; }
+  .cli-nota-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    border-top: 1px solid #F3F4F6;
+    font-size: 0.8125rem;
+  }
+  .cli-nota-item-info { min-width: 0; }
+  .cli-nota-item-nome { font-weight: 600; color: #111827; }
+  .cli-nota-item-sub { color: #6B7280; font-size: 0.75rem; margin-top: 0.15rem; }
+  .cli-nota-item-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+  .cli-nota-item-actions button {
+    font-size: 0.75rem;
+    border: 1px solid #E5E7EB;
+    background: #fff;
+    border-radius: 6px;
+    padding: 0.25rem 0.6rem;
+    cursor: pointer;
+  }
+  .cli-nota-item-actions button:hover { background: #F9FAFB; }
 
   .cli-photo-wrap {
     display: flex;
@@ -243,6 +291,15 @@
               data-gender-id="{{ c.gender_id or '' }}"
               data-notes="{{ c.notes or '' }}">&#9998;</button>
 
+      {% if c.store_id %}
+      <button type="button" class="cli-nota-btn" title="Vincular nota fiscal"
+              onclick="abrirVincularNota(this)"
+              data-person-id="{{ c.person_id }}"
+              data-store-id="{{ c.store_id }}"
+              data-sugestao-numero="{{ c.nota_sugestao_numero or '' }}"
+              data-sugestao-serie="{{ c.nota_sugestao_serie or '' }}">&#129534;</button>
+      {% endif %}
+
       <div class="cli-photo-wrap">
         {% if c.img_url %}
         <img class="cli-photo" src="{{ c.img_url }}" alt="Foto"
@@ -267,6 +324,12 @@
           {% if c.person_type_name %}<span class="cli-tag">{{ c.person_type_name }}</span>{% endif %}
           {% if c.gender_name %}<span class="cli-tag">{{ c.gender_name }}</span>{% endif %}
           {% if c.age %}<span class="cli-tag">{{ c.age }} anos</span>{% endif %}
+          {% if c.notas_pendentes %}
+          <span class="cli-tag cli-tag-nota-pend">{{ c.notas_pendentes }} nota{{ 's' if c.notas_pendentes != 1 else '' }} pendente{{ 's' if c.notas_pendentes != 1 else '' }}</span>
+          {% endif %}
+          {% if c.notas_nao_localizadas %}
+          <span class="cli-tag cli-tag-nota-nf">{{ c.notas_nao_localizadas }} nota{{ 's' if c.notas_nao_localizadas != 1 else '' }} não localizada{{ 's' if c.notas_nao_localizadas != 1 else '' }}</span>
+          {% endif %}
         </div>
 
         <div class="cli-datagrid">
@@ -325,6 +388,69 @@
     <div class="cli-empty">Nenhum cliente registrado nesta data.</div>
   {% endif %}
 </div>
+
+{% if notas_pendentes %}
+<details class="cli-notas-panel">
+  <summary>Notas pendentes de revisão ({{ notas_pendentes|length }})</summary>
+  {% for n in notas_pendentes %}
+  <div class="cli-nota-item">
+    <div class="cli-nota-item-info">
+      <div class="cli-nota-item-nome">
+        {{ n.full_name or '(sem nome)' }}
+        <span class="cli-tag {{ 'cli-tag-nota-nf' if n.status == 'not_found' else 'cli-tag-nota-pend' }}">
+          {{ 'Não localizada' if n.status == 'not_found' else 'Pendente' }}
+        </span>
+      </div>
+      <div class="cli-nota-item-sub">
+        {{ n.store_name }} · Nota {{ n.numero_nota }} série {{ n.serie }}
+        · lançada {{ n.entered_at.strftime('%d/%m/%Y %H:%M') }}{% if n.entered_by_name %} por {{ n.entered_by_name }}{% endif %}
+      </div>
+    </div>
+    <div class="cli-nota-item-actions">
+      <button type="button" onclick="abrirEditarNota(this)"
+              data-link-id="{{ n.link_id }}"
+              data-numero-nota="{{ n.numero_nota }}"
+              data-serie="{{ n.serie }}">Corrigir</button>
+      <form method="POST" action="{{ url_for('auth.clientes_apagar_nota', link_id=n.link_id) }}"
+            onsubmit="return confirm('Apagar este vínculo?');" style="display:inline;">
+        <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
+        <input type="hidden" name="store_id_scope" value="{{ selected_store_id or '' }}">
+        <button type="submit">Apagar</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</details>
+{% endif %}
+
+<!-- ── Modal: vincular / corrigir nota fiscal manualmente ──────────────── -->
+<dialog id="nota-modal">
+  <form method="POST" id="nota-form">
+    <input type="hidden" name="store_id" id="nf-store-id" value="">
+    <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
+    <input type="hidden" name="store_id_scope" value="{{ selected_store_id or '' }}">
+    <div class="modal-header">
+      <h2 id="nota-modal-title">Vincular nota fiscal</h2>
+      <button type="button" class="modal-close" onclick="fecharNotaModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Número da nota</label>
+          <input type="number" id="nf-numero" name="numero_nota" min="1" required>
+        </div>
+        <div class="form-group">
+          <label>Série</label>
+          <input type="text" id="nf-serie" name="serie" maxlength="20" required>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-secondary" onclick="fecharNotaModal()">Cancelar</button>
+      <button type="submit" class="btn-primary">Salvar</button>
+    </div>
+  </form>
+</dialog>
 
 <!-- ── Modal: editar dados do cliente (reaproveitado de Visitação) ────── -->
 <dialog id="pessoa-modal">
@@ -432,6 +558,33 @@ function mascararTelefone(input) {
 function fecharPessoaModal() { cliModalAberto = false; pessoaModal.close(); }
 pessoaModal.addEventListener('click', e => { if (e.target === pessoaModal) fecharPessoaModal(); });
 pessoaModal.addEventListener('close', () => { cliModalAberto = false; });
+
+const notaModal = document.getElementById('nota-modal');
+const notaForm  = document.getElementById('nota-form');
+
+function abrirVincularNota(btn) {
+  const d = btn.dataset;
+  notaForm.action = '/retail_analytics/clientes/pessoa/' + d.personId + '/nota';
+  document.getElementById('nota-modal-title').textContent = 'Vincular nota fiscal';
+  document.getElementById('nf-store-id').value = d.storeId;
+  document.getElementById('nf-numero').value    = d.sugestaoNumero || '';
+  document.getElementById('nf-serie').value     = d.sugestaoSerie || '';
+  cliModalAberto = true;
+  notaModal.showModal();
+}
+function abrirEditarNota(btn) {
+  const d = btn.dataset;
+  notaForm.action = '/retail_analytics/clientes/notas/' + d.linkId + '/editar';
+  document.getElementById('nota-modal-title').textContent = 'Corrigir vínculo de nota';
+  document.getElementById('nf-store-id').value = '';
+  document.getElementById('nf-numero').value    = d.numeroNota;
+  document.getElementById('nf-serie').value     = d.serie;
+  cliModalAberto = true;
+  notaModal.showModal();
+}
+function fecharNotaModal() { cliModalAberto = false; notaModal.close(); }
+notaModal.addEventListener('click', e => { if (e.target === notaModal) fecharNotaModal(); });
+notaModal.addEventListener('close', () => { cliModalAberto = false; });
 
 function selecionarEmpresa(id) {
   const url = new URL(window.location.href);

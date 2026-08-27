@@ -47,7 +47,14 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     clientes_do_dia as _clientes_do_dia,
                     visitas_anteriores as _visitas_anteriores,
                     compras_recentes_pessoa as _compras_recentes_pessoa,
-                    ticket_medio_pessoas as _ticket_medio_pessoas)
+                    ticket_medio_pessoas as _ticket_medio_pessoas,
+                    manual_purchase_link_sugestao as _manual_purchase_link_sugestao,
+                    manual_purchase_link_criar as _manual_purchase_link_criar,
+                    manual_purchase_links_resolver_lojas as _manual_purchase_links_resolver_lojas,
+                    manual_purchase_links_por_pessoa as _manual_purchase_links_por_pessoa,
+                    manual_purchase_links_listar as _manual_purchase_links_listar,
+                    manual_purchase_link_editar as _manual_purchase_link_editar,
+                    manual_purchase_link_apagar as _manual_purchase_link_apagar)
 from routes.utils import (fmt_permanencia, kpi_tempo_loja, kpi_tempo_loja_range,
                            tempo_gauge, HEIMDALL_IMAGE_BASE, block_user_types)
 
@@ -1754,22 +1761,34 @@ def clientes():
     data_str = date_type.today().strftime('%Y-%m-%d')
 
     pessoa_erro = bool(request.args.get('pessoa_erro'))
+    nota_msg    = request.args.get('nota_msg')
+    nota_status = request.args.get('nota_status')
 
     # ── Clientes do dia (ordem de chegada) ──────────────────────────────────────
     clientes_list = []
+    notas_pendentes = []
     if store_scope_ids:
+        # Resolução preguiçosa dos vínculos manuais de nota pendentes das lojas
+        # em vista, antes de montar a lista (ver people.py).
+        _manual_purchase_links_resolver_lojas(store_scope_ids)
+
         rows = _clientes_do_dia(store_scope_ids, data_str)
         person_ids = [r['person_id'] for r in rows]
         visitas_map = _visitas_anteriores(person_ids, data_str)
         ticket_map  = _ticket_medio_pessoas(person_ids)
+        notas_map   = _manual_purchase_links_por_pessoa(person_ids)
+        notas_pendentes = _manual_purchase_links_listar(store_scope_ids)
 
         for r in rows:
             visitas = visitas_map.get(r['person_id'])
             is_recorrente = bool(visitas)
             compras = _compras_recentes_pessoa(r['person_id']) if is_recorrente else []
             ticket = ticket_map.get(r['person_id'])
+            notas   = notas_map.get(r['person_id'], {'pending': 0, 'not_found': 0})
+            sugestao = _manual_purchase_link_sugestao(r['store_id']) if r['store_id'] else {'serie': None, 'numero_nota': None}
             clientes_list.append({
                 'person_id':         r['person_id'],
+                'store_id':          r['store_id'],
                 'full_name':         r['full_name'],
                 'nickname':          r['nickname'],
                 'document':          r['document'],
@@ -1788,6 +1807,10 @@ def clientes():
                 'compras':           compras,
                 'ticket_medio':      ticket['ticket_medio'] if ticket else None,
                 'qtd_notas':         ticket['qtd_notas'] if ticket else 0,
+                'notas_pendentes':   notas['pending'],
+                'notas_nao_localizadas': notas['not_found'],
+                'nota_sugestao_serie':  sugestao['serie'],
+                'nota_sugestao_numero': sugestao['numero_nota'],
                 'primeiro_registro': r['primeiro_registro'].strftime('%H:%M') if r['primeiro_registro'] else None,
                 'img_url':           (HEIMDALL_IMAGE_BASE + r['image_path']) if r['image_path'] else None,
             })
@@ -1831,7 +1854,57 @@ def clientes():
         clientes=clientes_list,
         genders=genders,
         pessoa_erro=pessoa_erro,
+        notas_pendentes=notas_pendentes,
+        nota_msg=nota_msg,
+        nota_status=nota_status,
     )
+
+
+@mobile_bp.route('/clientes/pessoa/<int:person_id>/nota', methods=['POST'])
+@_login_required
+def clientes_criar_nota(person_id):
+    store_id    = request.form.get('store_id', type=int)
+    numero_nota = request.form.get('numero_nota', type=int)
+    serie       = request.form.get('serie', '').strip()
+
+    if not store_id or not numero_nota or not serie:
+        msg, status = 'Preencha número e série da nota.', 'erro'
+    else:
+        ok, erro = _manual_purchase_link_criar(person_id, store_id, numero_nota, serie, session['user_id'])
+        msg, status = (('Nota vinculada — confirma assim que sincronizar.', 'ok') if ok else (erro, 'erro'))
+
+    return redirect(url_for('mobile.clientes',
+                            company_id=request.form.get('company_id') or None,
+                            store_id=request.form.get('store_id_scope') or None,
+                            nota_msg=msg, nota_status=status))
+
+
+@mobile_bp.route('/clientes/notas/<int:link_id>/editar', methods=['POST'])
+@_login_required
+def clientes_editar_nota(link_id):
+    numero_nota = request.form.get('numero_nota', type=int)
+    serie       = request.form.get('serie', '').strip()
+
+    if not numero_nota or not serie:
+        msg, status = 'Preencha número e série da nota.', 'erro'
+    else:
+        ok, erro = _manual_purchase_link_editar(link_id, numero_nota, serie)
+        msg, status = (('Vínculo corrigido — vai ser testado de novo.', 'ok') if ok else (erro, 'erro'))
+
+    return redirect(url_for('mobile.clientes',
+                            company_id=request.form.get('company_id') or None,
+                            store_id=request.form.get('store_id_scope') or None,
+                            nota_msg=msg, nota_status=status))
+
+
+@mobile_bp.route('/clientes/notas/<int:link_id>/apagar', methods=['POST'])
+@_login_required
+def clientes_apagar_nota(link_id):
+    _manual_purchase_link_apagar(link_id)
+    return redirect(url_for('mobile.clientes',
+                            company_id=request.form.get('company_id') or None,
+                            store_id=request.form.get('store_id_scope') or None,
+                            nota_msg='Vínculo removido.', nota_status='ok'))
 
 
 # ── Ranking de Clientes ───────────────────────────────────────────────────────
