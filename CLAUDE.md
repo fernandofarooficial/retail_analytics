@@ -33,8 +33,8 @@ logo depois do ranking) — resolve/expira `faciais.manual_purchase_links` pende
 ## Arquitetura
 
 **Blueprints (`routes/`):**
-- `auth.py` (~1950 linhas) — login/logout, dashboard web, `/visitacao` (+ `/visitacao/pessoa/<person_id>` POST — edição de dados do cliente, ver seção "Visitação" abaixo), `/mapa-calor`, `/ranking` (+ `/ranking/<person_id>`, `/ranking/recalcular`), `/heatmap-imagem`. Prefix: `/retail_analytics`
-- `mobile.py` (~2690 linhas) — espelho do auth.py para mobile (login, dashboard, `/visitacao` + `/visitacao/pessoa/<person_id>` POST, `/ranking`, `/mapa-calor`, `/heatmap-imagem`) + `/sw.js` (PWA) + reimplementação própria (não reuso de blueprint) das telas de `gestao.py` (`/gestao/faturamento|vendas|estoque`) e `motor.py` (`/motor/faturamento|vendas|estoque`). Prefix: `/retail_analytics/m`. **Não tem equivalente de `relatorios.py`** — o quadro "Pedidos" (meta/realizado por vendedor) que existia em `/motor/vendas` foi removido do mobile (2026-08), só existe na versão web (`Relatórios > Pedidos`).
+- `auth.py` (~2320 linhas) — login/logout, dashboard web, `/visitacao` (+ `/visitacao/pessoa/<person_id>` POST — edição de dados do cliente, ver seção "Visitação" abaixo), `/clientes` (+ `/clientes/pessoa/<person_id>/nota`, `/clientes/notas/<link_id>/editar`, `/clientes/notas/<link_id>/apagar` POST — vínculo manual de nota fiscal, 2026-08, ver seção "Clientes — vínculo manual de nota fiscal" abaixo), `/mapa-calor`, `/ranking` (+ `/ranking/<person_id>`, `/ranking/recalcular`), `/heatmap-imagem`. Prefix: `/retail_analytics`
+- `mobile.py` (~3090 linhas) — espelho do auth.py para mobile (login, dashboard, `/visitacao` + `/visitacao/pessoa/<person_id>` POST, `/clientes` + rotas de nota fiscal manual (`/clientes/pessoa/<person_id>/nota`, `/clientes/notas/<link_id>/editar`, `/clientes/notas/<link_id>/apagar`), `/ranking` (+ `/ranking/<person_id>`, `/ranking/<person_id>/dados` — JSON usado pelo painel expansível inline de `/ranking`), `/mapa-calor`, `/heatmap-imagem`) + `/sw.js` (PWA) + reimplementação própria (não reuso de blueprint) das telas de `gestao.py` (`/gestao/faturamento|vendas|estoque`) e `motor.py` (`/motor/faturamento|vendas|estoque`). Prefix: `/retail_analytics/m`. **Não tem equivalente de `relatorios.py`** — o quadro "Pedidos" (meta/realizado por vendedor) que existia em `/motor/vendas` foi removido do mobile (2026-08), só existe na versão web (`Relatórios > Pedidos`).
 - `cadastros.py` — CRUD empresas, lojas, câmeras, temas, regras de ranking (`/ranking-regras`)
 - `usuarios.py` — gestão de usuários e permissões
 - `conta.py` — troca de senha
@@ -50,10 +50,10 @@ logo depois do ranking) — resolve/expira `faciais.manual_purchase_links` pende
 
 **Padrão `_store_context(endpoint)`:** centraliza carregamento de empresa/loja/tema/cnpj/portal em `motor.py`, `gestao.py` e `relatorios.py` (cada um com sua própria cópia local da função — não é compartilhada via import). Retorna `(ctx_dict, redirect_ou_None)`. `motor.py`, `gestao.py` e `relatorios.py` usam `@login_required` (sem `@screen_required`) + `@block_user_types('emp')` em toda rota (2026-08); `cadastros.py`, `conta.py`, `usuarios.py` e as rotas de dashboard/ranking em `auth.py` usam `@screen_required(screen_id)`.
 
-**Queries analíticas:** `people.py` (~910 linhas) — funções de KPI Microvix, ranking, estoque; usa `get_store_series(store_id)` para obter `(series_pf, series_pj)` de `faciais.store_serie_rules`  
+**Queries analíticas:** `people.py` (~1420 linhas) — funções de KPI Microvix, ranking, estoque; usa `get_store_series(store_id)` para obter `(series_pf, series_pj)` de `faciais.store_serie_rules`  
 **Lógica de metas:** `metas.py` (module, ~230 linhas) — resolução de meta efetiva (`_goal_value`), acumulado YTD, distribuição diária/semanal em tempo real a partir do valor mensal (`_distribuir_mensal`, `_weekly_target`)
 
-**Scripts (`scripts/`):** `recalcular_ranking.py` — job agendado via cron no VPS (`45 23 * * *`): faz `REFRESH MATERIALIZED VIEW faciais.mv_microvix_vendas`, trunca e repopula `faciais.customer_ranking` a partir de `faciais.vw_customer_ranking`. Log em `logs/ranking_job.log`.
+**Scripts (`scripts/`):** `recalcular_ranking.py` — job agendado via cron no VPS (`45 23 * * *`): faz `REFRESH MATERIALIZED VIEW faciais.mv_microvix_vendas`, trunca e repopula `faciais.customer_ranking` a partir de `faciais.vw_customer_ranking`. Log em `logs/ranking_job.log`. `resolver_notas_manuais.py` (2026-08) — job agendado às 23:50 (`50 23 * * *`): chama `people.manual_purchase_links_resolver_todas()` pra resolver/expirar vínculos manuais de nota fiscal pendentes (ver seção "Clientes — vínculo manual de nota fiscal" abaixo). Log em `logs/notas_manuais_job.log`.
 
 ## Papéis de usuário (`faciais.user_types`)
 
@@ -190,6 +190,19 @@ pessoa errada. Valor e produtos exibidos sempre vêm da mesma consulta (nunca du
 pelo menos ficam consistentes entre si mesmo nesse caso residual. **`people.produtos_por_pessoa`**
 (usado em Ranking > pessoa) tem esse mesmo problema de ambiguidade de `documento` só sem a
 mitigação de série — não corrigido, ficou fora do escopo da tela Clientes.
+
+**Ranking > pessoa — ticket médio no período (2026-08):** o card "Posição no Ranking" (web
+`/ranking/<person_id>`, mobile `/m/ranking/<person_id>` e o painel expansível inline de
+`/m/ranking`, este último renderizado em JS a partir do JSON de `/m/ranking/<person_id>/dados`)
+exibe ticket médio ao lado de "Total comprado no período". Calculado como `total_spent /
+visits_with_purchase` — **escopado ao período de análise do ranking** (`ranking_rules.analysis_period_days`),
+diferente do ticket médio da tela Clientes (`people.ticket_medio_pessoas`), que é histórico
+completo dividido por número de notas. Por isso o rótulo é "Ticket médio (visita c/ compra)": é
+total gasto por *visita com compra* no período (`visits_with_purchase` conta dias distintos com
+compra, não número de notas), não por nota fiscal — os dois conceitos podem divergir se a pessoa
+tiver mais de uma nota no mesmo dia. Mostra "—" quando não há visita com compra no período (evita
+divisão por zero). Calculado inline nas rotas (`ranking_pessoa`, `ranking_pessoa_dados` em
+`mobile.py`), sem função nova em `people.py`.
 
 **Clientes — vínculo manual de nota fiscal (2026-08):** cada card da tela Clientes (web e mobile)
 tem um botão &#129534; que abre um formulário pra digitar **número + série** de uma nota fiscal e
