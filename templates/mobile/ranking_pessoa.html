@@ -236,9 +236,13 @@
         <div class="m-rp-stat-value">{{ ranking_row.visits_with_purchase }}</div>
         <div class="m-rp-stat-label">c/ compra</div>
       </div>
-      <div class="m-rp-stat m-rp-stat-full">
+      <div class="m-rp-stat">
         <div class="m-rp-stat-value">{{ ranking_row.total_spent | br_valor('R$') }}</div>
         <div class="m-rp-stat-label">Total comprado no período</div>
+      </div>
+      <div class="m-rp-stat">
+        <div class="m-rp-stat-value">{{ ticket_medio_periodo | br_valor('R$') if ticket_medio_periodo is not none else '—' }}</div>
+        <div class="m-rp-stat-label">Ticket médio (c/ compra)</div>
       </div>
     </div>
     {% if ranking_row.last_visit_at %}

@@ -2133,6 +2133,10 @@ def ranking_pessoa(person_id):
     if not ranking_row:
         return redirect(url_for('mobile.ranking', store_id=store_id))
 
+    ticket_medio_periodo = None
+    if ranking_row['visits_with_purchase']:
+        ticket_medio_periodo = float(ranking_row['total_spent'] or 0) / ranking_row['visits_with_purchase']
+
     person = db.query_one("""
         SELECT p.*, g.gender_name
         FROM   faciais.people p
@@ -2187,6 +2191,7 @@ def ranking_pessoa(person_id):
     return render_template('mobile/ranking_pessoa.html',
                            person=person,
                            ranking_row=ranking_row,
+                           ticket_medio_periodo=ticket_medio_periodo,
                            img_url=img_url,
                            products=products,
                            visit_days=visit_days,
@@ -2219,6 +2224,10 @@ def ranking_pessoa_dados(person_id):
     """, (store_id, person_id))
     if not ranking_row:
         return jsonify({'error': 'not found'}), 404
+
+    ticket_medio_periodo = None
+    if ranking_row['visits_with_purchase']:
+        ticket_medio_periodo = float(ranking_row['total_spent'] or 0) / ranking_row['visits_with_purchase']
 
     person = db.query_one("""
         SELECT p.*, g.gender_name
@@ -2283,6 +2292,7 @@ def ranking_pessoa_dados(person_id):
             'total_visits':        ranking_row['total_visits'],
             'visits_with_purchase': ranking_row['visits_with_purchase'],
             'total_spent':         float(ranking_row['total_spent'] or 0),
+            'ticket_medio_periodo': ticket_medio_periodo,
             'last_visit_at':       _fmt(ranking_row['last_visit_at']),
         },
         'img_url':    img_url,

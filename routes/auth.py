@@ -2226,6 +2226,10 @@ def ranking_pessoa(person_id):
     if not ranking_row:
         return redirect(url_for('auth.ranking', store_id=store_id))
 
+    ticket_medio_periodo = None
+    if ranking_row['visits_with_purchase']:
+        ticket_medio_periodo = float(ranking_row['total_spent'] or 0) / ranking_row['visits_with_purchase']
+
     person = db.query_one("""
         SELECT p.*, g.gender_name
         FROM   faciais.people p
@@ -2282,6 +2286,7 @@ def ranking_pessoa(person_id):
     return render_template('ranking_pessoa.html',
                            person=person,
                            ranking_row=ranking_row,
+                           ticket_medio_periodo=ticket_medio_periodo,
                            img_url=img_url,
                            products=products,
                            visit_days=visit_days,

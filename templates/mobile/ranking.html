@@ -507,7 +507,8 @@ function _renderPessoa(d) {
   html += '<div class="m-rk-ep-stat m-rk-ep-stat-full"><div class="m-rk-ep-stat-val">' + rk.score + ' pts</div><div class="m-rk-ep-stat-lbl">Pontuação total</div></div>';
   html += '<div class="m-rk-ep-stat"><div class="m-rk-ep-stat-val">' + rk.total_visits + '</div><div class="m-rk-ep-stat-lbl">Visitas no período</div></div>';
   html += '<div class="m-rk-ep-stat"><div class="m-rk-ep-stat-val">' + rk.visits_with_purchase + '</div><div class="m-rk-ep-stat-lbl">c/ compra</div></div>';
-  html += '<div class="m-rk-ep-stat m-rk-ep-stat-full"><div class="m-rk-ep-stat-val">' + _brl(rk.total_spent) + '</div><div class="m-rk-ep-stat-lbl">Total comprado no período</div></div>';
+  html += '<div class="m-rk-ep-stat"><div class="m-rk-ep-stat-val">' + _brl(rk.total_spent) + '</div><div class="m-rk-ep-stat-lbl">Total comprado no período</div></div>';
+  html += '<div class="m-rk-ep-stat"><div class="m-rk-ep-stat-val">' + (rk.ticket_medio_periodo != null ? _brl(rk.ticket_medio_periodo) : '—') + '</div><div class="m-rk-ep-stat-lbl">Ticket médio (c/ compra)</div></div>';
   html += '</div>';
   if (rk.last_visit_at) html += '<div class="m-rk-ep-last">Última visita: ' + _esc(rk.last_visit_at) + '</div>';
   html += '</div>';
