@@ -1454,7 +1454,7 @@ def clientes():
     selected_store_id    = request.args.get('store_id', type=int)
 
     # ── Restaurar última seleção ──────────────────────────────────────────────
-    if not selected_store_id and 'company_id' not in request.args and 'store_id' not in request.args:
+    if not selected_store_id and 'company_id' not in request.args:
         saved = db.query_one(
             "SELECT last_store_id FROM faciais.users WHERE user_id = %s",
             (user_id,)
@@ -1477,8 +1477,27 @@ def clientes():
                         WHERE  s.store_id = %s AND ucg.user_id = %s
                     """, (last_sid, user_id))
                 if row:
-                    return redirect(url_for('auth.clientes', company_id=row['company_id']))
-            # ret/emp: escopo já é 'todas as lojas' por padrão, não precisa redirecionar
+                    return redirect(url_for('auth.clientes',
+                                            company_id=row['company_id'],
+                                            store_id=last_sid))
+            elif user_type == 'ret':
+                row = db.query_one("""
+                    SELECT s.store_id
+                    FROM   faciais.stores s
+                    JOIN   faciais.user_retailer_groups urg
+                           ON urg.retailer_group_id = s.retailer_group_id
+                    WHERE  s.store_id = %s AND urg.user_id = %s
+                """, (last_sid, user_id))
+                if row:
+                    return redirect(url_for('auth.clientes', store_id=last_sid))
+            elif user_type == 'emp':
+                row = db.query_one(
+                    "SELECT store_id FROM faciais.user_stores "
+                    "WHERE store_id = %s AND user_id = %s",
+                    (last_sid, user_id)
+                )
+                if row:
+                    return redirect(url_for('auth.clientes', store_id=last_sid))
 
     # ── Carrega empresas e lojas ──────────────────────────────────────────────
     if user_type == 'adm':
@@ -1571,17 +1590,15 @@ def clientes():
             ORDER  BY s.store_name
         """, (user_id,))
 
-    # ── Resolve escopo: loja específica ou todas as lojas visíveis ─────────────
-    active_store    = None
-    store_scope_ids = []
+    # ── Resolve loja ativa (sempre uma única loja — sem opção "todas") ─────────
+    active_store = None
     if stores:
         if selected_store_id:
             active_store = next((s for s in stores if s['store_id'] == selected_store_id), None)
-        if active_store:
-            store_scope_ids = [active_store['store_id']]
-        else:
-            selected_store_id = None
-            store_scope_ids   = [s['store_id'] for s in stores]
+        if active_store is None and len(stores) == 1:
+            active_store      = stores[0]
+            selected_store_id = active_store['store_id']
+    store_scope_ids = [active_store['store_id']] if active_store else []
 
     precisa_empresa = user_type in ('adm', 'man') and companies and not selected_company_id
 

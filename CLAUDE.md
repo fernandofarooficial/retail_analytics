@@ -151,11 +151,13 @@ mobile (bottom-nav não tinha espaço pro 6º ícone). Mesma permissão de Visit
 (`person_type_id='C'`) por ordem de chegada decrescente (1ª detecção do dia, `MIN(created_at)`,
 recapturas no mesmo dia não alteram), foto grande em destaque. **Sem seletor de data** (diferente
 de Visitação) — a tela é sempre do dia atual, cada card mostra só a hora de chegada (`HH:MM`).
-Filtro de loja com opção "Todas as lojas" — diferente de Visitação, que exige escolher uma loja específica; adm/man mantêm o fluxo
-empresa→loja em 2 níveis, ret/emp não têm seletor de empresa e o escopo default já é "todas as
-lojas visíveis pro usuário". O dropdown grava `store_id=''` (não remove o parâmetro) ao selecionar
-"Todas as lojas", pra não disparar por engano a lógica de "restaurar última loja salva" (mesma de
-Visitação/Dashboard) — que exige o parâmetro totalmente ausente da URL pra disparar.
+Filtro de loja igual Visitação (2026-08, revertido — chegou a ter opção "Todas as lojas", removida
+por decisão do usuário): sempre exige uma loja específica selecionada, nunca soma dados de mais de
+uma loja. adm/man mantêm o fluxo empresa→loja em 2 níveis; ret/emp não têm seletor de empresa e a
+loja auto-seleciona sozinha só quando o usuário só enxerga uma (`len(stores) == 1`) — com mais de
+uma, o dropdown mostra "— Selecione —" e a tela fica com o hint "Selecione uma loja" até escolher.
+Restaura a última loja salva (mesma lógica de Visitação/Dashboard) quando a URL não tem
+`store_id`/`company_id`.
 
 Reaproveita o modal/formulário de edição de pessoa já existente em Visitação —
 `POST /visitacao/pessoa/<person_id>` (mesma rota, sem rota nova de backend). O redirect após salvar

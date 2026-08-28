@@ -240,7 +240,9 @@
     <div class="dashboard-company-select">
       <label for="store-select">Loja:</label>
       <select id="store-select" onchange="selecionarLoja(this.value)">
-        <option value="">— Todas as lojas —</option>
+        {% if stores|length > 1 %}
+        <option value="">— Selecione —</option>
+        {% endif %}
         {% for s in stores %}
         <option value="{{ s.store_id }}"
             {% if s.store_id == selected_store_id %}selected{% endif %}>
@@ -256,10 +258,12 @@
 
 {% if precisa_empresa %}
 <p class="kpi-hint">Selecione uma empresa para visualizar os clientes.</p>
+{% elif not active_store %}
+<p class="kpi-hint">Selecione uma loja para visualizar os clientes.</p>
 {% else %}
 
 <div class="kpi-toolbar">
-  <span class="kpi-store-label">Hoje · {{ active_store.store_name if active_store else 'Todas as lojas' }}</span>
+  <span class="kpi-store-label">Hoje · {{ active_store.store_name }}</span>
 </div>
 
 <div class="cli-count-bar">
@@ -595,10 +599,8 @@ function selecionarEmpresa(id) {
 }
 function selecionarLoja(id) {
   const url = new URL(window.location.href);
-  // string vazia (não delete): marca "Todas as lojas" explicitamente, distinto
-  // de uma navegação sem nenhuma loja escolhida (que dispara a restauração da
-  // última loja salva do usuário).
-  url.searchParams.set('store_id', id || '');
+  if (id) url.searchParams.set('store_id', id);
+  else    url.searchParams.delete('store_id');
   window.location.href = url.toString();
 }
 

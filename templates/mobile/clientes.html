@@ -193,7 +193,7 @@
           <span class="m-hdr-info-lbl">Loja:</span>
           <span class="m-hdr-info-val">
             {% if active_store %}{{ active_store.store_short_name or '—' }}
-            {% else %}Todas{% endif %}
+            {% else %}—{% endif %}
           </span>
         </div>
       </div>
@@ -205,6 +205,8 @@
 
     {% if precisa_empresa %}
     <p class="m-hint">Selecione uma empresa para visualizar os clientes.</p>
+    {% elif not active_store %}
+    <p class="m-hint">Selecione uma loja para visualizar os clientes.</p>
     {% else %}
 
     {% if pessoa_erro %}
@@ -397,7 +399,9 @@
   <div class="m-sheet-row">
     <span class="m-select-label">Loja</span>
     <select class="m-select" onchange="selecionarLoja(this.value)">
-      <option value="">— Todas as lojas —</option>
+      {% if stores|length > 1 %}
+      <option value="">— Selecione —</option>
+      {% endif %}
       {% for s in stores %}
       <option value="{{ s.store_id }}"
           {% if s.store_id == selected_store_id %}selected{% endif %}>
@@ -575,10 +579,8 @@ function selecionarEmpresa(id) {
 }
 function selecionarLoja(id) {
   const url = new URL(window.location.href);
-  // string vazia (não delete): marca "Todas as lojas" explicitamente, distinto
-  // de uma navegação sem nenhuma loja escolhida (que dispara a restauração da
-  // última loja salva do usuário).
-  url.searchParams.set('store_id', id || '');
+  if (id) url.searchParams.set('store_id', id);
+  else    url.searchParams.delete('store_id');
   window.location.href = url.toString();
 }
 
