@@ -16,7 +16,7 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     get_store_series as _get_store_series,
                     clientes_do_dia as _clientes_do_dia,
                     visitas_anteriores as _visitas_anteriores,
-                    compras_recentes_pessoa as _compras_recentes_pessoa,
+                    compras_recentes_pessoa_detalhe as _compras_recentes_pessoa_detalhe,
                     ticket_medio_pessoas as _ticket_medio_pessoas,
                     manual_purchase_link_sugestao as _manual_purchase_link_sugestao,
                     manual_purchase_link_criar as _manual_purchase_link_criar,
@@ -1651,7 +1651,7 @@ def clientes():
         for r in rows:
             visitas = visitas_map.get(r['person_id'])
             is_recorrente = bool(visitas)
-            compras = _compras_recentes_pessoa(r['person_id']) if is_recorrente else []
+            compras = _compras_recentes_pessoa_detalhe(r['person_id']) if is_recorrente else []
             ticket = ticket_map.get(r['person_id'])
             notas   = notas_map.get(r['person_id'], {'pending': 0, 'not_found': 0})
             sugestao = _manual_purchase_link_sugestao(r['store_id']) if r['store_id'] else {'serie': None, 'numero_nota': None}

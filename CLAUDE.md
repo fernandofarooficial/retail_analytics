@@ -167,8 +167,15 @@ form foi submetido.
 
 Se o cliente é recorrente (detecção em qualquer dia anterior a hoje, em qualquer loja — não só a
 filtrada), mostra as datas das visitas anteriores + contador (`people.visitas_anteriores`). Se além
-de recorrente já comprou antes, mostra as últimas compras (até 5 dias mais recentes) com
-valor total, qtd. de notas e produtos+quantidades por dia (`people.compras_recentes_pessoa`).
+de recorrente já comprou antes, mostra as últimas compras (até 5 dias mais recentes) — formato de
+exibição diferente por plataforma (2026-08): no **mobile**, resumo por dia (valor total do dia,
+qtd. de notas, produtos+quantidades agregados — `people.compras_recentes_pessoa`); na **web**, uma
+tabela em nível de linha de produto (data, produto, quantidade, valor da linha, valor total da nota
+fiscal daquela linha, e quantidade total histórica — todo o período, qualquer loja/data — do mesmo
+produto comprado pela pessoa — `people.compras_recentes_pessoa_detalhe`). São duas funções/queries
+separadas em `people.py` (mesma janela de "até 5 dias mais recentes" e mesmo cuidado de
+`(cnpj_emp, serie, documento)` abaixo), cada uma usada só pela sua respectiva rota (`auth.clientes`
+web / `mobile.clientes`).
 
 Todo cliente com pelo menos uma nota confirmada (recorrente ou não — pode ser a compra de hoje
 mesmo) mostra também o **ticket médio**: valor total de todas as compras da pessoa (todo o

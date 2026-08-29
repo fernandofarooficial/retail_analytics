@@ -163,35 +163,37 @@
   }
 
   .cli-compras { margin-top: 0.75rem; }
-  .cli-compra-dia {
+  .cli-compras-table-wrap {
     margin-top: 0.5rem;
-    padding: 0.6rem 0.75rem;
-    background: #F9FAFB;
+    overflow-x: auto;
+    border: 1px solid #E5E7EB;
     border-radius: 8px;
   }
-  .cli-compra-dia-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
+  .cli-compras-table {
+    width: 100%;
+    border-collapse: collapse;
     font-size: 0.8125rem;
+  }
+  .cli-compras-table th {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.7rem;
     font-weight: 600;
-    color: #111827;
-  }
-  .cli-compra-dia-valor { color: var(--theme-primary); }
-  .cli-compra-produtos {
-    margin-top: 0.35rem;
-    font-size: 0.75rem;
     color: #6B7280;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: #F9FAFB;
+    border-bottom: 1px solid #E5E7EB;
+    white-space: nowrap;
+    text-align: left;
   }
-  .cli-compra-produto {
-    background: #fff;
-    border: 1px solid #E5E7EB;
-    border-radius: 4px;
-    padding: 0.1rem 0.4rem;
+  .cli-compras-table td {
+    padding: 0.5rem 0.65rem;
+    color: #374151;
+    border-bottom: 1px solid #F3F4F6;
+    white-space: nowrap;
   }
+  .cli-compras-table tbody tr:last-child td { border-bottom: none; }
+  .cli-compras-table .cli-compra-valor { font-variant-numeric: tabular-nums; font-weight: 600; color: #111827; }
 
   .cli-empty {
     text-align: center;
@@ -373,19 +375,32 @@
           {% if c.compras %}
           <div class="cli-compras">
             <div class="cli-visitas-titulo">Últimas compras</div>
-            {% for compra in c.compras %}
-            <div class="cli-compra-dia">
-              <div class="cli-compra-dia-header">
-                <span>{{ compra.data.strftime('%d/%m/%Y') }} · {{ compra.qtd_notas }} nota{{ 's' if compra.qtd_notas != 1 else '' }}</span>
-                <span class="cli-compra-dia-valor">{{ compra.valor_total|br_valor('R$') }}</span>
-              </div>
-              <div class="cli-compra-produtos">
-                {% for p in compra.produtos %}
-                <span class="cli-compra-produto">{{ p.nome }} ({{ p.quantidade|int }})</span>
-                {% endfor %}
-              </div>
+            <div class="cli-compras-table-wrap">
+              <table class="cli-compras-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Produto</th>
+                    <th>Qtd.</th>
+                    <th>Valor da linha</th>
+                    <th>Valor da nota</th>
+                    <th>Qtd. histórica</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in c.compras %}
+                  <tr>
+                    <td>{{ item.data.strftime('%d/%m/%Y') }}</td>
+                    <td>{{ item.produto }}</td>
+                    <td>{{ item.quantidade|int }}</td>
+                    <td class="cli-compra-valor">{{ item.valor_linha|br_valor('R$') }}</td>
+                    <td class="cli-compra-valor">{{ item.valor_nota|br_valor('R$') }}</td>
+                    <td>{{ item.qtd_total_historica|int }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
             </div>
-            {% endfor %}
           </div>
           {% endif %}
         </div>
