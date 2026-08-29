@@ -1506,6 +1506,7 @@ def visitacao():
                 p.gender_id,
                 g.gender_name,
                 p.notes,
+                p.review_status,
                 (r.person_id IS NOT NULL) AS is_recorrente
             FROM   day_det  dd
             JOIN   faciais.people  p ON p.person_id  = dd.person_id
@@ -1528,6 +1529,7 @@ def visitacao():
                 'gender_id':         r['gender_id'],
                 'gender_name':       r['gender_name'],
                 'notes':             r['notes'],
+                'review_status':     r['review_status'],
                 'is_recorrente':     r['is_recorrente'],
                 'primeiro_registro': r['primeiro_registro'].strftime('%H:%M') if r['primeiro_registro'] else None,
                 'permanencia':       fmt_permanencia(r['permanencia_seg']),
@@ -1578,6 +1580,27 @@ def visitacao():
 @mobile_bp.route('/visitacao/pessoa/<int:person_id>', methods=['POST'])
 @_login_required
 def visitacao_editar_pessoa(person_id):
+    situacao = request.form.get('situacao', 'keep')
+    if situacao not in ('keep', 'duplicate', 'delete'):
+        situacao = 'keep'
+
+    erro = None
+
+    if situacao == 'delete':
+        try:
+            db.execute("DELETE FROM faciais.people WHERE person_id = %s", (person_id,))
+        except Exception:
+            erro = '1'
+
+        origin = request.form.get('origin')
+        if origin not in ('mobile.visitacao', 'mobile.clientes'):
+            origin = 'mobile.visitacao'
+        return redirect(url_for(origin,
+                                company_id=request.form.get('company_id') or None,
+                                store_id=request.form.get('store_id') or None,
+                                date=request.form.get('date') or None,
+                                pessoa_erro=erro))
+
     full_name  = request.form.get('full_name', '').strip() or None
     nickname   = request.form.get('nickname', '').strip() or None
     document   = request.form.get('document', '').strip() or None
@@ -1588,15 +1611,16 @@ def visitacao_editar_pessoa(person_id):
     notes      = request.form.get('notes', '').strip() or None
     age_raw    = request.form.get('age', '').strip()
 
-    erro = None
     try:
         age = int(age_raw) if age_raw else None
         db.execute("""
             UPDATE faciais.people
             SET    full_name = %s, nickname = %s, document = %s, phone = %s, email = %s,
-                   birth_date = %s, age = %s, gender_id = %s, notes = %s
+                   birth_date = %s, age = %s, gender_id = %s, notes = %s,
+                   review_status = %s, reviewed_by = %s, reviewed_at = now()
             WHERE  person_id = %s
-        """, (full_name, nickname, document, phone, email, birth_date, age, gender_id, notes, person_id))
+        """, (full_name, nickname, document, phone, email, birth_date, age, gender_id, notes,
+              situacao, session['user_id'], person_id))
     except Exception:
         erro = '1'
 
@@ -1817,6 +1841,7 @@ def clientes():
                 'gender_name':       r['gender_name'],
                 'person_type_name':  r['person_type_name'],
                 'notes':             r['notes'],
+                'review_status':     r['review_status'],
                 'store_name':        r['store_name'],
                 'is_recorrente':     is_recorrente,
                 'visitas_anteriores': visitas['datas'] if visitas else [],

@@ -125,6 +125,7 @@
   }
   .cli-tag-rec  { background: #D1FAE5; color: #065F46; }
   .cli-tag-novo { background: #DBEAFE; color: #1E40AF; }
+  .cli-tag-duplicado { background: #EDE9FE; color: #5B21B6; }
 
   .cli-datagrid {
     display: grid;
@@ -293,7 +294,8 @@
               data-birth-date="{{ c.birth_date }}"
               data-age="{{ c.age or '' }}"
               data-gender-id="{{ c.gender_id or '' }}"
-              data-notes="{{ c.notes or '' }}">&#9998;</button>
+              data-notes="{{ c.notes or '' }}"
+              data-review-status="{{ c.review_status or 'keep' }}">&#9998;</button>
 
       {% if c.store_id %}
       <button type="button" class="cli-nota-btn" title="Vincular nota fiscal"
@@ -324,6 +326,9 @@
           <span class="cli-tag cli-tag-rec">Recorrente</span>
           {% else %}
           <span class="cli-tag cli-tag-novo">1ª Visita</span>
+          {% endif %}
+          {% if c.review_status == 'duplicate' %}
+          <span class="cli-tag cli-tag-duplicado">Duplicado</span>
           {% endif %}
           {% if c.person_type_name %}<span class="cli-tag">{{ c.person_type_name }}</span>{% endif %}
           {% if c.gender_name %}<span class="cli-tag">{{ c.gender_name }}</span>{% endif %}
@@ -520,6 +525,16 @@
           <textarea id="pf-notes" name="notes" rows="3" maxlength="255"></textarea>
         </div>
       </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label>Situação do cliente</label>
+          <select id="pf-situacao" name="situacao">
+            <option value="keep">Manter</option>
+            <option value="duplicate">Duplicado</option>
+            <option value="delete">Excluir</option>
+          </select>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn-secondary" onclick="fecharPessoaModal()">Cancelar</button>
@@ -548,9 +563,16 @@ function abrirEditarPessoa(btn) {
   document.getElementById('pf-age').value        = d.age;
   document.getElementById('pf-gender').value     = d.genderId;
   document.getElementById('pf-notes').value      = d.notes;
+  document.getElementById('pf-situacao').value   = d.reviewStatus || 'keep';
   cliModalAberto = true;
   pessoaModal.showModal();
 }
+pessoaForm.addEventListener('submit', e => {
+  const situacao = document.getElementById('pf-situacao').value;
+  if (situacao === 'delete' && !confirm('Tem certeza que deseja excluir permanentemente este cliente? Essa ação não pode ser desfeita.')) {
+    e.preventDefault();
+  }
+});
 function mascararTelefone(input) {
   let v = input.value.replace(/\D/g, '').slice(0, 11);
   if (v.length > 7)      v = '(' + v.slice(0,2) + ') ' + v.slice(2,3) + '-' + v.slice(3,7) + '-' + v.slice(7);

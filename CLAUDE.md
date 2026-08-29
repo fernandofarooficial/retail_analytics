@@ -242,6 +242,21 @@ repo só lia, até esta feature) — a decisão de gravar direto nela em vez de 
 override foi tomada sabendo que a escrita do camera300 nessa tabela também é um processo manual
 (não um pipeline automático que poderia re-visitar e sobrescrever silenciosamente a correção).
 
+**Situação do cliente (2026-08):** o mesmo formulário de editar cliente já existente em
+Visitação/Clientes (`pessoa-modal` na web, bottom-sheet no mobile — `POST /visitacao/pessoa/<person_id>`,
+`auth.visitacao_editar_pessoa`/`mobile.visitacao_editar_pessoa`) ganhou um campo "Situação do
+cliente" com 3 opções: **Manter** (padrão), **Duplicado**, **Excluir**. Manter/Duplicado gravam
+`faciais.people.review_status` (`keep`/`duplicate`) + `reviewed_by`/`reviewed_at` — "Duplicado" é
+só uma marcação informativa (aparece como selo nos cards de Clientes e Visitação), **sem** apontar
+qual é o person_id "correto" e **sem** merge automático de detecções/compras. **Excluir não é um
+valor persistido** — dispara um `DELETE FROM faciais.people` de verdade (com confirmação via
+`confirm()` no front, por ser irreversível). Testado que o DELETE é seguro: `detection_records.person_id`
+e `person_purchases.person_id` são `ON DELETE SET NULL` (histórico de detecções/compras sobra
+anônimo), `manual_purchase_links` é `ON DELETE CASCADE`, e `faciais.customer_ranking` (cache sem FK)
+e `vw_customer_ranking`/`vw_primeira_aparicao_clientes` (que fazem JOIN direto com `people` ou
+dependem de `detection_records.person_id`) naturalmente param de trazer a pessoa excluída. Migration:
+`migrations/add_people_review_status.sql`.
+
 ## Template filters registrados em `app.py`
 
 - `br_valor(value, symbol='')` — formata BR com R$, %, ou unidade

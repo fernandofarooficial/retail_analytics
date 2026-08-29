@@ -1072,7 +1072,7 @@ def clientes_do_dia(store_ids, data_str):
             dd.person_id, dd.primeiro_registro, pl.store_id, pl.store_name, ui.image_path,
             p.full_name, p.nickname, p.document, p.phone, p.email,
             p.birth_date, p.age, p.gender_id, g.gender_name,
-            p.person_type_id, pt.person_type_name, p.notes
+            p.person_type_id, pt.person_type_name, p.notes, p.review_status
         FROM   day_det dd
         JOIN   faciais.people p ON p.person_id = dd.person_id
         LEFT   JOIN faciais.genders g      ON g.gender_id = p.gender_id

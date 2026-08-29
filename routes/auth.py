@@ -1336,6 +1336,7 @@ def visitacao():
                 p.gender_id,
                 g.gender_name,
                 p.notes,
+                p.review_status,
                 (r.person_id IS NOT NULL) AS is_recorrente
             FROM   day_det  dd
             JOIN   faciais.people  p ON p.person_id  = dd.person_id
@@ -1358,6 +1359,7 @@ def visitacao():
                 'gender_id':         r['gender_id'],
                 'gender_name':       r['gender_name'],
                 'notes':             r['notes'],
+                'review_status':     r['review_status'],
                 'is_recorrente':     r['is_recorrente'],
                 'primeiro_registro': r['primeiro_registro'].strftime('%H:%M') if r['primeiro_registro'] else None,
                 'permanencia':       fmt_permanencia(r['permanencia_seg']),
@@ -1406,6 +1408,25 @@ def visitacao():
 @login_required
 @screen_required('dashboard')
 def visitacao_editar_pessoa(person_id):
+    situacao = request.form.get('situacao', 'keep')
+    if situacao not in ('keep', 'duplicate', 'delete'):
+        situacao = 'keep'
+
+    if situacao == 'delete':
+        try:
+            db.execute("DELETE FROM faciais.people WHERE person_id = %s", (person_id,))
+            flash('Cliente excluído permanentemente.', 'success')
+        except Exception as e:
+            flash(f'Erro ao excluir cliente: {e}', 'error')
+
+        origin = request.form.get('origin')
+        if origin not in ('auth.visitacao', 'auth.clientes'):
+            origin = 'auth.visitacao'
+        return redirect(url_for(origin,
+                                company_id=request.form.get('company_id') or None,
+                                store_id=request.form.get('store_id') or None,
+                                date=request.form.get('date') or None))
+
     full_name = request.form.get('full_name', '').strip() or None
     nickname  = request.form.get('nickname', '').strip() or None
     document  = request.form.get('document', '').strip() or None
@@ -1421,9 +1442,11 @@ def visitacao_editar_pessoa(person_id):
         db.execute("""
             UPDATE faciais.people
             SET    full_name = %s, nickname = %s, document = %s, phone = %s, email = %s,
-                   birth_date = %s, age = %s, gender_id = %s, notes = %s
+                   birth_date = %s, age = %s, gender_id = %s, notes = %s,
+                   review_status = %s, reviewed_by = %s, reviewed_at = now()
             WHERE  person_id = %s
-        """, (full_name, nickname, document, phone, email, birth_date, age, gender_id, notes, person_id))
+        """, (full_name, nickname, document, phone, email, birth_date, age, gender_id, notes,
+              situacao, session['user_id'], person_id))
         flash('Dados do cliente atualizados com sucesso.', 'success')
     except Exception as e:
         flash(f'Erro ao atualizar cliente: {e}', 'error')
@@ -1641,6 +1664,7 @@ def clientes():
                 'gender_name':       r['gender_name'],
                 'person_type_name':  r['person_type_name'],
                 'notes':             r['notes'],
+                'review_status':     r['review_status'],
                 'store_name':        r['store_name'],
                 'is_recorrente':     is_recorrente,
                 'visitas_anteriores': visitas['datas'] if visitas else [],

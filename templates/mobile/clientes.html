@@ -122,6 +122,7 @@
   .m-cli-tag { font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; background: #F3F4F6; color: #374151; }
   .m-cli-tag-rec  { background: #D1FAE5; color: #065F46; }
   .m-cli-tag-novo { background: #DBEAFE; color: #1E40AF; }
+  .m-cli-tag-duplicado { background: #EDE9FE; color: #5B21B6; }
   .m-cli-row { font-size: 0.78rem; color: #374151; margin-top: 0.25rem; display: flex; gap: 0.3rem; }
   .m-cli-row-label { color: #9CA3AF; }
   .m-cli-row-sub { color: #9CA3AF; font-size: 0.7rem; }
@@ -274,7 +275,8 @@
                 data-birth-date="{{ c.birth_date }}"
                 data-age="{{ c.age or '' }}"
                 data-gender-id="{{ c.gender_id or '' }}"
-                data-notes="{{ c.notes or '' }}">&#9998;</button>
+                data-notes="{{ c.notes or '' }}"
+                data-review-status="{{ c.review_status or 'keep' }}">&#9998;</button>
 
         {% if c.store_id %}
         <button type="button" class="m-cli-nota-btn" title="Vincular nota fiscal"
@@ -306,6 +308,9 @@
               <span class="m-cli-tag m-cli-tag-rec">Recorrente</span>
               {% else %}
               <span class="m-cli-tag m-cli-tag-novo">1ª Visita</span>
+              {% endif %}
+              {% if c.review_status == 'duplicate' %}
+              <span class="m-cli-tag m-cli-tag-duplicado">Duplicado</span>
               {% endif %}
               {% if c.person_type_name %}<span class="m-cli-tag">{{ c.person_type_name }}</span>{% endif %}
               {% if c.gender_name %}<span class="m-cli-tag">{{ c.gender_name }}</span>{% endif %}
@@ -494,6 +499,14 @@
       <label class="m-label">Observações</label>
       <textarea class="m-input" id="mpf-notes" name="notes" rows="3" maxlength="255"></textarea>
     </div>
+    <div class="m-field" style="margin-bottom:0.75rem;">
+      <label class="m-label">Situação do cliente</label>
+      <select class="m-select" id="mpf-situacao" name="situacao" style="width:100%; flex:none;">
+        <option value="keep">Manter</option>
+        <option value="duplicate">Duplicado</option>
+        <option value="delete">Excluir</option>
+      </select>
+    </div>
 
     <button type="submit" class="m-cli-refresh-btn" style="width:100%; justify-content:center; padding:0.75rem;">Salvar</button>
   </form>
@@ -534,6 +547,7 @@ function abrirEditarPessoa(btn) {
   document.getElementById('mpf-age').value            = d.age;
   document.getElementById('mpf-gender').value         = d.genderId;
   document.getElementById('mpf-notes').value          = d.notes;
+  document.getElementById('mpf-situacao').value       = d.reviewStatus || 'keep';
   cliModalAberto = true;
   document.getElementById('m-pessoa-overlay').classList.add('open');
   document.getElementById('m-pessoa-sheet').classList.add('open');
@@ -543,6 +557,12 @@ function fecharPessoaSheet() {
   document.getElementById('m-pessoa-overlay').classList.remove('open');
   document.getElementById('m-pessoa-sheet').classList.remove('open');
 }
+document.getElementById('m-pessoa-form').addEventListener('submit', e => {
+  const situacao = document.getElementById('mpf-situacao').value;
+  if (situacao === 'delete' && !confirm('Tem certeza que deseja excluir permanentemente este cliente? Essa ação não pode ser desfeita.')) {
+    e.preventDefault();
+  }
+});
 function abrirVincularNota(btn) {
   const d = btn.dataset;
   document.getElementById('m-nota-form').action = '/retail_analytics/m/clientes/pessoa/' + d.personId + '/nota';
