@@ -23,10 +23,11 @@ def query_one(sql, params=None):
         conn.commit()
         return result
     except Exception:
-        conn.rollback()
+        if not conn.closed:
+            conn.rollback()
         raise
     finally:
-        _pool.putconn(conn)
+        _pool.putconn(conn, close=conn.closed)
 
 
 def query_all(sql, params=None):
@@ -38,10 +39,11 @@ def query_all(sql, params=None):
         conn.commit()
         return result
     except Exception:
-        conn.rollback()
+        if not conn.closed:
+            conn.rollback()
         raise
     finally:
-        _pool.putconn(conn)
+        _pool.putconn(conn, close=conn.closed)
 
 
 def execute(sql, params=None):
@@ -51,7 +53,8 @@ def execute(sql, params=None):
             cur.execute(sql, params)
         conn.commit()
     except Exception:
-        conn.rollback()
+        if not conn.closed:
+            conn.rollback()
         raise
     finally:
-        _pool.putconn(conn)
+        _pool.putconn(conn, close=conn.closed)
