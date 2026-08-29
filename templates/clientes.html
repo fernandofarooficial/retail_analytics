@@ -383,8 +383,8 @@
                 <thead>
                   <tr>
                     <th>Data</th>
+                    <th>Nota</th>
                     <th>Série</th>
-                    <th>Número</th>
                     <th>Valor da nota</th>
                     <th>Produto</th>
                     <th>Qtd.</th>
@@ -398,8 +398,8 @@
                     <tr class="{{ 'cli-compra-nota-inicio' if loop.first else '' }}">
                       {% if loop.first %}
                       <td rowspan="{{ nota.produtos|length }}">{{ nota.data.strftime('%d/%m/%Y') }}</td>
-                      <td rowspan="{{ nota.produtos|length }}">{{ nota.serie }}</td>
                       <td rowspan="{{ nota.produtos|length }}">{{ nota.numero_nota }}</td>
+                      <td rowspan="{{ nota.produtos|length }}">{{ nota.serie }}</td>
                       <td rowspan="{{ nota.produtos|length }}" class="cli-compra-valor">{{ nota.valor_nota|br_valor('R$') }}</td>
                       {% endif %}
                       <td>{{ item.produto }}</td>
