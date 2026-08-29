@@ -250,12 +250,18 @@ cliente" com 3 opções: **Manter** (padrão), **Duplicado**, **Excluir**. Mante
 só uma marcação informativa (aparece como selo nos cards de Clientes e Visitação), **sem** apontar
 qual é o person_id "correto" e **sem** merge automático de detecções/compras. **Excluir não é um
 valor persistido** — dispara um `DELETE FROM faciais.people` de verdade (com confirmação via
-`confirm()` no front, por ser irreversível). Testado que o DELETE é seguro: `detection_records.person_id`
-e `person_purchases.person_id` são `ON DELETE SET NULL` (histórico de detecções/compras sobra
-anônimo), `manual_purchase_links` é `ON DELETE CASCADE`, e `faciais.customer_ranking` (cache sem FK)
-e `vw_customer_ranking`/`vw_primeira_aparicao_clientes` (que fazem JOIN direto com `people` ou
-dependem de `detection_records.person_id`) naturalmente param de trazer a pessoa excluída. Migration:
-`migrations/add_people_review_status.sql`.
+`confirm()` no front, por ser irreversível). A exclusão apaga também `faciais.detection_records`
+dessa pessoa (os eventos de reconhecimento facial — imagem, câmera, scores) numa única query com
+CTE (`WITH del_det AS (DELETE FROM detection_records ...) DELETE FROM people ...`, atômica). A FK
+`fk_detection_person` continua `ON DELETE SET NULL` no banco (não foi alterada — é comportamento
+padrão compartilhado com o camera300), mas como o app já apaga as `detection_records` explicitamente
+antes, esse `SET NULL` nunca chega a ser acionado por este fluxo. **Não apaga** a imagem em si no
+Heimdall (`HEIMDALL_IMAGE_BASE` + `image_path`) — só o registro no banco; o arquivo de imagem, se
+existir, fica órfão no servidor de imagens (fora do controle deste app). `person_purchases.person_id`
+continua `ON DELETE SET NULL` (histórico de compras sobra anônimo, não é considerado "evento" e não
+foi incluído no apagamento). `manual_purchase_links` é `ON DELETE CASCADE`, e `faciais.customer_ranking`
+(cache sem FK) e `vw_customer_ranking`/`vw_primeira_aparicao_clientes` naturalmente param de trazer a
+pessoa excluída. Migration: `migrations/add_people_review_status.sql`.
 
 ## Template filters registrados em `app.py`
 

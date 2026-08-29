@@ -1414,7 +1414,12 @@ def visitacao_editar_pessoa(person_id):
 
     if situacao == 'delete':
         try:
-            db.execute("DELETE FROM faciais.people WHERE person_id = %s", (person_id,))
+            db.execute("""
+                WITH del_det AS (
+                    DELETE FROM faciais.detection_records WHERE person_id = %s
+                )
+                DELETE FROM faciais.people WHERE person_id = %s
+            """, (person_id, person_id))
             flash('Cliente excluído permanentemente.', 'success')
         except Exception as e:
             flash(f'Erro ao excluir cliente: {e}', 'error')
