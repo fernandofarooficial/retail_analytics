@@ -298,7 +298,7 @@ dependem de `detection_records.person_id`) naturalmente param de trazer a pessoa
 | `stores` | `store_id`, `company_id`, `retailer_group_id`, `store_name`, `cnpj`, `uf`, `city`, `calendar_profile_id`, `microvix_portal`, `ranking_rule_id` |
 | `cameras` | `camera_id` (manual), `camera_type_id`, `store_id`, `camera_name`, `rtsp_url`, `heat_camera_id` |
 | `users` | `user_id`, `username`, `full_name`, `email`, `password_hash`, `user_type_id`, `is_active`, `last_company_group_id`, `last_retailer_group_id`, `last_store_id` |
-| `people` | `person_id`, `full_name`, `nickname`, `document`, `phone`, `email`, `crm_key`, `birth_date`, `age`, `gender_id`, `person_type_id`, `reference_track_id`, `notes` |
+| `people` | `person_id`, `full_name`, `nickname`, `document`, `phone`, `email`, `crm_key`, `birth_date`, `age`, `gender_id`, `person_type_id`, `reference_track_id`, `notes`, `review_status`, `reviewed_by`, `reviewed_at` |
 | `company_themes` | `company_id`, cores HEX (`primary_color`, `secondary_color`, `accent_color`, `text_color`, `background_color`, `graph_color_1..4`), `logo_url` |
 | `store_serie_rules` | `store_serie_rule_id`, `store_id` (FK cascade), `person_kind` (`PF`/`PJ`), `serie` (série da NF). Unique `(store_id, serie)`. Ver seção "Séries PF vs. PJ" acima |
 
