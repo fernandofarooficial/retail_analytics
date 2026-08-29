@@ -1224,12 +1224,12 @@ def compras_recentes_pessoa(person_id, max_dias=5):
 
 
 def compras_recentes_pessoa_detalhe(person_id, max_dias=5):
-    """Versão em nível de linha de produto das últimas compras confirmadas da pessoa
-    (até max_dias dias mais recentes, qualquer loja) — usada pela tabela detalhada da
-    tela Clientes (web). Cada linha traz, além de data/produto/quantidade/valor da
-    linha, o valor total da nota fiscal daquela linha e a quantidade total histórica
-    (todo o período, qualquer loja/data) do mesmo produto comprado pela pessoa. Mesmo
-    cuidado de (cnpj_emp, serie, documento) de compras_recentes_pessoa — ver CLAUDE.md."""
+    """Últimas compras confirmadas da pessoa (até max_dias dias mais recentes, qualquer
+    loja), agrupadas por nota fiscal — usada pela tabela detalhada da tela Clientes (web).
+    Cada grupo traz data/série/número/valor total da nota, e dentro dele uma linha por
+    produto com quantidade, valor da linha e a quantidade total histórica (todo o
+    período, qualquer loja/data) do mesmo produto comprado pela pessoa. Mesmo cuidado de
+    (cnpj_emp, serie, documento) de compras_recentes_pessoa — ver CLAUDE.md."""
     rows = db.query_all("""
         WITH compras AS (
             SELECT
@@ -1274,26 +1274,36 @@ def compras_recentes_pessoa_detalhe(person_id, max_dias=5):
             FROM   linhas
             GROUP  BY produto_nome
         )
-        SELECT l.dia, l.produto_nome, l.quantidade, l.valor_total AS valor_linha,
-               nt.valor_nota, qh.qtd_total AS qtd_total_historica
+        SELECT l.dia, l.cnpj_emp, l.serie, l.documento, l.produto_nome, l.quantidade,
+               l.valor_total AS valor_linha, nt.valor_nota,
+               qh.qtd_total AS qtd_total_historica
         FROM   linhas l
         JOIN   dias d           ON d.dia = l.dia
         JOIN   nota_totais nt   ON nt.cnpj_emp = l.cnpj_emp AND nt.serie = l.serie AND nt.documento = l.documento
         JOIN   qtd_historica qh ON qh.produto_nome = l.produto_nome
-        ORDER  BY l.dia DESC, l.documento, l.produto_nome
+        ORDER  BY l.dia DESC, l.cnpj_emp, l.serie, l.documento, l.produto_nome
     """, {'person_id': person_id, 'max_dias': max_dias})
 
-    return [
-        {
-            'data':                r['dia'],
+    notas = {}
+    ordem = []
+    for r in rows:
+        chave = (r['dia'], r['cnpj_emp'], r['serie'], r['documento'])
+        if chave not in notas:
+            notas[chave] = {
+                'data':        r['dia'],
+                'serie':       r['serie'],
+                'numero_nota': r['documento'],
+                'valor_nota':  round(float(r['valor_nota'] or 0), 2),
+                'produtos':    [],
+            }
+            ordem.append(chave)
+        notas[chave]['produtos'].append({
             'produto':             r['produto_nome'],
             'quantidade':          float(r['quantidade'] or 0),
             'valor_linha':         round(float(r['valor_linha'] or 0), 2),
-            'valor_nota':          round(float(r['valor_nota'] or 0), 2),
             'qtd_total_historica': float(r['qtd_total_historica'] or 0),
-        }
-        for r in rows
-    ]
+        })
+    return [notas[k] for k in ordem]
 
 
 # ── Vínculo manual de nota fiscal (tela Clientes) ──────────────────────────────

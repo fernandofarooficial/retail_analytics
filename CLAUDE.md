@@ -170,12 +170,14 @@ filtrada), mostra as datas das visitas anteriores + contador (`people.visitas_an
 de recorrente já comprou antes, mostra as últimas compras (até 5 dias mais recentes) — formato de
 exibição diferente por plataforma (2026-08): no **mobile**, resumo por dia (valor total do dia,
 qtd. de notas, produtos+quantidades agregados — `people.compras_recentes_pessoa`); na **web**, uma
-tabela em nível de linha de produto (data, produto, quantidade, valor da linha, valor total da nota
-fiscal daquela linha, e quantidade total histórica — todo o período, qualquer loja/data — do mesmo
-produto comprado pela pessoa — `people.compras_recentes_pessoa_detalhe`). São duas funções/queries
-separadas em `people.py` (mesma janela de "até 5 dias mais recentes" e mesmo cuidado de
-`(cnpj_emp, serie, documento)` abaixo), cada uma usada só pela sua respectiva rota (`auth.clientes`
-web / `mobile.clientes`).
+tabela agrupada por nota fiscal (data, série, número e valor total da nota exibidos uma única vez
+por grupo via `rowspan`, já que uma mesma pessoa pode ter mais de uma nota no mesmo dia) e, dentro
+de cada grupo, uma linha por produto com quantidade, valor da linha e quantidade total histórica
+— todo o período, qualquer loja/data — do mesmo produto comprado pela pessoa
+(`people.compras_recentes_pessoa_detalhe`, que já devolve os dados agrupados por nota). São duas
+funções/queries separadas em `people.py` (mesma janela de "até 5 dias mais recentes" e mesmo
+cuidado de `(cnpj_emp, serie, documento)` abaixo), cada uma usada só pela sua respectiva rota
+(`auth.clientes` web / `mobile.clientes`).
 
 Todo cliente com pelo menos uma nota confirmada (recorrente ou não — pode ser a compra de hoje
 mesmo) mostra também o **ticket médio**: valor total de todas as compras da pessoa (todo o
