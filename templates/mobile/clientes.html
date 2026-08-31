@@ -329,6 +329,9 @@
             {% if c.ticket_medio is not none %}
             <div class="m-cli-row"><span class="m-cli-row-label">Ticket médio:</span>{{ c.ticket_medio|br_valor('R$') }} <span class="m-cli-row-sub">({{ c.qtd_notas }} nota{{ 's' if c.qtd_notas != 1 else '' }})</span></div>
             {% endif %}
+            {% if c.ranking_posicao %}
+            <div class="m-cli-row"><span class="m-cli-row-label">Ranking:</span>#{{ c.ranking_posicao }} no ranking de clientes</div>
+            {% endif %}
             {% if c.document %}
             <div class="m-cli-row"><span class="m-cli-row-label">Doc:</span>{{ c.document }}</div>
             {% endif %}
@@ -349,9 +352,12 @@
             <span class="m-cli-visita-data">{{ d.strftime('%d/%m/%Y') }}</span>
             {% endfor %}
           </div>
+        </div>
+        {% endif %}
 
-          {% if c.compras %}
-          <div class="m-cli-visitas-titulo" style="margin-top:0.5rem;">Últimas compras</div>
+        {% if c.compras %}
+        <div class="m-cli-visitas">
+          <div class="m-cli-visitas-titulo">Últimas compras</div>
           {% for compra in c.compras %}
           <div class="m-cli-compra-dia">
             <div class="m-cli-compra-dia-header">
@@ -365,7 +371,6 @@
             </div>
           </div>
           {% endfor %}
-          {% endif %}
         </div>
         {% endif %}
       </div>

@@ -48,6 +48,7 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     visitas_anteriores as _visitas_anteriores,
                     compras_recentes_pessoa as _compras_recentes_pessoa,
                     ticket_medio_pessoas as _ticket_medio_pessoas,
+                    ranking_posicao_pessoas as _ranking_posicao_pessoas,
                     manual_purchase_link_sugestao as _manual_purchase_link_sugestao,
                     manual_purchase_link_criar as _manual_purchase_link_criar,
                     manual_purchase_links_resolver_lojas as _manual_purchase_links_resolver_lojas,
@@ -1822,13 +1823,14 @@ def clientes():
         person_ids = [r['person_id'] for r in rows]
         visitas_map = _visitas_anteriores(person_ids, data_str)
         ticket_map  = _ticket_medio_pessoas(person_ids)
+        ranking_map = _ranking_posicao_pessoas(active_store['store_id'], person_ids)
         notas_map   = _manual_purchase_links_por_pessoa(person_ids)
         notas_pendentes = _manual_purchase_links_listar(store_scope_ids)
 
         for r in rows:
             visitas = visitas_map.get(r['person_id'])
             is_recorrente = bool(visitas)
-            compras = _compras_recentes_pessoa(r['person_id']) if is_recorrente else []
+            compras = _compras_recentes_pessoa(r['person_id'])
             ticket = ticket_map.get(r['person_id'])
             notas   = notas_map.get(r['person_id'], {'pending': 0, 'not_found': 0})
             sugestao = _manual_purchase_link_sugestao(r['store_id']) if r['store_id'] else {'serie': None, 'numero_nota': None}
@@ -1854,6 +1856,7 @@ def clientes():
                 'compras':           compras,
                 'ticket_medio':      ticket['ticket_medio'] if ticket else None,
                 'qtd_notas':         ticket['qtd_notas'] if ticket else 0,
+                'ranking_posicao':   ranking_map.get(r['person_id']),
                 'notas_pendentes':   notas['pending'],
                 'notas_nao_localizadas': notas['not_found'],
                 'nota_sugestao_serie':  sugestao['serie'],

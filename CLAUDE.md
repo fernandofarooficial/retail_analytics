@@ -166,9 +166,11 @@ lê um campo hidden `origin` (whitelist `auth.visitacao`/`auth.clientes` no web,
 form foi submetido.
 
 Se o cliente é recorrente (detecção em qualquer dia anterior a hoje, em qualquer loja — não só a
-filtrada), mostra as datas das visitas anteriores + contador (`people.visitas_anteriores`). Se além
-de recorrente já comprou antes, mostra as últimas compras (até 5 dias mais recentes) — formato de
-exibição diferente por plataforma (2026-08): no **mobile**, resumo por dia (valor total do dia,
+filtrada), mostra as datas das visitas anteriores + contador (`people.visitas_anteriores`). Se tem
+pelo menos uma nota confirmada (independente de ser recorrente — inclui a compra de hoje mesmo,
+2026-08, corrigido de uma versão anterior que só mostrava compras pra quem já era recorrente),
+mostra as últimas compras (até 5 dias mais recentes) — formato de exibição diferente por plataforma
+(2026-08): no **mobile**, resumo por dia (valor total do dia,
 qtd. de notas, produtos+quantidades agregados — `people.compras_recentes_pessoa`); na **web**, uma
 tabela agrupada por nota fiscal (data, série, número e valor total da nota exibidos uma única vez
 por grupo via `rowspan`, já que uma mesma pessoa pode ter mais de uma nota no mesmo dia) e, dentro

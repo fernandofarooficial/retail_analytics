@@ -1153,6 +1153,19 @@ def ticket_medio_pessoas(person_ids):
     return result
 
 
+def ranking_posicao_pessoas(store_id, person_ids):
+    """Posição no ranking de clientes (faciais.customer_ranking) da loja, por pessoa.
+    Retorna dict {person_id: ranking_position} só para quem aparece no ranking atual."""
+    if not person_ids:
+        return {}
+    rows = db.query_all("""
+        SELECT person_id, ranking_position
+        FROM   faciais.customer_ranking
+        WHERE  store_id = %s AND person_id = ANY(%s)
+    """, (store_id, person_ids))
+    return {r['person_id']: r['ranking_position'] for r in rows}
+
+
 def compras_recentes_pessoa(person_id, max_dias=5):
     """Últimas compras confirmadas da pessoa (até max_dias dias mais recentes),
     em qualquer loja, com valor/qtd_notas/produtos consistentes entre si (mesma

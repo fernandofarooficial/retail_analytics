@@ -353,6 +353,9 @@
           {% if c.ticket_medio is not none %}
           <div class="cli-row"><span class="cli-row-label">Ticket médio</span>{{ c.ticket_medio|br_valor('R$') }} <span class="cli-row-sub">({{ c.qtd_notas }} nota{{ 's' if c.qtd_notas != 1 else '' }})</span></div>
           {% endif %}
+          {% if c.ranking_posicao %}
+          <div class="cli-row"><span class="cli-row-label">Ranking</span>#{{ c.ranking_posicao }} no ranking de clientes</div>
+          {% endif %}
           {% if c.document %}
           <div class="cli-row"><span class="cli-row-label">Documento</span>{{ c.document }}</div>
           {% endif %}
@@ -374,46 +377,46 @@
             <span class="cli-visita-data">{{ d.strftime('%d/%m/%Y') }}</span>
             {% endfor %}
           </div>
+        </div>
+        {% endif %}
 
-          {% if c.compras %}
-          <div class="cli-compras">
-            <div class="cli-visitas-titulo">Últimas compras</div>
-            <div class="cli-compras-table-wrap">
-              <table class="cli-compras-table">
-                <thead>
-                  <tr>
-                    <th>Data</th>
-                    <th>Nota</th>
-                    <th>Série</th>
-                    <th>Valor da nota</th>
-                    <th>Produto</th>
-                    <th>Qtd.</th>
-                    <th>Valor da linha</th>
-                    <th>Qtd. histórica</th>
+        {% if c.compras %}
+        <div class="cli-compras">
+          <div class="cli-visitas-titulo">Últimas compras</div>
+          <div class="cli-compras-table-wrap">
+            <table class="cli-compras-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Nota</th>
+                  <th>Série</th>
+                  <th>Valor da nota</th>
+                  <th>Produto</th>
+                  <th>Qtd.</th>
+                  <th>Valor da linha</th>
+                  <th>Qtd. histórica</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for nota in c.compras %}
+                  {% for item in nota.produtos %}
+                  <tr class="{{ 'cli-compra-nota-inicio' if loop.first else '' }}">
+                    {% if loop.first %}
+                    <td rowspan="{{ nota.produtos|length }}">{{ nota.data.strftime('%d/%m/%Y') }}</td>
+                    <td rowspan="{{ nota.produtos|length }}">{{ nota.numero_nota }}</td>
+                    <td rowspan="{{ nota.produtos|length }}">{{ nota.serie }}</td>
+                    <td rowspan="{{ nota.produtos|length }}" class="cli-compra-valor">{{ nota.valor_nota|br_valor('R$') }}</td>
+                    {% endif %}
+                    <td>{{ item.produto }}</td>
+                    <td>{{ item.quantidade|int }}</td>
+                    <td class="cli-compra-valor">{{ item.valor_linha|br_valor('R$') }}</td>
+                    <td>{{ item.qtd_total_historica|int }}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {% for nota in c.compras %}
-                    {% for item in nota.produtos %}
-                    <tr class="{{ 'cli-compra-nota-inicio' if loop.first else '' }}">
-                      {% if loop.first %}
-                      <td rowspan="{{ nota.produtos|length }}">{{ nota.data.strftime('%d/%m/%Y') }}</td>
-                      <td rowspan="{{ nota.produtos|length }}">{{ nota.numero_nota }}</td>
-                      <td rowspan="{{ nota.produtos|length }}">{{ nota.serie }}</td>
-                      <td rowspan="{{ nota.produtos|length }}" class="cli-compra-valor">{{ nota.valor_nota|br_valor('R$') }}</td>
-                      {% endif %}
-                      <td>{{ item.produto }}</td>
-                      <td>{{ item.quantidade|int }}</td>
-                      <td class="cli-compra-valor">{{ item.valor_linha|br_valor('R$') }}</td>
-                      <td>{{ item.qtd_total_historica|int }}</td>
-                    </tr>
-                    {% endfor %}
                   {% endfor %}
-                </tbody>
-              </table>
-            </div>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
-          {% endif %}
         </div>
         {% endif %}
       </div>
