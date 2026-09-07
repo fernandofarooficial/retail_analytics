@@ -13,7 +13,6 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     ticket_por_tipo as _ticket_por_tipo,
                     top5_por_tipo as _top5_por_tipo,
                     produtos_por_pessoa as _produtos_por_pessoa,
-                    get_store_series as _get_store_series,
                     clientes_do_dia as _clientes_do_dia,
                     visitas_anteriores as _visitas_anteriores,
                     compras_recentes_pessoa_detalhe as _compras_recentes_pessoa_detalhe,
@@ -1012,18 +1011,22 @@ def _compute_charts_data(store_id, data_str, active_store_cnpj, active_microvix_
     top5_tipo_ytd = {'novos': [], 'recorrentes': []}
 
     if active_microvix_portal and active_store_cnpj:
-        series_pf, _ = _get_store_series(sid)
+        _NAO_PJ = (
+            "NOT EXISTS (SELECT 1 FROM microvix.microvix_clientes_fornecedores cf "
+            "WHERE cf.portal = {alias}.portal AND cf.cod_cliente = {alias}.codigo_cliente AND cf.tipo_cliente = 'J')"
+        )
         _FILTRO_MV = (
             "m.portal = %s AND m.cnpj_emp = %s "
             "AND m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S' "
-            "AND (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL) AND m.serie = ANY(%s::varchar[]) AND m.cod_natureza_operacao = '10030'"
+            "AND (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL) AND " + _NAO_PJ.format(alias='m') +
+            " AND m.cod_natureza_operacao = '10030'"
         )
         _JOIN_PROD = (
             "JOIN microvix.microvix_produtos p "
             "ON p.portal = m.portal AND p.cod_produto = m.cod_produto"
         )
         _NOME_PROD = "COALESCE(NULLIF(TRIM(p.descricao_basica),''), p.nome)"
-        _p = (active_microvix_portal, active_store_cnpj, series_pf)
+        _p = (active_microvix_portal, active_store_cnpj)
         _date_range = "m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'"
 
         def _top_query(params, order_expr):
@@ -1050,9 +1053,9 @@ def _compute_charts_data(store_id, data_str, active_store_cnpj, active_microvix_
                 JOIN microvix.microvix_produtos pb ON pb.portal = b.portal AND pb.cod_produto = b.cod_produto
                 WHERE a.portal = %s AND a.cnpj_emp = %s
                   AND a.cancelado <> 'S' AND a.excluido <> 'S' AND a.soma_relatorio = 'S'
-                  AND (a.tipo_transacao IN ('P','V','S') OR a.tipo_transacao IS NULL) AND a.serie = ANY(%s::varchar[]) AND a.cod_natureza_operacao = '10030'
+                  AND (a.tipo_transacao IN ('P','V','S') OR a.tipo_transacao IS NULL) AND {_NAO_PJ.format(alias='a')} AND a.cod_natureza_operacao = '10030'
                   AND b.cancelado <> 'S' AND b.excluido <> 'S' AND b.soma_relatorio = 'S'
-                  AND (b.tipo_transacao IN ('P','V','S') OR b.tipo_transacao IS NULL) AND b.serie = ANY(%s::varchar[]) AND b.cod_natureza_operacao = '10030'
+                  AND (b.tipo_transacao IN ('P','V','S') OR b.tipo_transacao IS NULL) AND {_NAO_PJ.format(alias='b')} AND b.cod_natureza_operacao = '10030'
                   AND a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'
                 GROUP BY nome_a, nome_b ORDER BY qtd DESC LIMIT 10
             """
@@ -1068,13 +1071,13 @@ def _compute_charts_data(store_id, data_str, active_store_cnpj, active_microvix_
             tq[:] = _top_query(_p + (di, df), "SUM(m.quantidade)")
             tf[:] = _top_query(_p + (di, df), "SUM(m.valor_liquido)")
             if comb == 'dia':
-                combinacoes_dia = _comb_query(_p + (series_pf, di, df))
+                combinacoes_dia = _comb_query(_p + (di, df))
             elif comb == 'sem':
-                combinacoes_sem = _comb_query(_p + (series_pf, di, df))
+                combinacoes_sem = _comb_query(_p + (di, df))
             elif comb == 'mes':
-                combinacoes_mes = _comb_query(_p + (series_pf, di, df))
+                combinacoes_mes = _comb_query(_p + (di, df))
             else:
-                combinacoes_ytd = _comb_query(_p + (series_pf, di, df))
+                combinacoes_ytd = _comb_query(_p + (di, df))
             resultado = _top5_por_tipo(sid, active_microvix_portal, active_store_cnpj, di, df)
             t5['novos']       = resultado['novos']
             t5['recorrentes'] = resultado['recorrentes']

@@ -27,7 +27,6 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     kpi_microvix as _kpi_microvix, faixa_horaria as _faixa_horaria,
                     ticket_por_tipo as _ticket_por_tipo,
                     top5_por_tipo as _top5_por_tipo,
-                    get_store_series as _get_store_series,
                     faturamento_mensal as _faturamento_mensal,
                     faturamento_periodos_mes as _faturamento_periodos_mes,
                     faturamento_diario_mes as _faturamento_diario_mes,
@@ -894,11 +893,15 @@ def dashboard():
         combinacoes_sem       = []
         combinacoes_mes       = []
 
-        series_pf_mv, _ = _get_store_series(sid)
+        _NAO_PJ = (
+            "NOT EXISTS (SELECT 1 FROM microvix.microvix_clientes_fornecedores cf "
+            "WHERE cf.portal = {alias}.portal AND cf.cod_cliente = {alias}.codigo_cliente AND cf.tipo_cliente = 'J')"
+        )
         _FILTRO_MV = (
             "m.portal = %s AND m.cnpj_emp = %s "
             "AND m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S' "
-            "AND (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL) AND m.serie = ANY(%s::varchar[]) AND m.cod_natureza_operacao = '10030'"
+            "AND (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL) AND " + _NAO_PJ.format(alias='m') +
+            " AND m.cod_natureza_operacao = '10030'"
         )
         _JOIN_PROD = (
             "JOIN microvix.microvix_produtos p "
@@ -918,7 +921,7 @@ def dashboard():
                 return [{'nome': r['produto'], 'total': round(float(r['total'] or 0), 2)}
                         for r in db.query_all(sql, params)]
 
-            _p = (active_microvix_portal, active_store_cnpj, series_pf_mv)
+            _p = (active_microvix_portal, active_store_cnpj)
             _date_dia  = "m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'"
             _date_sem  = "m.data_documento >= %s::date AND m.data_documento < %s::date + INTERVAL '1 day'"
 
@@ -947,9 +950,9 @@ def dashboard():
                         ON pb.portal = b.portal AND pb.cod_produto = b.cod_produto
                     WHERE a.portal = %s AND a.cnpj_emp = %s
                       AND a.cancelado <> 'S' AND a.excluido <> 'S' AND a.soma_relatorio = 'S'
-                      AND (a.tipo_transacao IN ('P','V','S') OR a.tipo_transacao IS NULL) AND a.serie = ANY(%s::varchar[]) AND a.cod_natureza_operacao = '10030'
+                      AND (a.tipo_transacao IN ('P','V','S') OR a.tipo_transacao IS NULL) AND {_NAO_PJ.format(alias='a')} AND a.cod_natureza_operacao = '10030'
                       AND b.cancelado <> 'S' AND b.excluido <> 'S' AND b.soma_relatorio = 'S'
-                      AND (b.tipo_transacao IN ('P','V','S') OR b.tipo_transacao IS NULL) AND b.serie = ANY(%s::varchar[]) AND b.cod_natureza_operacao = '10030'
+                      AND (b.tipo_transacao IN ('P','V','S') OR b.tipo_transacao IS NULL) AND {_NAO_PJ.format(alias='b')} AND b.cod_natureza_operacao = '10030'
                       AND {date_filter}
                     GROUP BY nome_a, nome_b
                     ORDER BY qtd DESC LIMIT 10
@@ -957,9 +960,9 @@ def dashboard():
                 return [{'nome_a': r['nome_a'], 'nome_b': r['nome_b'], 'qtd': int(r['qtd'])}
                         for r in db.query_all(sql, params)]
 
-            combinacoes_dia = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (series_pf_mv, data_str, data_str))
-            combinacoes_sem = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (series_pf_mv, semana_inicio_str, semana_fim_str))
-            combinacoes_mes = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (series_pf_mv, mes_inicio_str, mes_fim_str))
+            combinacoes_dia = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (data_str, data_str))
+            combinacoes_sem = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (semana_inicio_str, semana_fim_str))
+            combinacoes_mes = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (mes_inicio_str, mes_fim_str))
 
         # ── Frequência de retorno por horário/dia ────────────────────────────
         chart_freq_retorno_dia = [None]*24
@@ -1092,7 +1095,7 @@ def dashboard():
         if active_microvix_portal and active_store_cnpj:
             top_produtos_qtde_ytd = _top_query(_date_sem, "SUM(m.quantidade)",    _p + (ytd_inicio_str, ytd_fim_str))
             top_produtos_fat_ytd  = _top_query(_date_sem, "SUM(m.valor_liquido)", _p + (ytd_inicio_str, ytd_fim_str))
-            combinacoes_ytd       = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (series_pf_mv, ytd_inicio_str, ytd_fim_str))
+            combinacoes_ytd       = _comb_query("a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'", _p + (ytd_inicio_str, ytd_fim_str))
             top5_tipo_dia = _top5_por_tipo(sid, active_microvix_portal, active_store_cnpj, data_str, data_str)
             top5_tipo_sem = _top5_por_tipo(sid, active_microvix_portal, active_store_cnpj, semana_inicio_str, semana_fim_str)
             top5_tipo_mes = _top5_por_tipo(sid, active_microvix_portal, active_store_cnpj, mes_inicio_str, mes_fim_str)

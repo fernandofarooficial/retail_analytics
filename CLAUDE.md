@@ -50,7 +50,7 @@ logo depois do ranking) — resolve/expira `faciais.manual_purchase_links` pende
 
 **Padrão `_store_context(endpoint)`:** centraliza carregamento de empresa/loja/tema/cnpj/portal em `motor.py`, `gestao.py` e `relatorios.py` (cada um com sua própria cópia local da função — não é compartilhada via import). Retorna `(ctx_dict, redirect_ou_None)`. `motor.py`, `gestao.py` e `relatorios.py` usam `@login_required` (sem `@screen_required`) + `@block_user_types('emp')` em toda rota (2026-08); `cadastros.py`, `conta.py`, `usuarios.py` e as rotas de dashboard/ranking em `auth.py` usam `@screen_required(screen_id)`.
 
-**Queries analíticas:** `people.py` (~1420 linhas) — funções de KPI Microvix, ranking, estoque; usa `get_store_series(store_id)` para obter `(series_pf, series_pj)` de `faciais.store_serie_rules`  
+**Queries analíticas:** `people.py` (~1420 linhas) — funções de KPI Microvix, ranking, estoque; classifica PF/PJ via `microvix.microvix_clientes_fornecedores.tipo_cliente` (ver "Classificação PF vs. PJ" acima)  
 **Lógica de metas:** `metas.py` (module, ~230 linhas) — resolução de meta efetiva (`_goal_value`), acumulado YTD, distribuição diária/semanal em tempo real a partir do valor mensal (`_distribuir_mensal`, `_weekly_target`)
 
 **Scripts (`scripts/`):** `recalcular_ranking.py` — job agendado via cron no VPS (`45 23 * * *`): faz `REFRESH MATERIALIZED VIEW faciais.mv_microvix_vendas`, trunca e repopula `faciais.customer_ranking` a partir de `faciais.vw_customer_ranking`. Log em `logs/ranking_job.log`. `resolver_notas_manuais.py` (2026-08) — job agendado às 23:50 (`50 23 * * *`): chama `people.manual_purchase_links_resolver_todas()` pra resolver/expirar vínculos manuais de nota fiscal pendentes (ver seção "Clientes — vínculo manual de nota fiscal" abaixo). Log em `logs/notas_manuais_job.log`.
@@ -83,7 +83,17 @@ AND codigo_cliente = 1
 AND cod_natureza_operacao = '10030'
 ```
 
-**Séries PF vs. PJ:** `faciais.store_serie_rules` mapeia, por loja, quais séries de NF (`serie`) correspondem a Pessoa Física ou Jurídica (`person_kind`). `people.get_store_series(store_id)` retorna `(series_pf, series_pj)`; a maioria das queries analíticas (faturamento, ticket médio, ranking de clientes) filtra `microvix_movimento.serie = ANY(series_pf)` para considerar só vendas a PF, enquanto concentração/venda por vendedor a PJ usa `series_pj`. Existe também a view `faciais.vw_store_series` com o mesmo dado agregado em array, mas as queries em `people.py` consultam `store_serie_rules` diretamente.
+**Classificação PF vs. PJ (2026-09):** cada transação de `microvix_movimento` é classificada como
+Pessoa Física ou Jurídica pelo `tipo_cliente` do cliente em `microvix.microvix_clientes_fornecedores`
+(join por `portal` + `codigo_cliente`/`cod_cliente`, chave `(portal, cod_cliente)`): `tipo_cliente='J'`
+→ PJ; `'F'` ou `NULL` (cliente sem cadastro correspondente, ex. consumidor não identificado) → PF.
+A maioria das queries analíticas (faturamento, ticket médio, ranking de clientes) usa
+`NOT EXISTS (... cf.tipo_cliente = 'J')` pra considerar só PF, enquanto concentração/venda por
+vendedor a PJ usa `EXISTS`/`JOIN ... cf.tipo_cliente = 'J'`. Isso substitui (migration
+`migrations/descontinuar_store_serie_rules.sql`) o esquema anterior baseado em série da NF por
+loja — a tabela `faciais.store_serie_rules` e a view `faciais.vw_store_series` foram removidas; a
+série da NF continua normalmente usada pra identificar a nota fiscal (`(cnpj_emp, serie,
+documento)`), só deixou de servir pra classificação PF/PJ.
 
 **Inadimplência — `people.top10_inadimplentes` (2026-08):** quadro "Top 10 Inadimplentes" em
 Motor > Vendas (web e mobile), com toggle de ordenação por valor em aberto ou dias de atraso
@@ -192,9 +202,9 @@ chave confiável nem combinado com `cnpj_emp` — a mesma dupla `(cnpj_emp, docu
 entre séries diferentes da mesma loja (medido: milhares de casos). A chave que identifica a NF é
 `(cnpj_emp, serie, documento)`. `people.compras_recentes_pessoa` e `people.ticket_medio_pessoas`
 juntam `faciais.person_purchases` → `microvix_movimento` casando por `cnpj_emp`+`documento` e
-restringindo `serie` via
-`store_serie_rules` (`person_kind='PF'`) pra reduzir a ambiguidade — mas `person_purchases` só tem
-`(store_id, bill)` como chave (sem série), então um resíduo de casos com o mesmo `documento` em
+restringindo aos clientes classificados como PF via `microvix_clientes_fornecedores.tipo_cliente`
+(2026-09, antes era via série/`store_serie_rules`) pra reduzir a ambiguidade — mas `person_purchases`
+só tem `(store_id, bill)` como chave (sem série), então um resíduo de casos com o mesmo `documento` em
 mais de uma série PF da mesma loja (raro, confirmado em produção — ex.: loja `store_id=2`,
 `documento=7`, séries `100` e `3` ambas PF, notas de dias diferentes) ainda pode juntar a compra à
 pessoa errada. Valor e produtos exibidos sempre vêm da mesma consulta (nunca duas separadas), então
@@ -317,7 +327,6 @@ pessoa excluída. Migration: `migrations/add_people_review_status.sql`.
 | `users` | `user_id`, `username`, `full_name`, `email`, `password_hash`, `user_type_id`, `is_active`, `last_company_group_id`, `last_retailer_group_id`, `last_store_id` |
 | `people` | `person_id`, `full_name`, `nickname`, `document`, `phone`, `email`, `crm_key`, `birth_date`, `age`, `gender_id`, `person_type_id`, `reference_track_id`, `notes`, `review_status`, `reviewed_by`, `reviewed_at` |
 | `company_themes` | `company_id`, cores HEX (`primary_color`, `secondary_color`, `accent_color`, `text_color`, `background_color`, `graph_color_1..4`), `logo_url` |
-| `store_serie_rules` | `store_serie_rule_id`, `store_id` (FK cascade), `person_kind` (`PF`/`PJ`), `serie` (série da NF). Unique `(store_id, serie)`. Ver seção "Séries PF vs. PJ" acima |
 
 **Paleta padrão:** primary=`#F47B20`, secondary=`#0057A8`, accent=`#FFFFFF`, text=`#000000`, bg=`#F5F5F5`, graph 1–4: `#1339F6`, `#44AC0C`, `#F08205`, `#DC0929`
 
@@ -408,8 +417,7 @@ formatadas em R$ via `br_valor_k`; clicar num vendedor mostra o dia a dia da sem
 | `vw_goal_daily_target` | Valor efetivo da meta: prioriza override (goal_values) sobre template |
 | `vw_goal_performance` | Apuração com `achievement_pct` e `status` (achieved/not_achieved/pending/no_target) |
 | `vw_customer_ranking` | Ranking de clientes em tempo real (fonte do cache `customer_ranking`). Score = (visitas_com_compra × pts) + (visitas_sem_compra × pts) + (total_gasto × pts_por_real). Usa `mv_microvix_vendas` para performance |
-| `mv_microvix_vendas` *(MATERIALIZED)* | Cache de vendas válidas do Microvix, usado como fonte de `vw_customer_ranking`. Precisa de `REFRESH` antes do cálculo do ranking — feito pelo cron. Filtro: `cod_natureza_operacao='10030'`/`cancelado<>'S'`/`excluido<>'S'`/`soma_relatorio='S'`, `tipo_transacao` em `('P','V','S')` ou NULL, `documento IS NOT NULL`, e `serie` restrito às séries PF da loja via join com `faciais.store_serie_rules` (`person_kind='PF'`, join por `stores.cnpj = microvix_movimento.cnpj_emp`) — corrigido em 2026-08-15 para não depender de lista fixa de séries |
-| `vw_store_series` | Séries PF e PJ por loja agregadas em array (`series_pf`, `series_pj`) a partir de `store_serie_rules`, para uso em filtros de `microvix_movimento` |
+| `mv_microvix_vendas` *(MATERIALIZED)* | Cache de vendas válidas do Microvix, usado como fonte de `vw_customer_ranking`. Precisa de `REFRESH` antes do cálculo do ranking — feito pelo cron. Filtro: `cod_natureza_operacao='10030'`/`cancelado<>'S'`/`excluido<>'S'`/`soma_relatorio='S'`, `tipo_transacao` em `('P','V','S')` ou NULL, `documento IS NOT NULL`, e classificado como PF via `LEFT JOIN faciais.stores` (restringe a lojas cadastradas) + `LEFT JOIN microvix.microvix_clientes_fornecedores` (`tipo_cliente IS NULL OR tipo_cliente='F'`) — trocado de série pra `tipo_cliente` em 2026-09 (ver "Classificação PF vs. PJ" acima; migration `migrations/descontinuar_store_serie_rules.sql`) |
 | `vw_primeira_aparicao_clientes` *(MATERIALIZED)* | Primeira detecção de cada cliente (person_type_id='C'). Campo `first_record`. Index único em `person_id` |
 
 **Funções:** `fn_set_updated_at()` — trigger que atualiza `updated_at` em todas as tabelas. `create_updated_at_trigger(p_table)` — helper para criar trigger em nova tabela.
