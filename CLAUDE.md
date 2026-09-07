@@ -206,20 +206,22 @@ histórico, qualquer loja/data, não só as últimas 5 exibidas) dividido pela q
 (`people.ticket_medio_pessoas`, uma query em lote pra todos os clientes da lista de uma vez, ao
 contrário de `compras_recentes_pessoa` que é por pessoa).
 
-**⚠️ Cuidado de banco ao consultar compras por pessoa:** `documento` em `microvix_movimento` não é
-chave confiável nem combinado com `cnpj_emp` — a mesma dupla `(cnpj_emp, documento)` se repete
-entre séries diferentes da mesma loja (medido: milhares de casos). A chave que identifica a NF é
-`(cnpj_emp, serie, documento)`. `people.compras_recentes_pessoa` e `people.ticket_medio_pessoas`
-juntam `faciais.person_purchases` → `microvix_movimento` casando por `cnpj_emp`+`documento` e
-restringindo aos clientes classificados como PF via `microvix_clientes_fornecedores.tipo_cliente`
-(2026-09, antes era via série/`store_serie_rules`) pra reduzir a ambiguidade — mas `person_purchases`
-só tem `(store_id, bill)` como chave (sem série), então um resíduo de casos com o mesmo `documento` em
-mais de uma série PF da mesma loja (raro, confirmado em produção — ex.: loja `store_id=2`,
-`documento=7`, séries `100` e `3` ambas PF, notas de dias diferentes) ainda pode juntar a compra à
-pessoa errada. Valor e produtos exibidos sempre vêm da mesma consulta (nunca duas separadas), então
-pelo menos ficam consistentes entre si mesmo nesse caso residual. **`people.produtos_por_pessoa`**
-(usado em Ranking > pessoa) tem esse mesmo problema de ambiguidade de `documento` só sem a
-mitigação de série — não corrigido, ficou fora do escopo da tela Clientes.
+**⚠️ Cuidado de banco ao consultar compras por pessoa (resolvido na maioria dos casos, 2026-09):**
+`documento` em `microvix_movimento` não é chave confiável nem combinado com `cnpj_emp` — a mesma
+dupla `(cnpj_emp, documento)` se repete entre séries diferentes da mesma loja (medido: milhares de
+casos). A chave que identifica a NF é `(cnpj_emp, serie, documento)`. Desde 2026-09,
+`faciais.person_purchases` tem colunas `serie`/`data` (adicionadas no camera300, com backfill de
+98,1% das linhas), e toda query que junta `person_purchases` → `microvix_movimento` neste repo
+(`people.ticket_por_tipo`, `top5_por_tipo`, `produtos_por_pessoa`, `ticket_medio_pessoas`,
+`compras_recentes_pessoa`, `compras_recentes_pessoa_detalhe`, e o resolvedor de vínculo manual
+`_resolver_link`) casa por `(cnpj_emp, serie, documento, data)` quando `pp.serie`/`pp.data` estão
+preenchidos, caindo pro comportamento antigo (só `cnpj_emp`+`documento`) nas ~1,9% de linhas
+residuais sem esses campos (backfill não conseguiu resolver sem ambiguidade — mesma natureza do
+caso "loja `store_id=2`, `documento=7`, séries `100` e `3`" que originou esse cuidado). O ranking
+de clientes (`vw_customer_ranking`/`mv_microvix_vendas`, migration
+`migrations/person_purchases_serie_data.sql`) tem o mesmo tratamento. Valor e produtos exibidos
+sempre vêm da mesma consulta (nunca duas separadas), então ficam consistentes entre si mesmo nas
+linhas residuais sem `serie`/`data`.
 
 **Ranking > pessoa — ticket médio no período (2026-08):** o card "Posição no Ranking" (web
 `/ranking/<person_id>`, mobile `/m/ranking/<person_id>` e o painel expansível inline de
@@ -245,10 +247,11 @@ em staging (`faciais.manual_purchase_links`, `status='pending'`) em vez de grava
 *Resolução:* preguiçosa — a cada carregamento da tela Clientes, `people.manual_purchase_links_resolver_lojas`
 tenta casar cada `pending` das lojas em vista contra `microvix_movimento` (por
 `cnpj_emp`+`serie`+`numero_nota`, não cancelada/excluída). Quando acha, grava/corrige
-`faciais.person_purchases` diretamente (insere se não existia, ou troca o `person_id` se o
-camera300 já tinha atribuído a nota a outra pessoa — **o vínculo manual sempre prevalece**) e marca
-`confirmed`. Como isso já escreve em `person_purchases`, nenhuma query de leitura (`compras_recentes_pessoa`,
-`ticket_medio_pessoas`, `produtos_por_pessoa`) precisou mudar. Uma vez `confirmed`, a correção é
+`faciais.person_purchases` diretamente — inserindo/atualizando também `serie`/`data` da NF
+encontrada (2026-09, ver "Cuidado de banco ao consultar compras por pessoa" acima; o vínculo
+manual já sabe a série exata digitada, sem ambiguidade) — (insere se não existia, ou troca o
+`person_id` se o camera300 já tinha atribuído a nota a outra pessoa — **o vínculo manual sempre
+prevalece**) e marca `confirmed`. Uma vez `confirmed`, a correção é
 **permanente** — apagar o registro de `manual_purchase_links` depois não desfaz o que já foi
 gravado em `person_purchases`, só remove o rastro de auditoria (por isso um link `confirmed` não é
 editável, só apagável). Pendentes com mais de 3 dias (`MANUAL_LINK_EXPIRA_DIAS`) expiram pra
@@ -413,7 +416,7 @@ formatadas em R$ via `br_valor_k`; clicar num vendedor mostra o dia a dia da sem
 
 | Tabela | Descrição |
 |---|---|
-| `person_purchases` | Vínculo NF × pessoa reconhecida. Campos: `person_purchase_id`, `person_id` (NULL=não identificado), `store_id`, `bill` (nº NF, único por loja), `is_cancelled`, `is_identified`. Escrita pelo camera300; desde 2026-08 também escrita por este app (resolução de `manual_purchase_links`, ver seção "Clientes — vínculo manual de nota fiscal") |
+| `person_purchases` | Vínculo NF × pessoa reconhecida. Campos: `person_purchase_id`, `person_id` (NULL=não identificado), `store_id`, `bill` (nº NF — não é único sozinho, repete entre séries da mesma loja), `serie`, `data` (`data_documento::date` da NF; junto com `bill` identifica a NF exata — colunas adicionadas pelo camera300 em 2026-09, com backfill de 98,1%; `NULL` nas linhas residuais não resolvidas), `is_cancelled`, `is_identified`. Unique `(store_id, bill, serie, data)`. Escrita pelo camera300; desde 2026-08 também escrita por este app (resolução de `manual_purchase_links`, ver seção "Clientes — vínculo manual de nota fiscal", que grava `serie`/`data` desde 2026-09) |
 | `manual_purchase_links` | (2026-08) Staging do vínculo manual nota×pessoa da tela Clientes, até a nota aparecer em `microvix_movimento`. Campos: `link_id`, `person_id`, `store_id`, `numero_nota`, `serie`, `status` (`pending`/`confirmed`/`not_found`), `entered_by`, `entered_at`, `resolved_at`. Unique `(store_id, serie, numero_nota)`. Ver seção "Clientes — vínculo manual de nota fiscal" |
 
 #### Views e materialized views
@@ -426,7 +429,7 @@ formatadas em R$ via `br_valor_k`; clicar num vendedor mostra o dia a dia da sem
 | `vw_goal_daily_target` | Valor efetivo da meta: prioriza override (goal_values) sobre template |
 | `vw_goal_performance` | Apuração com `achievement_pct` e `status` (achieved/not_achieved/pending/no_target) |
 | `vw_customer_ranking` | Ranking de clientes em tempo real (fonte do cache `customer_ranking`). Score = (visitas_com_compra × pts) + (visitas_sem_compra × pts) + (total_gasto × pts_por_real). Usa `mv_microvix_vendas` para performance |
-| `mv_microvix_vendas` *(MATERIALIZED)* | Cache de vendas válidas do Microvix, usado como fonte de `vw_customer_ranking`. Precisa de `REFRESH` antes do cálculo do ranking — feito pelo cron. Filtro: `cod_natureza_operacao='10030'`/`cancelado<>'S'`/`excluido<>'S'`/`soma_relatorio='S'`, `documento IS NOT NULL`, `tipo_transacao<>'J' OR tipo_transacao IS NULL` (2026-09 — migration `migrations/filtro_tipo_transacao_diferente_j.sql`; ver "Filtro padrão Microvix" acima), e classificado como PF via `LEFT JOIN faciais.stores` (restringe a lojas cadastradas) + `LEFT JOIN microvix.microvix_clientes_fornecedores` (`tipo_cliente IS NULL OR tipo_cliente='F'`) — trocado de série pra `tipo_cliente` em 2026-09 (ver "Classificação PF vs. PJ" acima; migration `migrations/descontinuar_store_serie_rules.sql`) |
+| `mv_microvix_vendas` *(MATERIALIZED)* | Cache de vendas válidas do Microvix, usado como fonte de `vw_customer_ranking`. Precisa de `REFRESH` antes do cálculo do ranking — feito pelo cron. Agregado por `(cnpj_emp, documento, serie, data_documento)` — `serie` incluída desde 2026-09 (migration `migrations/person_purchases_serie_data.sql`) pra permitir a `vw_customer_ranking` casar por `pp.serie`/`pp.data` exatos e não só `documento`. Filtro: `cod_natureza_operacao='10030'`/`cancelado<>'S'`/`excluido<>'S'`/`soma_relatorio='S'`, `documento IS NOT NULL`, `tipo_transacao<>'J' OR tipo_transacao IS NULL` (2026-09 — migration `migrations/filtro_tipo_transacao_diferente_j.sql`; ver "Filtro padrão Microvix" acima), e classificado como PF via `LEFT JOIN faciais.stores` (restringe a lojas cadastradas) + `LEFT JOIN microvix.microvix_clientes_fornecedores` (`tipo_cliente IS NULL OR tipo_cliente='F'`) — trocado de série pra `tipo_cliente` em 2026-09 (ver "Classificação PF vs. PJ" acima; migration `migrations/descontinuar_store_serie_rules.sql`) |
 | `vw_primeira_aparicao_clientes` *(MATERIALIZED)* | Primeira detecção de cada cliente (person_type_id='C'). Campo `first_record`. Index único em `person_id` |
 
 **Funções:** `fn_set_updated_at()` — trigger que atualiza `updated_at` em todas as tabelas. `create_updated_at_trigger(p_table)` — helper para criar trigger em nova tabela.

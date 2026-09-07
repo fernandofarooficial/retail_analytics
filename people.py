@@ -118,7 +118,9 @@ def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
                 MIN(vpac.first_record)::DATE AS estreia
             FROM faciais.person_purchases pp
             JOIN microvix.microvix_movimento mm
-                ON pp.bill = mm.documento
+                ON  pp.bill = mm.documento
+               AND  (pp.serie IS NULL OR mm.serie = pp.serie)
+               AND  (pp.data  IS NULL OR mm.data_documento::date = pp.data)
             LEFT JOIN faciais.vw_primeira_aparicao_clientes vpac
                 ON pp.person_id = vpac.person_id
             WHERE mm.data_documento >= %s::date AND mm.data_documento < %s::date + INTERVAL '1 day'
@@ -294,7 +296,7 @@ def top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
     """Top 5 produtos por faturamento, separado em novo/recorrente, via faciais.person_purchases."""
     rows = db.query_all("""
         WITH bills AS (
-            SELECT pp.bill,
+            SELECT pp.bill, pp.serie, pp.data,
                    EXISTS (
                        SELECT 1 FROM faciais.detection_records dr
                        WHERE  dr.person_id = pp.person_id AND dr.store_id = %s
@@ -310,7 +312,10 @@ def top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
                    COALESCE(NULLIF(TRIM(mp.descricao_basica), ''), mp.nome) AS produto,
                    mm.valor_liquido
             FROM   bills b
-            JOIN   microvix.microvix_movimento mm ON mm.documento = b.bill
+            JOIN   microvix.microvix_movimento mm
+                   ON  mm.documento = b.bill
+                  AND  (b.serie IS NULL OR mm.serie = b.serie)
+                  AND  (b.data  IS NULL OR mm.data_documento::date = b.data)
             JOIN   microvix.microvix_produtos mp
                    ON mp.portal = mm.portal AND mp.cod_produto = mm.cod_produto
             WHERE  mm.portal = %s AND mm.cnpj_emp = %s
@@ -995,13 +1000,19 @@ def cobertura_estoque(portal, cnpj):
 
 
 def produtos_por_pessoa(store_id, person_id, cnpj, days):
-    """Produtos comprados por uma pessoa identificada no período de análise do ranking."""
+    """Produtos comprados por uma pessoa identificada no período de análise do ranking.
+    Junta por (cnpj_emp, serie, documento, data) quando person_purchases.serie/data
+    estão preenchidos (2026-09); cai pra (cnpj_emp, documento) nas linhas antigas sem
+    esses campos — mesmo cuidado de ambiguidade documentado no CLAUDE.md."""
     return db.query_all("""
         SELECT mp.nome AS product_name, mp.referencia, mp.desc_linha,
                SUM(mm.quantidade)  AS total_qty,
                SUM(mm.valor_total) AS total_value
         FROM   faciais.person_purchases pp
-        JOIN   microvix.microvix_movimento mm ON mm.documento = pp.bill
+        JOIN   microvix.microvix_movimento mm
+               ON  mm.documento = pp.bill
+              AND  (pp.serie IS NULL OR mm.serie = pp.serie)
+              AND  (pp.data  IS NULL OR mm.data_documento::date = pp.data)
         JOIN   microvix.microvix_produtos mp
                ON  mp.portal      = mm.portal
                AND mp.cod_produto = mm.cod_produto
@@ -1092,8 +1103,10 @@ def visitas_anteriores(person_ids, data_str):
 def ticket_medio_pessoas(person_ids):
     """Ticket médio (valor total / qtd. de notas) por pessoa, considerando todo o
     histórico de compras confirmadas (qualquer loja/data). Só entram pessoas com
-    pelo menos uma nota. Mesmo cuidado de (cnpj_emp, serie, documento) de
-    compras_recentes_pessoa — ver CLAUDE.md."""
+    pelo menos uma nota. Junta por (cnpj_emp, serie, documento, data) quando
+    person_purchases.serie/data estão preenchidos (2026-09 — colunas novas do
+    camera300, backfill parcial); cai pra (cnpj_emp, documento) nas linhas antigas
+    sem serie/data — mesmo cuidado documentado no CLAUDE.md."""
     if not person_ids:
         return {}
     rows = db.query_all("""
@@ -1107,6 +1120,8 @@ def ticket_medio_pessoas(person_ids):
             JOIN   microvix.microvix_movimento mm
                    ON  mm.cnpj_emp::bigint = st.cnpj
                   AND  mm.documento        = pp.bill
+                  AND  (pp.serie IS NULL OR mm.serie = pp.serie)
+                  AND  (pp.data  IS NULL OR mm.data_documento::date = pp.data)
             LEFT   JOIN microvix.microvix_clientes_fornecedores cf
                    ON  cf.portal      = mm.portal
                   AND  cf.cod_cliente = mm.codigo_cliente
@@ -1155,8 +1170,10 @@ def ranking_posicao_pessoas(store_id, person_ids):
 def compras_recentes_pessoa(person_id, max_dias=5):
     """Últimas compras confirmadas da pessoa (até max_dias dias mais recentes),
     em qualquer loja, com valor/qtd_notas/produtos consistentes entre si (mesma
-    consulta a microvix_movimento, casada por cnpj_emp+serie+documento).
-    Ver CLAUDE.md — documento sozinho não identifica a NF."""
+    consulta a microvix_movimento, casada por cnpj_emp+serie+documento+data quando
+    person_purchases.serie/data estão preenchidos — 2026-09; cai pra cnpj_emp+documento
+    nas linhas antigas sem esses campos). Ver CLAUDE.md — documento sozinho não
+    identifica a NF."""
     rows = db.query_all("""
         WITH compras AS (
             SELECT
@@ -1169,6 +1186,8 @@ def compras_recentes_pessoa(person_id, max_dias=5):
             JOIN   microvix.microvix_movimento mm
                    ON  mm.cnpj_emp::bigint = st.cnpj
                   AND  mm.documento        = pp.bill
+                  AND  (pp.serie IS NULL OR mm.serie = pp.serie)
+                  AND  (pp.data  IS NULL OR mm.data_documento::date = pp.data)
             LEFT   JOIN microvix.microvix_clientes_fornecedores cf
                    ON  cf.portal      = mm.portal
                   AND  cf.cod_cliente = mm.codigo_cliente
@@ -1228,7 +1247,7 @@ def compras_recentes_pessoa_detalhe(person_id, max_dias=5):
     Cada grupo traz data/série/número/valor total da nota, e dentro dele uma linha por
     produto com quantidade, valor da linha e a quantidade total histórica (todo o
     período, qualquer loja/data) do mesmo produto comprado pela pessoa. Mesmo cuidado de
-    (cnpj_emp, serie, documento) de compras_recentes_pessoa — ver CLAUDE.md."""
+    (cnpj_emp, serie, documento, data) de compras_recentes_pessoa — ver CLAUDE.md."""
     rows = db.query_all("""
         WITH compras AS (
             SELECT
@@ -1241,6 +1260,8 @@ def compras_recentes_pessoa_detalhe(person_id, max_dias=5):
             JOIN   microvix.microvix_movimento mm
                    ON  mm.cnpj_emp::bigint = st.cnpj
                   AND  mm.documento        = pp.bill
+                  AND  (pp.serie IS NULL OR mm.serie = pp.serie)
+                  AND  (pp.data  IS NULL OR mm.data_documento::date = pp.data)
             LEFT   JOIN microvix.microvix_clientes_fornecedores cf
                    ON  cf.portal      = mm.portal
                   AND  cf.cod_cliente = mm.codigo_cliente
@@ -1351,9 +1372,12 @@ def manual_purchase_link_criar(person_id, store_id, numero_nota, serie, entered_
 def _resolver_link(link, store_cnpj):
     """Tenta casar um manual_purchase_link pendente com microvix_movimento. Se
     achar, grava/corrige faciais.person_purchases (o manual sempre prevalece
-    sobre o que já estiver lá) e marca 'confirmed'. Retorna True se resolveu."""
+    sobre o que já estiver lá) e marca 'confirmed'. Retorna True se resolveu.
+    Grava serie/data da própria NF confirmada (2026-09, colunas novas do
+    camera300) — o vínculo manual já sabe a série exata digitada pelo usuário,
+    então não há ambiguidade aqui."""
     nota = db.query_one("""
-        SELECT 1
+        SELECT data_documento::date AS data
         FROM   microvix.microvix_movimento
         WHERE  cnpj_emp::bigint = %s
           AND  serie            = %s
@@ -1369,19 +1393,28 @@ def _resolver_link(link, store_cnpj):
         SELECT person_purchase_id, person_id
         FROM   faciais.person_purchases
         WHERE  store_id = %s AND bill = %s
-    """, (link['store_id'], link['numero_nota']))
+          AND  (serie IS NULL OR serie = %s)
+        ORDER  BY (serie = %s) DESC
+        LIMIT  1
+    """, (link['store_id'], link['numero_nota'], link['serie'], link['serie']))
 
     if existing is None:
         db.execute("""
-            INSERT INTO faciais.person_purchases (person_id, store_id, bill, is_identified)
-            VALUES (%s, %s, %s, TRUE)
-        """, (link['person_id'], link['store_id'], link['numero_nota']))
+            INSERT INTO faciais.person_purchases (person_id, store_id, bill, serie, data, is_identified)
+            VALUES (%s, %s, %s, %s, %s, TRUE)
+        """, (link['person_id'], link['store_id'], link['numero_nota'], link['serie'], nota['data']))
     elif existing['person_id'] != link['person_id']:
         db.execute("""
             UPDATE faciais.person_purchases
-            SET    person_id = %s, is_identified = TRUE, is_cancelled = FALSE
+            SET    person_id = %s, serie = %s, data = %s, is_identified = TRUE, is_cancelled = FALSE
             WHERE  person_purchase_id = %s
-        """, (link['person_id'], existing['person_purchase_id']))
+        """, (link['person_id'], link['serie'], nota['data'], existing['person_purchase_id']))
+    else:
+        db.execute("""
+            UPDATE faciais.person_purchases
+            SET    serie = %s, data = %s
+            WHERE  person_purchase_id = %s AND (serie IS NULL OR data IS NULL)
+        """, (link['serie'], nota['data'], existing['person_purchase_id']))
 
     db.execute("""
         UPDATE faciais.manual_purchase_links
