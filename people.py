@@ -17,6 +17,7 @@ def kpi_microvix(store_id, portal, cnpj, dia_i, dia_f):
           AND  mm.cancelado           <> 'S'
           AND  mm.excluido            <> 'S'
           AND  mm.soma_relatorio       = 'S'
+          AND  (mm.tipo_transacao <> 'J' OR mm.tipo_transacao IS NULL)
           AND  mm.cod_natureza_operacao = '10030'
           AND  NOT EXISTS (
                 SELECT 1 FROM microvix.microvix_clientes_fornecedores cf
@@ -61,6 +62,7 @@ def faixa_horaria(store_id, portal, cnpj, dia_i, dia_f):
           AND  mm.cancelado           <> 'S'
           AND  mm.excluido            <> 'S'
           AND  mm.soma_relatorio       = 'S'
+          AND  (mm.tipo_transacao <> 'J' OR mm.tipo_transacao IS NULL)
           AND  mm.cod_natureza_operacao = '10030'
           AND  NOT EXISTS (
                 SELECT 1 FROM microvix.microvix_clientes_fornecedores cf
@@ -128,6 +130,7 @@ def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
               AND mm.cancelado            <> 'S'
               AND mm.excluido             <> 'S'
               AND mm.soma_relatorio        = 'S'
+              AND (mm.tipo_transacao <> 'J' OR mm.tipo_transacao IS NULL)
               AND NOT EXISTS (
                     SELECT 1 FROM microvix.microvix_clientes_fornecedores cf
                     WHERE cf.portal = mm.portal AND cf.cod_cliente = mm.codigo_cliente AND cf.tipo_cliente = 'J'
@@ -177,6 +180,7 @@ def faturamento_mensal(store_id, portal, cnpj, ano):
           AND mm.cancelado            <> 'S'
           AND mm.excluido             <> 'S'
           AND mm.soma_relatorio        = 'S'
+          AND (mm.tipo_transacao <> 'J' OR mm.tipo_transacao IS NULL)
           AND mm.cod_natureza_operacao = '10030'
         GROUP BY mes
         ORDER BY mes
@@ -205,6 +209,7 @@ def faturamento_diario_mes(portal, cnpj, ano, mes):
           AND  cancelado            <> 'S'
           AND  excluido             <> 'S'
           AND  soma_relatorio        = 'S'
+          AND  (tipo_transacao <> 'J' OR tipo_transacao IS NULL)
           AND  cod_natureza_operacao = '10030'
         GROUP  BY dia
         ORDER  BY dia
@@ -228,6 +233,7 @@ def faturamento_periodos_mes(portal, cnpj, ano, mes):
           AND  cancelado            <> 'S'
           AND  excluido             <> 'S'
           AND  soma_relatorio        = 'S'
+          AND  (tipo_transacao <> 'J' OR tipo_transacao IS NULL)
           AND  cod_natureza_operacao = '10030'
         GROUP  BY dia
         ORDER  BY dia
@@ -254,6 +260,7 @@ def vendas_mensal_por_vendedor(portal, cnpj, ano):
           AND  mm.cancelado            <> 'S'
           AND  mm.excluido             <> 'S'
           AND  mm.soma_relatorio        = 'S'
+          AND  (mm.tipo_transacao <> 'J' OR mm.tipo_transacao IS NULL)
           AND  mm.cod_natureza_operacao = '10030'
           AND  mm.cod_vendedor IS NOT NULL
         GROUP  BY mes, vendedor
@@ -309,6 +316,7 @@ def top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
             WHERE  mm.portal = %s AND mm.cnpj_emp = %s
               AND  mm.cancelado <> 'S' AND mm.excluido <> 'S'
               AND  mm.soma_relatorio = 'S'
+              AND  (mm.tipo_transacao <> 'J' OR mm.tipo_transacao IS NULL)
               AND  mm.cod_natureza_operacao = '10030'
               AND  NOT EXISTS (
                     SELECT 1 FROM microvix.microvix_clientes_fornecedores cf
@@ -361,6 +369,7 @@ def vendedores_mes(portal, cnpj, mes_ini_cur, mes_fim_cur, mes_ini_ant, mes_fim_
         WHERE  m.portal    = %s
           AND  m.cnpj_emp  = %s
           AND  m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
+          AND  (m.tipo_transacao <> 'J' OR m.tipo_transacao IS NULL)
           AND  m.cod_natureza_operacao = '10030'
           AND  m.cod_vendedor IS NOT NULL
           AND  m.data_documento >= %s::date
@@ -479,6 +488,7 @@ def top10_clientes_vendedor(store_id, portal, cnpj, cod_vendedor, mes_ini_cur, m
           AND  m.cod_vendedor::text   = %s
           AND  cf.tipo_cliente        = 'J'
           AND  m.cancelado           <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
+          AND  (m.tipo_transacao <> 'J' OR m.tipo_transacao IS NULL)
           AND  m.cod_natureza_operacao = '10030'
           AND  m.data_documento >= %s::date
           AND  m.data_documento <  %s::date + INTERVAL '1 day'
@@ -518,6 +528,7 @@ def top10_produtos_vendedor(store_id, portal, cnpj, cod_vendedor, mes_ini_cur, m
           AND  m.cnpj_emp             = %s
           AND  m.cod_vendedor::text   = %s
           AND  m.cancelado           <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
+          AND  (m.tipo_transacao <> 'J' OR m.tipo_transacao IS NULL)
           AND  m.cod_natureza_operacao = '10030'
           AND  m.data_documento >= %s::date
           AND  m.data_documento <  %s::date + INTERVAL '1 day'
@@ -576,6 +587,7 @@ def top10_clientes_loja(store_id, portal, cnpj,
           AND  m.cnpj_emp             = %s
           AND  cf.tipo_cliente        = 'J'
           AND  m.cancelado           <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
+          AND  (m.tipo_transacao <> 'J' OR m.tipo_transacao IS NULL)
           AND  m.cod_natureza_operacao = '10030'
           AND  m.data_documento >= %s::date
           AND  m.data_documento <  %s::date + INTERVAL '1 day'
@@ -639,6 +651,7 @@ def top10_produtos_cliente(store_id, portal, cnpj, cod_cliente,
           AND  m.cnpj_emp             = %s
           AND  m.codigo_cliente::text = %s
           AND  m.cancelado           <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
+          AND  (m.tipo_transacao <> 'J' OR m.tipo_transacao IS NULL)
           AND  m.cod_natureza_operacao = '10030'
           AND  m.data_documento >= %s::date
           AND  m.data_documento <  %s::date + INTERVAL '1 day'
@@ -736,6 +749,7 @@ def concentracao_clientes_mensal(store_id, portal, cnpj, ano):
               AND  m.cnpj_emp             = %s
               AND  EXTRACT(YEAR FROM m.data_documento) = %s
               AND  m.cancelado           <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
+              AND  (m.tipo_transacao <> 'J' OR m.tipo_transacao IS NULL)
               AND  m.cod_natureza_operacao = '10030'
             GROUP  BY 1, 2
         ),
@@ -787,6 +801,7 @@ def concentracao_clientes_mensal(store_id, portal, cnpj, ano):
 
 _ESTOQUE_BASE_FILTER = (
     "m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S' "
+    "AND (m.tipo_transacao <> 'J' OR m.tipo_transacao IS NULL) "
     "AND m.cod_natureza_operacao = '10030'"
 )
 
@@ -932,6 +947,7 @@ def cobertura_estoque(portal, cnpj):
             FROM   microvix.microvix_movimento m
             WHERE  m.portal = %s AND m.cnpj_emp = %s
               AND  m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S'
+              AND  (m.tipo_transacao <> 'J' OR m.tipo_transacao IS NULL)
               AND  m.cod_natureza_operacao = '10030'
               AND  m.data_documento >= CURRENT_DATE - INTERVAL '30 days'
               AND  m.data_documento <  CURRENT_DATE + INTERVAL '1 day'
@@ -993,6 +1009,7 @@ def produtos_por_pessoa(store_id, person_id, cnpj, days):
           AND  mm.cancelado            <> 'S'
           AND  mm.excluido             <> 'S'
           AND  mm.soma_relatorio        = 'S'
+          AND  (mm.tipo_transacao <> 'J' OR mm.tipo_transacao IS NULL)
           AND  mm.cod_natureza_operacao  = '10030'
           AND  pp.person_id    = %s
           AND  pp.store_id     = %s
@@ -1098,6 +1115,7 @@ def ticket_medio_pessoas(person_ids):
               AND  mm.cancelado    <> 'S'
               AND  mm.excluido     <> 'S'
               AND  mm.soma_relatorio = 'S'
+              AND  (mm.tipo_transacao <> 'J' OR mm.tipo_transacao IS NULL)
               AND  mm.cod_natureza_operacao = '10030'
               AND  (cf.tipo_cliente IS NULL OR cf.tipo_cliente = 'F')
         )
@@ -1161,6 +1179,7 @@ def compras_recentes_pessoa(person_id, max_dias=5):
               AND  mm.cancelado    <> 'S'
               AND  mm.excluido     <> 'S'
               AND  mm.soma_relatorio = 'S'
+              AND  (mm.tipo_transacao <> 'J' OR mm.tipo_transacao IS NULL)
               AND  mm.cod_natureza_operacao = '10030'
               AND  (cf.tipo_cliente IS NULL OR cf.tipo_cliente = 'F')
         ),
@@ -1232,6 +1251,7 @@ def compras_recentes_pessoa_detalhe(person_id, max_dias=5):
               AND  mm.cancelado    <> 'S'
               AND  mm.excluido     <> 'S'
               AND  mm.soma_relatorio = 'S'
+              AND  (mm.tipo_transacao <> 'J' OR mm.tipo_transacao IS NULL)
               AND  mm.cod_natureza_operacao = '10030'
               AND  (cf.tipo_cliente IS NULL OR cf.tipo_cliente = 'F')
         ),
