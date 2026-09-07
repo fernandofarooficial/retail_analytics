@@ -1,14 +1,18 @@
--- Usa as colunas novas faciais.person_purchases.serie/data (adicionadas pelo camera300,
--- 2026-09, com backfill de 98,1%) pra eliminar a ambiguidade de "documento sozinho nao
--- identifica a NF" tambem no ranking de clientes (vw_customer_ranking/mv_microvix_vendas).
+-- Usa a coluna nova faciais.person_purchases.serie (adicionada pelo camera300, 2026-09,
+-- com backfill parcial) pra eliminar a ambiguidade de "documento sozinho nao identifica
+-- a NF" tambem no ranking de clientes (vw_customer_ranking/mv_microvix_vendas). O
+-- camera300 chegou a adicionar tambem uma coluna person_purchases.data (com constraint
+-- UNIQUE incluindo data), mas removeu no mesmo dia (2026-09-07) apos medir que serie
+-- sozinha ja e suficiente nos dados existentes — a constraint atual e so
+-- (store_id, bill, serie). Este arquivo ja reflete isso (nao referencia pp.data).
 -- As demais queries que fazem esse join (people.py: ticket_por_tipo, top5_por_tipo,
 -- produtos_por_pessoa, ticket_medio_pessoas, compras_recentes_pessoa[_detalhe]) ja foram
 -- ajustadas no codigo Python, sem precisar de migration.
 --
 -- mv_microvix_vendas passa a agregar tambem por serie (nao so cnpj_emp+documento+data),
 -- e vw_customer_ranking passa a casar por (mv.serie = pp.serie) quando pp.serie for
--- conhecido, caindo pro comportamento antigo (so cnpj_emp+documento+data>=cutoff, sem
--- distinguir serie) nas linhas antigas de person_purchases sem serie/data (residual do
+-- conhecida, caindo pro comportamento antigo (so cnpj_emp+documento+data>=cutoff, sem
+-- distinguir serie) nas linhas antigas de person_purchases sem serie (residual do
 -- backfill, mesmo cuidado documentado no CLAUDE.md).
 --
 -- Rodar manualmente: psql $PG_DSN -f migrations/person_purchases_serie_data.sql
@@ -34,7 +38,7 @@ CREATE MATERIALIZED VIEW faciais.mv_microvix_vendas AS
 CREATE INDEX idx_mv_vendas_cnpj_doc ON faciais.mv_microvix_vendas (cnpj_emp, documento);
 CREATE INDEX idx_mv_vendas_data ON faciais.mv_microvix_vendas (data_documento);
 
--- Recria vw_customer_ranking (derrubada pelo CASCADE acima) com o join refinado por serie/data.
+-- Recria vw_customer_ranking (derrubada pelo CASCADE acima) com o join refinado por serie.
 CREATE VIEW faciais.vw_customer_ranking AS
  WITH store_rule AS (
          SELECT s.store_id, s.store_name, s.cnpj::varchar AS cnpj,
@@ -63,7 +67,6 @@ CREATE VIEW faciais.vw_customer_ranking AS
              JOIN faciais.mv_microvix_vendas mv
                ON mv.cnpj_emp = s.cnpj::varchar AND mv.documento = pp.bill AND mv.data_documento >= sr_1.cutoff_date
               AND (pp.serie IS NULL OR mv.serie = pp.serie)
-              AND (pp.data  IS NULL OR mv.data_documento = pp.data)
           WHERE pp.person_id IS NOT NULL AND pp.is_cancelled = false
           GROUP BY pp.store_id, pp.person_id
         ), scoring AS (
