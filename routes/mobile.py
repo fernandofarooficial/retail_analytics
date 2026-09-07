@@ -900,7 +900,7 @@ def dashboard():
         _FILTRO_MV = (
             "m.portal = %s AND m.cnpj_emp = %s "
             "AND m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S' "
-            "AND (m.tipo_transacao IN ('P','V','S') OR m.tipo_transacao IS NULL) AND " + _NAO_PJ.format(alias='m') +
+            "AND " + _NAO_PJ.format(alias='m') +
             " AND m.cod_natureza_operacao = '10030'"
         )
         _JOIN_PROD = (
@@ -950,9 +950,9 @@ def dashboard():
                         ON pb.portal = b.portal AND pb.cod_produto = b.cod_produto
                     WHERE a.portal = %s AND a.cnpj_emp = %s
                       AND a.cancelado <> 'S' AND a.excluido <> 'S' AND a.soma_relatorio = 'S'
-                      AND (a.tipo_transacao IN ('P','V','S') OR a.tipo_transacao IS NULL) AND {_NAO_PJ.format(alias='a')} AND a.cod_natureza_operacao = '10030'
+                      AND {_NAO_PJ.format(alias='a')} AND a.cod_natureza_operacao = '10030'
                       AND b.cancelado <> 'S' AND b.excluido <> 'S' AND b.soma_relatorio = 'S'
-                      AND (b.tipo_transacao IN ('P','V','S') OR b.tipo_transacao IS NULL) AND {_NAO_PJ.format(alias='b')} AND b.cod_natureza_operacao = '10030'
+                      AND {_NAO_PJ.format(alias='b')} AND b.cod_natureza_operacao = '10030'
                       AND {date_filter}
                     GROUP BY nome_a, nome_b
                     ORDER BY qtd DESC LIMIT 10
