@@ -96,7 +96,8 @@ def sw():
 @mobile_bp.route('/')
 def index():
     if 'user_id' in session:
-        return redirect(url_for('mobile.dashboard'))
+        dest = 'mobile.clientes' if session.get('user_type_id') == 'emp' else 'mobile.dashboard'
+        return redirect(url_for(dest))
     return redirect(url_for('mobile.login'))
 
 
@@ -105,7 +106,8 @@ def index():
 @mobile_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user_id' in session:
-        return redirect(url_for('mobile.dashboard'))
+        dest = 'mobile.clientes' if session.get('user_type_id') == 'emp' else 'mobile.dashboard'
+        return redirect(url_for(dest))
 
     error = None
 
@@ -125,7 +127,8 @@ def login():
             session['full_name']    = user['full_name']
             session['username']     = username
             session['user_type_id'] = user['user_type_id']
-            return redirect(url_for('mobile.dashboard'))
+            dest = 'mobile.clientes' if user['user_type_id'] == 'emp' else 'mobile.dashboard'
+            return redirect(url_for(dest))
 
         error = 'Usuário ou senha incorretos.'
 
@@ -146,6 +149,7 @@ def logout():
 
 @mobile_bp.route('/dashboard')
 @_login_required
+@block_user_types('emp')
 def dashboard():
     user_id   = session['user_id']
     user_type = session['user_type_id']
@@ -1295,6 +1299,7 @@ def trocar_senha():
 
 @mobile_bp.route('/visitacao')
 @_login_required
+@block_user_types('emp')
 def visitacao():
     user_id   = session['user_id']
     user_type = session['user_type_id']
@@ -1965,6 +1970,7 @@ def clientes_apagar_nota(link_id):
 
 @mobile_bp.route('/ranking')
 @_login_required
+@block_user_types('emp')
 def ranking():
     user_id   = session['user_id']
     user_type = session['user_type_id']
@@ -2146,6 +2152,7 @@ def ranking():
 
 @mobile_bp.route('/ranking/<int:person_id>')
 @_login_required
+@block_user_types('emp')
 def ranking_pessoa(person_id):
     user_id   = session['user_id']
     user_type = session['user_type_id']
@@ -2241,6 +2248,7 @@ def ranking_pessoa(person_id):
 
 @mobile_bp.route('/ranking/<int:person_id>/dados')
 @_login_required
+@block_user_types('emp')
 def ranking_pessoa_dados(person_id):
     user_id  = session['user_id']
     store_id = request.args.get('store_id', type=int)
@@ -2342,6 +2350,7 @@ def ranking_pessoa_dados(person_id):
 
 @mobile_bp.route('/mapa-calor', methods=['GET', 'POST'])
 @_login_required
+@block_user_types('emp')
 def mapa_calor():
     import requests as _requests
     from routes.utils import (HEATMAP_API_URL, HEATMAP_API_BASE,
@@ -3101,6 +3110,7 @@ def motor_estoque():
 
 @mobile_bp.route('/heatmap-imagem')
 @_login_required
+@block_user_types('emp')
 def heatmap_imagem():
     import requests as _requests
     from flask import Response

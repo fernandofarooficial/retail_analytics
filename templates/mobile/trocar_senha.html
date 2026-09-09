@@ -16,12 +16,13 @@
 
   <main class="m-content">
 
-    <a href="{{ url_for('mobile.dashboard') }}" class="m-back-link">
+    {% set _is_emp = session.get('user_type_id') == 'emp' %}
+    <a href="{{ url_for('mobile.clientes') if _is_emp else url_for('mobile.dashboard') }}" class="m-back-link">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
       </svg>
-      Voltar ao Dashboard
+      {{ 'Voltar a Clientes' if _is_emp else 'Voltar ao Dashboard' }}
     </a>
 
     {% if msg_text %}

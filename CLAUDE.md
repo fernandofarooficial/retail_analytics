@@ -65,14 +65,27 @@ logo depois do ranking) — resolve/expira `faciais.manual_purchase_links` pende
 | `emp` | Lojas específicas vinculadas (`user_stores`) |
 
 **Restrição `emp` a Gestão/Motor/Relatórios (2026-08):** usuários `emp` não têm acesso aos módulos
-Gestão Estratégica, Motor Operacional e Relatórios (nem web nem mobile) — só Dashboard, Visitação,
-Ranking e Mapa de Calor. Implementado via decorator `@block_user_types('emp')` (`routes/utils.py`)
-aplicado em toda rota de `motor.py`, `gestao.py`, `relatorios.py` e nos equivalentes mobile
-(`mobile.gestao_*`/`mobile.motor_*`) — retorna 403 se `session['user_type_id'] == 'emp'`. Os links
-correspondentes também somem da navbar (`base_web.html`) e da bottom nav (`base_mobile.html`) pra
-esse tipo de usuário. Diferente do mecanismo de `screens`/`user_type_screens` (que não tem
-`screen_id` cadastrado pra esses três módulos) — é uma checagem direta de `user_type_id`, não
-baseada em `vw_user_screen_access`.
+Gestão Estratégica, Motor Operacional e Relatórios (nem web nem mobile). Implementado via decorator
+`@block_user_types('emp')` (`routes/utils.py`) aplicado em toda rota de `motor.py`, `gestao.py`,
+`relatorios.py` e nos equivalentes mobile (`mobile.gestao_*`/`mobile.motor_*`) — retorna 403 se
+`session['user_type_id'] == 'emp'`. Os links correspondentes também somem da navbar (`base_web.html`)
+e da bottom nav (`base_mobile.html`) pra esse tipo de usuário. Diferente do mecanismo de
+`screens`/`user_type_screens` (que não tem `screen_id` cadastrado pra esses três módulos) — é uma
+checagem direta de `user_type_id`, não baseada em `vw_user_screen_access`.
+
+**Restrição `emp` só a Clientes + Trocar Senha (2026-09):** endurecido a partir da restrição acima
+— usuários `emp` ("Empregado") agora só têm acesso à tela Clientes e ao menu Trocar Senha, em web e
+mobile. Dashboard, Visitação, Ranking (+ `/ranking/<person_id>` e, no mobile, `/ranking/<person_id>/dados`)
+e Mapa de Calor (+ o proxy `/heatmap-imagem`) passaram a levar `@block_user_types('emp')` também
+(mesmo decorator, mesma mecânica de 403 — não é o mecanismo de `screens`). Exceção deliberada:
+`POST /visitacao/pessoa/<person_id>` (`auth.visitacao_editar_pessoa`/`mobile.visitacao_editar_pessoa`)
+continua **sem** o bloqueio, pois é a rota reaproveitada pelo modal de edição de pessoa da própria
+tela Clientes (ver "Clientes — ordem de chegada do dia" acima) — bloqueá-la quebraria a edição de
+cliente pra esse perfil. Login/`/` redirecionam `emp` direto pra `auth.clientes`/`mobile.clientes`
+em vez de Dashboard. Navbar web (`base_web.html`) esconde Dashboard/Visitação/Ranking/Mapa de Calor
+pra `emp` (só Clientes + Trocar Senha ficam visíveis) e o logo passa a apontar pra Clientes. Bottom
+nav mobile (`base_mobile.html`) troca Dashboard/Mapa de Calor por um botão direto de Clientes, e o
+menu "Mais" esconde Visitas/Ranking, deixando só Clientes/Trocar Senha/Sair.
 
 ## Filtro padrão Microvix (vendas)
 

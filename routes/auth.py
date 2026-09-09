@@ -2,7 +2,7 @@
 from datetime import date as date_type, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, flash
 from werkzeug.security import check_password_hash
-from routes.utils import (login_required, screen_required,
+from routes.utils import (login_required, screen_required, block_user_types,
                            fmt_permanencia, kpi_tempo_loja, kpi_tempo_loja_range,
                            tempo_gauge, HEIMDALL_IMAGE_BASE)
 import db
@@ -90,7 +90,8 @@ def login():
     if _is_mobile():
         return redirect(url_for('mobile.login'))
     if 'user_id' in session:
-        return redirect(url_for('auth.dashboard'))
+        dest = 'auth.clientes' if session.get('user_type_id') == 'emp' else 'auth.dashboard'
+        return redirect(url_for(dest))
 
     error = None
 
@@ -109,7 +110,8 @@ def login():
             session['user_id']      = user['user_id']
             session['full_name']    = user['full_name']
             session['user_type_id'] = user['user_type_id']
-            return redirect(url_for('auth.dashboard'))
+            dest = 'auth.clientes' if user['user_type_id'] == 'emp' else 'auth.dashboard'
+            return redirect(url_for(dest))
 
         error = 'Usuário ou senha incorretos.'
 
@@ -125,6 +127,7 @@ def logout():
 @auth_bp.route('/dashboard')
 @login_required
 @screen_required('dashboard')
+@block_user_types('emp')
 def dashboard():
     user_id   = session['user_id']
     user_type = session['user_type_id']
@@ -1096,6 +1099,7 @@ def _compute_charts_data(store_id, data_str, active_store_cnpj, active_microvix_
 
 @auth_bp.route('/dashboard/charts')
 @login_required
+@block_user_types('emp')
 def dashboard_charts():
     user_id   = session['user_id']
     user_type = session['user_type_id']
@@ -1127,6 +1131,7 @@ def dashboard_charts():
 @auth_bp.route('/visitacao')
 @login_required
 @screen_required('dashboard')
+@block_user_types('emp')
 def visitacao():
     user_id   = session['user_id']
     user_type = session['user_type_id']
@@ -1787,6 +1792,7 @@ def clientes_apagar_nota(link_id):
 @auth_bp.route('/mapa-calor', methods=['GET', 'POST'])
 @login_required
 @screen_required('dashboard')
+@block_user_types('emp')
 def mapa_calor():
     import requests as _requests
     from routes.utils import (HEATMAP_API_URL, HEATMAP_API_BASE,
@@ -2028,6 +2034,7 @@ def mapa_calor():
 @auth_bp.route('/ranking')
 @login_required
 @screen_required('ranking')
+@block_user_types('emp')
 def ranking():
     user_id   = session['user_id']
     user_type = session['user_type_id']
@@ -2243,6 +2250,7 @@ def ranking_recalcular():
 @auth_bp.route('/ranking/<int:person_id>')
 @login_required
 @screen_required('ranking')
+@block_user_types('emp')
 def ranking_pessoa(person_id):
     user_id   = session['user_id']
     user_type = session['user_type_id']
@@ -2335,6 +2343,7 @@ def ranking_pessoa(person_id):
 
 @auth_bp.route('/heatmap-imagem')
 @login_required
+@block_user_types('emp')
 def heatmap_imagem():
     import requests as _requests
     from flask import Response, abort

@@ -2,7 +2,8 @@
 {% block body %}
 
 <nav class="navbar">
-    <a class="navbar-brand" href="{{ url_for('auth.dashboard') }}">
+    {% set _is_emp = session.get('user_type_id') == 'emp' %}
+    <a class="navbar-brand" href="{{ url_for('auth.clientes') if _is_emp else url_for('auth.dashboard') }}">
         <img src="{{ url_for('static', filename='img/logo_retail_analytics_br_1.png') }}" height="32" alt="Retail Analytics BR">
         {% if company_logo is defined and company_logo %}
         <span class="navbar-logo-sep"></span>
@@ -19,17 +20,19 @@
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('metas.') %}active{% endif %}"
            href="{{ url_for('metas.index') }}">Metas</a>
         {% endif %}
+        {% if not _is_emp %}
         <a class="nav-link {% if request.endpoint == 'auth.dashboard' %}active{% endif %}"
            href="{{ url_for('auth.dashboard') }}">Dashboard</a>
         <a class="nav-link {% if request.endpoint == 'auth.visitacao' %}active{% endif %}"
            href="{{ url_for('auth.visitacao') }}">Visitação</a>
+        {% endif %}
         <a class="nav-link {% if request.endpoint == 'auth.clientes' %}active{% endif %}"
            href="{{ url_for('auth.clientes') }}">Clientes</a>
+        {% if not _is_emp %}
         <a class="nav-link {% if request.endpoint in ('auth.ranking', 'auth.ranking_pessoa') %}active{% endif %}"
            href="{{ url_for('auth.ranking') }}">Ranking</a>
         <a class="nav-link {% if request.endpoint == 'auth.mapa_calor' %}active{% endif %}"
            href="{{ url_for('auth.mapa_calor') }}">Mapa de Calor</a>
-        {% if session.get('user_type_id') != 'emp' %}
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('gestao.') %}active{% endif %}"
            href="{{ url_for('gestao.faturamento') }}">Gestão</a>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('motor.') %}active{% endif %}"
