@@ -358,8 +358,9 @@ mobile `/retail_analytics/m/relatorios/identificados` — dentro do menu "Mais")
 permissão de `relatorios.pedidos`/`gestao.py`/`motor.py` (`@login_required` + `@block_user_types('emp')`,
 sem `screen_id` próprio) e o mesmo padrão de seleção de loja obrigatória (`_store_context`/
 `_gestao_mobile_ctx`) — nunca soma dados de mais de uma loja. Lista clientes identificados
-(`person_type_id='C'`, `full_name` preenchido e **não** começando com "Anonimo" — placeholder do
-pipeline facial pra rostos sem nome atribuído) com pelo menos uma detecção na loja em vista,
+(`person_type_id='C'`, `full_name` preenchido e **não** começando com "Anonimo"/"Anônimo" — com
+ou sem acento, placeholder do pipeline facial pra rostos sem nome atribuído) com pelo menos uma
+detecção na loja em vista,
 filtrados por período de **última atualização do cadastro** (`people.updated_at`, não
 `created_at`) — filtro `data_ini`/`data_fim` (padrão: últimos 10 dias, hoje incluso). Fonte:
 `people.identificados_lista(store_id, data_ini, data_fim)`, que traz todas as colunas de

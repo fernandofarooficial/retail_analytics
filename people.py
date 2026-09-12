@@ -1504,11 +1504,12 @@ def manual_purchase_link_apagar(link_id):
 
 def identificados_lista(store_id, data_ini, data_fim):
     """Clientes identificados (person_type_id='C', full_name preenchido e não
-    começando com 'Anonimo') com pelo menos uma detecção na loja informada,
-    cuja última atualização (people.updated_at) caia no período dado. Traz
-    todas as colunas de faciais.people (mais nomes legíveis de gênero/tipo/
-    revisor e a foto mais recente da pessoa nessa loja) — fonte do relatório
-    'Identificados' (web e mobile)."""
+    começando com 'Anonimo'/'Anônimo' — com ou sem acento, o pipeline facial usa
+    esse prefixo como placeholder pra rosto sem nome atribuído) com pelo menos
+    uma detecção na loja informada, cuja última atualização (people.updated_at)
+    caia no período dado. Traz todas as colunas de faciais.people (mais nomes
+    legíveis de gênero/tipo/revisor e a foto mais recente da pessoa nessa loja)
+    — fonte do relatório 'Identificados' (web e mobile)."""
     return db.query_all("""
         SELECT p.person_id, p.full_name, p.nickname, p.document, p.crm_key,
                p.birth_date, p.age, p.gender_id, g.gender_name,
@@ -1529,7 +1530,7 @@ def identificados_lista(store_id, data_ini, data_fim):
         ) img ON true
         WHERE  p.person_type_id = 'C'
           AND  p.full_name IS NOT NULL
-          AND  p.full_name NOT ILIKE 'Anonimo%%'
+          AND  p.full_name NOT ILIKE 'Anonimo%%' AND p.full_name NOT ILIKE 'Anônimo%%'
           AND  p.updated_at::date >= %(data_ini)s AND p.updated_at::date <= %(data_fim)s
           AND  EXISTS (
                 SELECT 1 FROM faciais.detection_records dr2
