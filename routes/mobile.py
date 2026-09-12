@@ -2,7 +2,8 @@ import calendar
 from datetime import date as date_type, timedelta
 from functools import wraps
 from flask import (Blueprint, render_template, request, redirect,
-                   url_for, session, send_from_directory, make_response, jsonify)
+                   url_for, session, send_from_directory, make_response, jsonify,
+                   abort, Response)
 from werkzeug.security import check_password_hash, generate_password_hash
 import os
 import db
@@ -54,9 +55,15 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     manual_purchase_links_por_pessoa as _manual_purchase_links_por_pessoa,
                     manual_purchase_links_listar as _manual_purchase_links_listar,
                     manual_purchase_link_editar as _manual_purchase_link_editar,
-                    manual_purchase_link_apagar as _manual_purchase_link_apagar)
+                    manual_purchase_link_apagar as _manual_purchase_link_apagar,
+                    identificados_lista as _identificados_lista)
 from routes.utils import (fmt_permanencia, kpi_tempo_loja, kpi_tempo_loja_range,
                            tempo_gauge, HEIMDALL_IMAGE_BASE, block_user_types)
+from reports import (gerar_pdf_identificados_sem_foto as _pdf_identificados_sem_foto,
+                     gerar_pdf_identificados_com_foto as _pdf_identificados_com_foto,
+                     gerar_excel_identificados        as _excel_identificados)
+
+_IDENTIFICADOS_DIAS_DEFAULT = 10
 
 mobile_bp = Blueprint('mobile', __name__)
 
@@ -3135,3 +3142,90 @@ def heatmap_imagem():
     except Exception:
         from flask import abort
         abort(502)
+
+
+# ── Relatórios — Identificados ────────────────────────────────────────────────
+
+def _periodo_identificados_m():
+    """Lê data_ini/data_fim da querystring (YYYY-MM-DD); default = últimos 10 dias
+    (hoje incluso)."""
+    hoje = date_type.today()
+    default_ini = hoje - timedelta(days=_IDENTIFICADOS_DIAS_DEFAULT - 1)
+    data_ini_str = request.args.get('data_ini', default_ini.strftime('%Y-%m-%d'))
+    data_fim_str = request.args.get('data_fim', hoje.strftime('%Y-%m-%d'))
+    try:
+        data_ini = date_type.fromisoformat(data_ini_str)
+    except ValueError:
+        data_ini = default_ini
+    try:
+        data_fim = date_type.fromisoformat(data_fim_str)
+    except ValueError:
+        data_fim = hoje
+    if data_ini > data_fim:
+        data_ini, data_fim = data_fim, data_ini
+    return data_ini, data_fim
+
+
+@mobile_bp.route('/relatorios/identificados')
+@_login_required
+@block_user_types('emp')
+def relatorios_identificados():
+    ctx, redir = _gestao_mobile_ctx('mobile.relatorios_identificados')
+    if redir:
+        return redir
+
+    data_ini, data_fim = _periodo_identificados_m()
+
+    pessoas = []
+    if ctx['active_store']:
+        pessoas = _identificados_lista(ctx['active_store']['store_id'], data_ini, data_fim)
+
+    return render_template(
+        'mobile/relatorios_identificados.html',
+        **ctx,
+        data_ini=data_ini,
+        data_fim=data_fim,
+        pessoas=pessoas,
+        heimdall_base=HEIMDALL_IMAGE_BASE,
+    )
+
+
+@mobile_bp.route('/relatorios/identificados/download')
+@_login_required
+@block_user_types('emp')
+def relatorios_identificados_download():
+    ctx, redir = _gestao_mobile_ctx('mobile.relatorios_identificados')
+    if redir or not ctx['active_store']:
+        abort(400)
+
+    formato = request.args.get('formato')
+    versao  = request.args.get('versao')
+    if formato not in ('pdf', 'excel') or versao not in ('com_foto', 'sem_foto'):
+        abort(400)
+    if versao == 'com_foto' and formato != 'pdf':
+        abort(400)  # com foto só existe em PDF
+
+    data_ini, data_fim = _periodo_identificados_m()
+    pessoas = _identificados_lista(ctx['active_store']['store_id'], data_ini, data_fim)
+    loja_nome = ctx['active_store']['store_name']
+
+    slug = f"identificados_{loja_nome}_{data_ini.isoformat()}_a_{data_fim.isoformat()}"
+    slug = ''.join(c if c.isalnum() or c in '_-' else '_' for c in slug)
+
+    if formato == 'excel':
+        conteudo = _excel_identificados(pessoas, loja_nome, data_ini, data_fim)
+        mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        filename = f"{slug}.xlsx"
+    else:
+        if versao == 'com_foto':
+            for p in pessoas:
+                p['foto_url'] = (HEIMDALL_IMAGE_BASE + p['image_path']) if p.get('image_path') else None
+            conteudo = _pdf_identificados_com_foto(pessoas, loja_nome, data_ini, data_fim)
+        else:
+            conteudo = _pdf_identificados_sem_foto(pessoas, loja_nome, data_ini, data_fim)
+        mimetype = 'application/pdf'
+        filename = f"{slug}.pdf"
+
+    return Response(conteudo, mimetype=mimetype, headers={
+        'Content-Disposition': f'attachment; filename="{filename}"'
+    })

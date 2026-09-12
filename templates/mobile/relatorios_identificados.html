@@ -1,0 +1,239 @@
+{% extends 'mobile/base_mobile.html' %}
+{% block title %}Relatórios — Identificados — Retail Analytics{% endblock %}
+
+{% block body %}
+<style>
+  :root {
+    --theme-primary: {{ theme.primary_color }};
+    --secondary:     {{ theme.secondary_color }};
+    --accent:        {{ theme.accent_color }};
+    --bg:            {{ theme.background_color }};
+  }
+  .m-header { background: var(--bg); border-bottom: 1px solid var(--border, #E5E7EB); }
+  .m-hdr-left { display: flex; align-items: center; flex: 34 0 0; min-width: 0; overflow: hidden; }
+  .m-hdr-left .m-header-company-logo { height: 64px; width: 100%; max-width: 100%; object-fit: contain; object-position: left center; }
+  .m-header-logo { flex: 32 0 0; min-width: 0; height: 40px; width: 100%; object-fit: contain; }
+  .m-hdr-right { display: flex; align-items: center; gap: 0.2rem; flex: 34 0 0; min-width: 0; position: relative; }
+  .m-hdr-sep { width: 1px; height: 28px; background: #D1D5DB; flex-shrink: 0; margin: 0; }
+  .m-hdr-info { display: flex; flex-direction: column; gap: 0; cursor: pointer; padding: 0.15rem 0.3rem; border-radius: 5px; transition: background .15s; }
+  .m-hdr-info:active { background: rgba(0,0,0,.06); }
+  .m-hdr-info-row { display: flex; align-items: baseline; gap: 0.2rem; line-height: 1.45; }
+  .m-hdr-info-lbl { font-size: 0.6rem; color: var(--accent); white-space: nowrap; }
+  .m-hdr-info-val { font-size: 0.68rem; font-weight: 700; color: var(--secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+
+  .m-ident-toolbar {
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+    padding: 0.8rem 1rem 0.2rem;
+  }
+  .m-ident-toolbar label { font-size: 0.75rem; font-weight: 600; color: #374151; }
+  .m-ident-toolbar input[type="date"] {
+    padding: 0.3rem 0.5rem; border: 1px solid #D1D5DB; border-radius: 6px; font-size: 0.8rem;
+  }
+  .m-ident-hint { font-size: 0.72rem; color: #9CA3AF; padding: 0.2rem 1rem 0.6rem; }
+
+  .m-ident-downloads {
+    display: flex; flex-direction: column; gap: 0.6rem;
+    padding: 0.5rem 1rem 1rem;
+  }
+  .m-ident-btn {
+    display: flex; align-items: center; justify-content: center;
+    padding: 0.7rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+    text-decoration: none; color: #fff; background: var(--theme-primary);
+  }
+  .m-ident-btn.secondary { background: #fff; color: var(--theme-primary); border: 1.5px solid var(--theme-primary); }
+
+  .m-ident-count { padding: 0 1rem 0.4rem; font-size: 0.8rem; font-weight: 600; color: #374151; }
+
+  .m-ident-list { padding: 0 1rem 1.5rem; display: flex; flex-direction: column; gap: 0.6rem; }
+  .m-ident-card {
+    display: flex; align-items: center; gap: 0.7rem;
+    background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: 0.6rem 0.75rem;
+  }
+  .m-ident-photo { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: #E5E7EB; flex-shrink: 0; }
+  .m-ident-placeholder {
+    width: 42px; height: 42px; border-radius: 50%; background: #E5E7EB;
+    display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;
+  }
+  .m-ident-info { min-width: 0; flex: 1; }
+  .m-ident-name { font-size: 0.85rem; font-weight: 700; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .m-ident-sub { font-size: 0.72rem; color: #6B7280; margin-top: 0.1rem; }
+  .m-ident-tag-dup {
+    display: inline-block; padding: 0.05rem 0.4rem; border-radius: 8px;
+    background: #FEF3C7; color: #92400E; font-size: 0.62rem; font-weight: 700; margin-left: 0.3rem;
+  }
+
+  .m-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; display: none; }
+  .m-sheet-overlay.open { display: block; }
+  .m-store-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-radius: 16px 16px 0 0; padding: 1rem 1.25rem calc(1.25rem + var(--safe-bottom, 0px)); z-index: 301; transform: translateY(100%); transition: transform .25s ease; }
+  .m-store-sheet.open { transform: translateY(0); }
+  .m-sheet-handle { width: 36px; height: 4px; background: #D1D5DB; border-radius: 2px; margin: 0 auto 1rem; }
+  .m-sheet-title { font-size: 0.95rem; font-weight: 700; color: #111827; margin-bottom: 1rem; }
+  .m-sheet-row { display: flex; align-items: center; gap: 0.625rem; margin-bottom: 0.75rem; }
+  .m-sheet-close { width: 100%; margin-top: 0.5rem; padding: 0.75rem; background: #F3F4F6; border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 600; color: #374151; cursor: pointer; }
+</style>
+
+<div class="m-app">
+
+  <!-- ── Header ───────────────────────────────────────────────────────── -->
+  <header class="m-header">
+    <div class="m-hdr-left">
+      {% if company_logo %}
+      <img src="/retail_analytics/static/{{ company_logo }}"
+           alt="{{ company_name }}" class="m-header-company-logo">
+      {% endif %}
+    </div>
+
+    <img src="/retail_analytics/static/img/logo_retail_analytics_br_1.png"
+         alt="Retail Analytics" class="m-header-logo">
+
+    <div class="m-hdr-right">
+      <span class="m-hdr-sep"></span>
+      {% set _pode_trocar = (session.get('user_type_id') in ('adm', 'man') and companies) or (stores and stores|length > 1) %}
+      <div class="m-hdr-info" {% if _pode_trocar %}onclick="abrirSeletorLoja()"{% endif %}>
+        <div class="m-hdr-info-row">
+          <span class="m-hdr-info-lbl">Empresa:</span>
+          <span class="m-hdr-info-val">{{ company_name or '—' }}</span>
+        </div>
+        <div class="m-hdr-info-row">
+          <span class="m-hdr-info-lbl">Loja:</span>
+          <span class="m-hdr-info-val">
+            {% if active_store %}{{ active_store.store_short_name or active_store.store_name or '—' }}
+            {% else %}—{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Conteúdo ──────────────────────────────────────────────────────── -->
+  <main class="m-content" style="padding-top: 0.25rem;">
+
+    {% if not active_store %}
+    <p class="m-hint" style="padding: 2rem 1rem; text-align:center; color:#9CA3AF; font-size:0.875rem;">
+      Selecione uma loja para visualizar os identificados.
+    </p>
+    {% else %}
+
+    <div class="m-ident-toolbar">
+      <label for="m-data-ini">De:</label>
+      <input type="date" id="m-data-ini" value="{{ data_ini.isoformat() }}" onchange="mudarPeriodo()">
+      <label for="m-data-fim">Até:</label>
+      <input type="date" id="m-data-fim" value="{{ data_fim.isoformat() }}" onchange="mudarPeriodo()">
+    </div>
+    <div class="m-ident-hint">Última atualização do cadastro no período (padrão: últimos 10 dias)</div>
+
+    <div class="m-ident-downloads">
+      <a class="m-ident-btn" href="{{ url_for('mobile.relatorios_identificados_download', company_id=selected_company_id, store_id=selected_store_id, data_ini=data_ini.isoformat(), data_fim=data_fim.isoformat(), versao='com_foto', formato='pdf') }}">
+        Com foto — PDF
+      </a>
+      <a class="m-ident-btn secondary" href="{{ url_for('mobile.relatorios_identificados_download', company_id=selected_company_id, store_id=selected_store_id, data_ini=data_ini.isoformat(), data_fim=data_fim.isoformat(), versao='sem_foto', formato='pdf') }}">
+        Sem foto — PDF
+      </a>
+      <a class="m-ident-btn secondary" href="{{ url_for('mobile.relatorios_identificados_download', company_id=selected_company_id, store_id=selected_store_id, data_ini=data_ini.isoformat(), data_fim=data_fim.isoformat(), versao='sem_foto', formato='excel') }}">
+        Sem foto — Excel
+      </a>
+    </div>
+
+    <div class="m-ident-count">{{ pessoas|length }} pessoa{{ 's' if pessoas|length != 1 else '' }} no período</div>
+
+    <div class="m-ident-list">
+      {% for p in pessoas %}
+      <div class="m-ident-card">
+        {% if p.image_path %}
+        <img class="m-ident-photo" src="{{ heimdall_base }}{{ p.image_path }}" alt="">
+        {% else %}
+        <div class="m-ident-placeholder">&#128100;</div>
+        {% endif %}
+        <div class="m-ident-info">
+          <div class="m-ident-name">
+            {{ p.full_name }}
+            {% if p.review_status == 'duplicate' %}<span class="m-ident-tag-dup">Duplicado</span>{% endif %}
+          </div>
+          <div class="m-ident-sub">Atualizado em {{ p.updated_at.strftime('%d/%m/%Y %H:%M') if p.updated_at else '—' }}</div>
+        </div>
+      </div>
+      {% else %}
+      <p class="m-hint" style="text-align:center; color:#9CA3AF; font-size:0.85rem;">
+        Nenhum identificado encontrado no período.
+      </p>
+      {% endfor %}
+    </div>
+
+    {% endif %}
+  </main>
+</div>
+
+<!-- ── Bottom-sheet: seletor de empresa/loja ──────────────────────── -->
+<div id="m-sheet-overlay" class="m-sheet-overlay" onclick="fecharSeletorLoja()"></div>
+<div id="m-store-sheet" class="m-store-sheet">
+  <div class="m-sheet-handle"></div>
+  <div class="m-sheet-title">Empresa / Loja</div>
+
+  {% if session.get('user_type_id') in ('adm', 'man') and companies %}
+  <div class="m-sheet-row">
+    <span class="m-select-label">Empresa</span>
+    <select class="m-select" onchange="selecionarEmpresa(this.value)">
+      <option value="">— Selecione —</option>
+      {% for c in companies %}
+      <option value="{{ c.company_id }}"
+          {% if c.company_id == selected_company_id %}selected{% endif %}>
+        {{ c.company_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  {% if stores %}
+  <div class="m-sheet-row">
+    <span class="m-select-label">Loja</span>
+    <select class="m-select" onchange="selecionarLoja(this.value)">
+      {% if stores|length > 1 %}
+      <option value="">— Selecione —</option>
+      {% endif %}
+      {% for s in stores %}
+      <option value="{{ s.store_id }}"
+          {% if s.store_id == selected_store_id %}selected{% endif %}>
+        {{ s.store_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <button class="m-sheet-close" onclick="fecharSeletorLoja()">Fechar</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function mudarPeriodo() {
+  const url = new URL(window.location.href);
+  url.searchParams.set('data_ini', document.getElementById('m-data-ini').value);
+  url.searchParams.set('data_fim', document.getElementById('m-data-fim').value);
+  window.location.href = url.toString();
+}
+function abrirSeletorLoja() {
+  document.getElementById('m-sheet-overlay').classList.add('open');
+  document.getElementById('m-store-sheet').classList.add('open');
+}
+function fecharSeletorLoja() {
+  document.getElementById('m-sheet-overlay').classList.remove('open');
+  document.getElementById('m-store-sheet').classList.remove('open');
+}
+function selecionarEmpresa(id) {
+  const url = new URL(window.location.href);
+  if (id) { url.searchParams.set('company_id', id); }
+  else    { url.searchParams.delete('company_id'); }
+  url.searchParams.delete('store_id');
+  window.location.href = url.toString();
+}
+function selecionarLoja(id) {
+  const url = new URL(window.location.href);
+  if (id) { url.searchParams.set('store_id', id); }
+  else    { url.searchParams.delete('store_id'); }
+  window.location.href = url.toString();
+}
+</script>
+{% endblock %}

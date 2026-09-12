@@ -184,6 +184,7 @@
 <!-- ── Sub-tabs (submenu de Relatórios) ─────────────────────────────── -->
 <div class="gest-tabs">
   <a class="gest-tab active" href="{{ url_for('relatorios.pedidos', company_id=selected_company_id, store_id=selected_store_id) }}">Pedidos</a>
+  <a class="gest-tab" href="{{ url_for('relatorios.identificados', company_id=selected_company_id, store_id=selected_store_id) }}">Identificados</a>
 </div>
 
 {% if not active_store %}

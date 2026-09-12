@@ -1498,3 +1498,42 @@ def manual_purchase_link_apagar(link_id):
     'confirmed', isso NÃO desfaz a correção já aplicada em person_purchases —
     só remove o rastro de quem/quando lançou."""
     db.execute("DELETE FROM faciais.manual_purchase_links WHERE link_id = %s", (link_id,))
+
+
+# ── Relatório Identificados ─────────────────────────────────────────────────
+
+def identificados_lista(store_id, data_ini, data_fim):
+    """Clientes identificados (person_type_id='C', full_name preenchido e não
+    começando com 'Anonimo') com pelo menos uma detecção na loja informada,
+    cuja última atualização (people.updated_at) caia no período dado. Traz
+    todas as colunas de faciais.people (mais nomes legíveis de gênero/tipo/
+    revisor e a foto mais recente da pessoa nessa loja) — fonte do relatório
+    'Identificados' (web e mobile)."""
+    return db.query_all("""
+        SELECT p.person_id, p.full_name, p.nickname, p.document, p.crm_key,
+               p.birth_date, p.age, p.gender_id, g.gender_name,
+               p.person_type_id, pt.person_type_name, p.reference_track_id, p.notes,
+               p.created_at, p.updated_at, p.phone, p.email,
+               p.review_status, p.reviewed_by, ru.full_name AS reviewed_by_name, p.reviewed_at,
+               img.image_path
+        FROM   faciais.people p
+        LEFT   JOIN faciais.genders      g  ON g.gender_id           = p.gender_id
+        LEFT   JOIN faciais.person_types pt ON pt.person_type_id     = p.person_type_id
+        LEFT   JOIN faciais.users        ru ON ru.user_id            = p.reviewed_by
+        LEFT   JOIN LATERAL (
+            SELECT dr.image_path
+            FROM   faciais.detection_records dr
+            WHERE  dr.person_id = p.person_id AND dr.store_id = %(store_id)s
+              AND  dr.image_path IS NOT NULL
+            ORDER  BY dr.created_at DESC LIMIT 1
+        ) img ON true
+        WHERE  p.person_type_id = 'C'
+          AND  p.full_name IS NOT NULL
+          AND  p.full_name NOT ILIKE 'Anonimo%%'
+          AND  p.updated_at::date >= %(data_ini)s AND p.updated_at::date <= %(data_fim)s
+          AND  EXISTS (
+                SELECT 1 FROM faciais.detection_records dr2
+                WHERE dr2.person_id = p.person_id AND dr2.store_id = %(store_id)s
+          )
+        ORDER  BY p.updated_at DESC
+    """, {'store_id': store_id, 'data_ini': data_ini, 'data_fim': data_fim})

@@ -10,7 +10,10 @@ SaaS multi-tenant de analytics de varejo com reconhecimento facial. Correlaciona
 ## Stack
 
 - Python 3.13 + Flask ≥3.0 + PostgreSQL + gunicorn
-- Virtualenv em `.venv/`
+- Geração de relatórios (`reports.py`, 2026-09): `reportlab` (PDF) + `openpyxl` (Excel) + `requests`
+  (download de fotos do Heimdall em tempo de requisição) — nenhuma delas precisa de dependência de
+  sistema no VPS, só `pip install`
+- Virtualenv em `.venv/` (ver seção "Acesso SSH ao VPS" no Deploy pro caminho no VPS)
 - Conexão DB via `PG_DSN` no `.env`; `db.py` usa `ThreadedConnectionPool(min=2, max=10)` com `RealDictCursor`, expõe `query_one`, `query_all`, `execute` — todas dão `commit()` ao final (necessário para `INSERT ... RETURNING` via `query_one`) e `rollback()` em caso de exceção antes de devolver a conexão ao pool
 - Cache Flask-Caching (SimpleCache, 900 s default); charts do dashboard memoizados 15 min via `@cache.memoize(timeout=900)`
 
@@ -21,6 +24,19 @@ ssh root@72.60.58.241
 # no VPS: /home/workuser/retail_analytics
 git pull origin main && sudo systemctl restart retail_analytics
 ```
+
+**Quando `requirements.txt` muda** (nova dependência, ex: `reportlab`/`openpyxl`/`requests` em
+2026-09): o deploy padrão acima **não** reinstala dependências — rodar manualmente antes do
+restart: `venv/bin/pip install -r requirements.txt`.
+
+**Acesso SSH ao VPS (nesta máquina):** existe um host alias `camwatch-vps` configurado em
+`~/.ssh/config` (`HostName 72.60.58.241`, `User root`, `IdentityFile ~/.ssh/id_ed25519_camwatch`) —
+`ssh camwatch-vps` conecta direto, sem precisar digitar usuário/IP. O `.env` (com `PG_DSN`) já
+existe no VPS em `/home/workuser/retail_analytics/.env`; localmente não há `.env` nem `psql`
+instalado, então migrations em `migrations/*.sql` precisam ser copiadas pro VPS (`scp ... 
+camwatch-vps:/tmp/`) e rodadas de lá (`psql "$PG_DSN" -f /tmp/arquivo.sql`, com `PG_DSN` carregado
+via `source .env`). O virtualenv no VPS fica em `venv/` (não `.venv/` como no Stack local) —
+`venv/bin/python3`.
 
 **Cron job:** `scripts/recalcular_ranking.py` roda diariamente às 23:45 no VPS (`45 23 * * *`) para recalcular `faciais.customer_ranking`. Log em `logs/ranking_job.log`.
 
@@ -34,18 +50,19 @@ logo depois do ranking) — resolve/expira `faciais.manual_purchase_links` pende
 
 **Blueprints (`routes/`):**
 - `auth.py` (~2320 linhas) — login/logout, dashboard web, `/visitacao` (+ `/visitacao/pessoa/<person_id>` POST — edição de dados do cliente, ver seção "Visitação" abaixo), `/clientes` (+ `/clientes/pessoa/<person_id>/nota`, `/clientes/notas/<link_id>/editar`, `/clientes/notas/<link_id>/apagar` POST — vínculo manual de nota fiscal, 2026-08, ver seção "Clientes — vínculo manual de nota fiscal" abaixo), `/mapa-calor`, `/ranking` (+ `/ranking/<person_id>`, `/ranking/recalcular`), `/heatmap-imagem`. Prefix: `/retail_analytics`
-- `mobile.py` (~3090 linhas) — espelho do auth.py para mobile (login, dashboard, `/visitacao` + `/visitacao/pessoa/<person_id>` POST, `/clientes` + rotas de nota fiscal manual (`/clientes/pessoa/<person_id>/nota`, `/clientes/notas/<link_id>/editar`, `/clientes/notas/<link_id>/apagar`), `/ranking` (+ `/ranking/<person_id>`, `/ranking/<person_id>/dados` — JSON usado pelo painel expansível inline de `/ranking`), `/mapa-calor`, `/heatmap-imagem`) + `/sw.js` (PWA) + reimplementação própria (não reuso de blueprint) das telas de `gestao.py` (`/gestao/faturamento|vendas|estoque`) e `motor.py` (`/motor/faturamento|vendas|estoque`). Prefix: `/retail_analytics/m`. **Não tem equivalente de `relatorios.py`** — o quadro "Pedidos" (meta/realizado por vendedor) que existia em `/motor/vendas` foi removido do mobile (2026-08), só existe na versão web (`Relatórios > Pedidos`).
+- `mobile.py` (~3090 linhas) — espelho do auth.py para mobile (login, dashboard, `/visitacao` + `/visitacao/pessoa/<person_id>` POST, `/clientes` + rotas de nota fiscal manual (`/clientes/pessoa/<person_id>/nota`, `/clientes/notas/<link_id>/editar`, `/clientes/notas/<link_id>/apagar`), `/ranking` (+ `/ranking/<person_id>`, `/ranking/<person_id>/dados` — JSON usado pelo painel expansível inline de `/ranking`), `/mapa-calor`, `/heatmap-imagem`) + `/sw.js` (PWA) + reimplementação própria (não reuso de blueprint) das telas de `gestao.py` (`/gestao/faturamento|vendas|estoque`) e `motor.py` (`/motor/faturamento|vendas|estoque`). Prefix: `/retail_analytics/m`. **Equivalente parcial de `relatorios.py`** (2026-09): tem `/relatorios/identificados` (+ `/relatorios/identificados/download`), mas **não** tem o quadro "Pedidos" (meta/realizado por vendedor) — foi removido do mobile em 2026-08, só existe na versão web (`Relatórios > Pedidos`). O contexto de empresa/loja de `/relatorios/identificados` reusa `_gestao_mobile_ctx` (já compartilhado por `gestao_*`/`motor_*` no mobile), diferente do padrão de cópia local usado no lado web (ver `_store_context` abaixo).
 - `cadastros.py` — CRUD empresas, lojas, câmeras, temas, regras de ranking (`/ranking-regras`)
 - `usuarios.py` — gestão de usuários e permissões
 - `conta.py` — troca de senha
 - `metas.py` — módulo de metas, calendário, exceções, feriados regionais e perfis de calendário (admin only). Prefix: `/retail_analytics/metas`
 - `motor.py` — Motor Operacional (`/faturamento`, `/vendas`, `/estoque`). Prefix: `/retail_analytics/motor`. Em `/vendas`, ao selecionar um vendedor mostra Top 10 (clientes e produtos, aumentado de Top 5 em 2026-08) por faturamento do mês anterior com comparativo mês atual — `people.top10_clientes_vendedor`/`top10_produtos_vendedor`, também usado em `mobile.py`. `/vendas` também tem o quadro "Top 10 Inadimplentes" (2026-08) — ver seção "Inadimplência" abaixo
 - `gestao.py` — Gestão Estratégica (`/faturamento`, `/vendas`, `/estoque`). Prefix: `/retail_analytics/gestao`
-- `relatorios.py` (2026-08) — Relatórios, web only (sem equivalente mobile). Hoje só `/pedidos`
-  (quadro de pedidos por vendedor — mês atual em R$ + meta/realizado semanal de Pedidos Gerados —
-  movido de dentro de Motor > Vendas). Prefix: `/retail_analytics/relatorios`. Estrutura pensada
-  pra crescer: menu "Relatórios" na navbar + sub-tabs (`.gest-tabs`) dentro da página pros
-  relatórios futuros.
+- `relatorios.py` (2026-08) — Relatórios. `/pedidos` (quadro de pedidos por vendedor — mês atual
+  em R$ + meta/realizado semanal de Pedidos Gerados — movido de dentro de Motor > Vendas, web
+  only, sem equivalente mobile) e `/identificados` + `/identificados/download` (2026-09, web e
+  mobile — ver seção "Relatório Identificados" abaixo). Prefix: `/retail_analytics/relatorios`.
+  Estrutura pensada pra crescer: menu "Relatórios" na navbar + sub-tabs (`.gest-tabs`) dentro da
+  página pros relatórios futuros.
 - `utils.py` — decorators `@login_required`, `@screen_required(screen_id)`, `@block_user_types(*user_types)` (2026-08, ver seção "Papéis de usuário" abaixo), helpers de KPI de tempo de permanência
 
 **Padrão `_store_context(endpoint)`:** centraliza carregamento de empresa/loja/tema/cnpj/portal em `motor.py`, `gestao.py` e `relatorios.py` (cada um com sua própria cópia local da função — não é compartilhada via import). Retorna `(ctx_dict, redirect_ou_None)`. `motor.py`, `gestao.py` e `relatorios.py` usam `@login_required` (sem `@screen_required`) + `@block_user_types('emp')` em toda rota (2026-08); `cadastros.py`, `conta.py`, `usuarios.py` e as rotas de dashboard/ranking em `auth.py` usam `@screen_required(screen_id)`.
@@ -335,6 +352,32 @@ continua `ON DELETE SET NULL` (histórico de compras sobra anônimo, não é con
 foi incluído no apagamento). `manual_purchase_links` é `ON DELETE CASCADE`, e `faciais.customer_ranking`
 (cache sem FK) e `vw_customer_ranking`/`vw_primeira_aparicao_clientes` naturalmente param de trazer a
 pessoa excluída. Migration: `migrations/add_people_review_status.sql`.
+
+**Relatório Identificados (2026-09):** `Relatórios > Identificados` (web `/retail_analytics/relatorios/identificados`,
+mobile `/retail_analytics/m/relatorios/identificados` — dentro do menu "Mais"), com a mesma
+permissão de `relatorios.pedidos`/`gestao.py`/`motor.py` (`@login_required` + `@block_user_types('emp')`,
+sem `screen_id` próprio) e o mesmo padrão de seleção de loja obrigatória (`_store_context`/
+`_gestao_mobile_ctx`) — nunca soma dados de mais de uma loja. Lista clientes identificados
+(`person_type_id='C'`, `full_name` preenchido e **não** começando com "Anonimo" — placeholder do
+pipeline facial pra rostos sem nome atribuído) com pelo menos uma detecção na loja em vista,
+filtrados por período de **última atualização do cadastro** (`people.updated_at`, não
+`created_at`) — filtro `data_ini`/`data_fim` (padrão: últimos 10 dias, hoje incluso). Fonte:
+`people.identificados_lista(store_id, data_ini, data_fim)`, que traz todas as colunas de
+`faciais.people` (com `gender_name`/`person_type_name`/`reviewed_by_name` resolvidos via join, no
+lugar dos códigos brutos) mais a foto mais recente da pessoa nessa loja
+(`detection_records.image_path` mais recente, mesmo padrão de `clientes_do_dia`).
+
+Duas versões: **Com foto** (só gera em PDF — cartões um por pessoa, foto + todos os campos, A4
+retrato) e **Sem foto** (gera em PDF — tabela larga em A3 paisagem, uma linha por pessoa — ou
+Excel — uma planilha, mesma estrutura). Geração em `reports.py` (raiz do projeto, novo módulo,
+2026-09): `gerar_pdf_identificados_com_foto`/`_sem_foto` (reportlab) e `gerar_excel_identificados`
+(openpyxl) — nenhuma das duas libs precisa de dependência de sistema (diferente de
+weasyprint/wkhtmltopdf), só `pip install`. Download via rota própria
+(`relatorios.identificados_download`/`mobile.relatorios_identificados_download`, `?formato=pdf|excel&versao=com_foto|sem_foto`,
+mais `data_ini`/`data_fim`/`store_id`/`company_id`) que rejeita com `400` a combinação inválida
+`com_foto`+`excel`. A foto de cada pessoa no PDF "com foto" é baixada em tempo de requisição do
+Heimdall (`HEIMDALL_IMAGE_BASE` + `image_path`, via `requests`) — pessoa sem foto ou com falha no
+download cai num placeholder cinza "Sem foto", sem quebrar a geração do relatório.
 
 ## Template filters registrados em `app.py`
 
