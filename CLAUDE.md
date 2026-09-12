@@ -426,11 +426,17 @@ filtrados por período de **última atualização do cadastro** (`people.updated
 `people.identificados_lista(store_id, data_ini, data_fim)`, que traz (quase) todas as colunas de
 `faciais.people` (com `gender_name`/`person_type_name`/`reviewed_by_name` resolvidos via join, no
 lugar dos códigos brutos) mais a foto mais recente da pessoa nessa loja
-(`detection_records.image_path` mais recente, mesmo padrão de `clientes_do_dia`). A query traz
-todas as colunas, mas o relatório (PDF/Excel) exibe só um subconjunto — `crm_key`,
+(`detection_records.image_path` mais recente, mesmo padrão de `clientes_do_dia`) **e os vínculos de
+identidade com cliente Microvix confirmados** (`client_links`, 2026-09 — mesma
+`person_client_links_por_pessoa` usada na tela Clientes, ver seção "Clientes — vínculo de
+identidade com cliente Microvix" acima; lista vazia quando a pessoa não tem nenhum vínculo). A
+query traz todas as colunas, mas o relatório (PDF/Excel) exibe só um subconjunto — `crm_key`,
 `reference_track_id` e `review_status` ficam de fora da exibição (pedido do usuário, 2026-09, ver
 `reports.CAMPOS_IDENTIFICADOS`); `review_status` continua vindo na query porque a **prévia** na
-tela (`identificados.html`/mobile) usa ele pro selo "Duplicado".
+tela (`identificados.html`/mobile) usa ele pro selo "Duplicado". `client_links` aparece tanto na
+prévia (selos `PF:`/`PJ:`, mesmo estilo da tela Clientes) quanto no PDF/Excel — formatado como
+texto único por pessoa (`"PF: Nome; PJ: Nome; ..."`, `reports._fmt` trata `client_links` como
+caso especial, já que é lista e não escalar como as demais colunas).
 
 Duas versões: **Com foto** (só gera em PDF — cartões um por pessoa, foto + campos de
 `CAMPOS_IDENTIFICADOS`, A4 retrato) e **Sem foto** (gera em PDF — tabela larga em A3 paisagem, uma

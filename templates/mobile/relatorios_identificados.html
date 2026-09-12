@@ -62,6 +62,13 @@
     display: inline-block; padding: 0.05rem 0.4rem; border-radius: 8px;
     background: #FEF3C7; color: #92400E; font-size: 0.62rem; font-weight: 700; margin-left: 0.3rem;
   }
+  .m-ident-vinculos { margin-top: 0.2rem; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .m-ident-selo-vinculo {
+    display: inline-block; padding: 0.05rem 0.4rem; border-radius: 8px;
+    font-size: 0.62rem; font-weight: 700;
+  }
+  .m-ident-selo-pf { background: #DBEAFE; color: #1E40AF; }
+  .m-ident-selo-pj { background: #EDE9FE; color: #5B21B6; }
 
   .m-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; display: none; }
   .m-sheet-overlay.open { display: block; }
@@ -151,6 +158,15 @@
             {% if p.review_status == 'duplicate' %}<span class="m-ident-tag-dup">Duplicado</span>{% endif %}
           </div>
           <div class="m-ident-sub">Atualizado em {{ p.updated_at.strftime('%d/%m/%Y %H:%M') if p.updated_at else '—' }}</div>
+          {% if p.client_links %}
+          <div class="m-ident-vinculos">
+            {% for link in p.client_links %}
+            <span class="m-ident-selo-vinculo {{ 'm-ident-selo-pf' if link.tipo_cliente == 'F' else 'm-ident-selo-pj' }}">
+              {{ 'PF' if link.tipo_cliente == 'F' else 'PJ' }}: {{ link.nome }}
+            </span>
+            {% endfor %}
+          </div>
+          {% endif %}
         </div>
       </div>
       {% else %}

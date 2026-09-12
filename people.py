@@ -1508,9 +1508,11 @@ def identificados_lista(store_id, data_ini, data_fim):
     esse prefixo como placeholder pra rosto sem nome atribuído) com pelo menos
     uma detecção na loja informada, cuja última atualização (people.updated_at)
     caia no período dado. Traz todas as colunas de faciais.people (mais nomes
-    legíveis de gênero/tipo/revisor e a foto mais recente da pessoa nessa loja)
+    legíveis de gênero/tipo/revisor e a foto mais recente da pessoa nessa loja),
+    mais os vínculos de identidade com cliente Microvix confirmados (client_links,
+    ver person_client_links_por_pessoa — lista vazia quando não há nenhum)
     — fonte do relatório 'Identificados' (web e mobile)."""
-    return db.query_all("""
+    rows = db.query_all("""
         SELECT p.person_id, p.full_name, p.nickname, p.document, p.crm_key,
                p.birth_date, p.age, p.gender_id, g.gender_name,
                p.person_type_id, pt.person_type_name, p.reference_track_id, p.notes,
@@ -1538,6 +1540,11 @@ def identificados_lista(store_id, data_ini, data_fim):
           )
         ORDER  BY p.updated_at DESC
     """, {'store_id': store_id, 'data_ini': data_ini, 'data_fim': data_fim})
+
+    links_map = person_client_links_por_pessoa([r['person_id'] for r in rows])
+    for r in rows:
+        r['client_links'] = links_map.get(r['person_id'], [])
+    return rows
 
 
 # ── Vínculo pessoa × cliente Microvix (identidade, tela Clientes) ──────────────

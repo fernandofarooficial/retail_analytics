@@ -28,6 +28,7 @@ CAMPOS_IDENTIFICADOS = [
     ('notes',               'Observações'),
     ('phone',               'Telefone'),
     ('email',               'E-mail'),
+    ('client_links',        'Vínculos Microvix'),
     ('reviewed_by_name',    'Revisado por'),
     ('reviewed_at',         'Revisado em'),
     ('created_at',          'Criado em'),
@@ -35,6 +36,12 @@ CAMPOS_IDENTIFICADOS = [
 ]
 
 def _fmt(key, value):
+    if key == 'client_links':
+        if not value:
+            return ''
+        return '; '.join(
+            f"{'PF' if l['tipo_cliente'] == 'F' else 'PJ'}: {l['nome']}" for l in value
+        )
     if value is None:
         return ''
     if key == 'birth_date':
@@ -102,7 +109,7 @@ def gerar_pdf_identificados_sem_foto(rows, loja_nome, data_ini, data_fim):
         'person_id': 0.4, 'full_name': 1.6, 'nickname': 0.9, 'document': 0.9,
         'birth_date': 0.8, 'age': 0.5, 'gender_name': 0.7,
         'person_type_name': 0.8, 'notes': 1.6,
-        'phone': 0.9, 'email': 1.3, 'reviewed_by_name': 1.0,
+        'phone': 0.9, 'email': 1.3, 'client_links': 1.8, 'reviewed_by_name': 1.0,
         'reviewed_at': 1.0, 'created_at': 1.0, 'updated_at': 1.0,
     }
     pesos = [largura_relativa.get(key, 1.0) for key, _ in CAMPOS_IDENTIFICADOS]
@@ -227,6 +234,8 @@ def gerar_excel_identificados(rows, loja_nome, data_ini, data_fim):
         largura = max(len(label), 12)
         if key in ('full_name', 'notes', 'email', 'reviewed_by_name'):
             largura = 28
+        if key == 'client_links':
+            largura = 40
         ws.column_dimensions[get_column_letter(col)].width = largura
 
     ws.freeze_panes = ws.cell(header_row + 1, 1).coordinate
