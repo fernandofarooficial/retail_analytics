@@ -1623,6 +1623,14 @@ def person_client_link_ultimas_compras(link_id, max_notas=5):
     com as linhas de produto de cada nota. Diferente de compras_recentes_pessoa[_detalhe]: não
     passa por person_purchases, é o histórico do cliente Microvix em si (pode incluir compras
     feitas por outras pessoas reconhecidas vinculadas ao mesmo cliente PJ, ou nenhuma pessoa).
+
+    Usa só o filtro básico de transação real (cancelado/excluido/soma_relatorio/
+    cod_natureza_operacao) — SEM a restrição de transacao_pedido_venda/forma de pagamento
+    usada em 'faturamento na loja' (kpi_microvix etc.). Aquela restrição define especificamente
+    venda de balcão (Pix/Cartão/Dinheiro, sem pedido) e não se aplica aqui: cliente PJ
+    tipicamente compra por crediário/pedido de venda (medido: 3 clientes PJ de teste, 100% das
+    compras em forma_crediario + transacao_pedido_venda <> 0), e aplicar aquele filtro fazia o
+    histórico do cliente sumir quase por completo.
     Retorna (link_info_ou_None, lista_de_notas)."""
     link = db.query_one("""
         SELECT pcl.person_client_link_id AS link_id, pcl.portal, pcl.cod_cliente, pcl.tipo_cliente,
@@ -1647,8 +1655,6 @@ def person_client_link_ultimas_compras(link_id, max_notas=5):
               AND  mm.cancelado      <> 'S'
               AND  mm.excluido       <> 'S'
               AND  mm.soma_relatorio  = 'S'
-              AND  (mm.transacao_pedido_venda = 0 OR mm.transacao_pedido_venda IS NULL)
-              AND  (mm.forma_pix = true OR mm.forma_cartao = true OR mm.forma_dinheiro = true)
               AND  mm.cod_natureza_operacao = '10030'
             GROUP  BY mm.cnpj_emp, mm.serie, mm.documento
             ORDER  BY dia DESC
@@ -1662,8 +1668,6 @@ def person_client_link_ultimas_compras(link_id, max_notas=5):
                ON  mm.portal = %(portal)s AND mm.codigo_cliente = %(cod_cliente)s
               AND  mm.cnpj_emp = n.cnpj_emp AND mm.serie = n.serie AND mm.documento = n.documento
               AND  mm.cancelado <> 'S' AND mm.excluido <> 'S' AND mm.soma_relatorio = 'S'
-              AND  (mm.transacao_pedido_venda = 0 OR mm.transacao_pedido_venda IS NULL)
-              AND  (mm.forma_pix = true OR mm.forma_cartao = true OR mm.forma_dinheiro = true)
               AND  mm.cod_natureza_operacao = '10030'
         LEFT   JOIN microvix.microvix_produtos mp
                ON  mp.portal = mm.portal AND mp.cod_produto = mm.cod_produto

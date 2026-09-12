@@ -362,13 +362,23 @@ só `tipo_cliente` é lido da tabela local) com um "×" pra apagar (`POST
 
 Cada tag também tem um ícone 🛍️ que abre um **modal/bottom-sheet separado** (2026-09) com as **5
 notas fiscais mais recentes desse cliente Microvix** (data, valor, produtos) — busca direto em
-`microvix_movimento` por `(portal, codigo_cliente)` do vínculo, com o mesmo filtro de venda válida
-do resto do projeto (`cancelado`/`excluido`/`soma_relatorio`/`transacao_pedido_venda`/forma de
-pagamento/`cod_natureza_operacao`, ver "Filtro padrão Microvix" acima). Não usa `person_purchases`
-— é o histórico de compras do **cliente em si**, no portal inteiro (qualquer `cnpj_emp`/loja), o
-que pode incluir compras feitas por outras pessoas reconhecidas vinculadas ao mesmo cliente PJ, ou
+`microvix_movimento` por `(portal, codigo_cliente)` do vínculo. **Não** usa `person_purchases` — é
+o histórico de compras do **cliente em si**, no portal inteiro (qualquer `cnpj_emp`/loja), o que
+pode incluir compras feitas por outras pessoas reconhecidas vinculadas ao mesmo cliente PJ, ou
 nenhuma pessoa. Diferente de "últimos 5 **dias**" usado em `compras_recentes_pessoa` — aqui são as
-últimas 5 **notas fiscais** distintas. Fonte: `people.person_client_link_ultimas_compras(link_id)`;
+últimas 5 **notas fiscais** distintas.
+
+**Filtro: só o básico de transação real** (`cancelado`/`excluido`/`soma_relatorio`/
+`cod_natureza_operacao`) — **sem** a restrição de `transacao_pedido_venda`/forma de pagamento do
+"Filtro padrão Microvix" (a de Pix/Cartão/Dinheiro sem pedido, usada em `kpi_microvix` e outras
+queries de "faturamento na loja"). Bug corrigido no mesmo dia: a primeira versão reaproveitava
+esse filtro completo aqui e o histórico de clientes PJ sumia quase por inteiro — medido em 3
+clientes PJ de teste, 100% das compras eram em `forma_crediario` + `transacao_pedido_venda <> 0`
+(padrão normal de compra a prazo/pedido B2B), exatamente o que aquele filtro exclui. Esse filtro
+mais restrito faz sentido pra definir "faturamento de balcão", não pra saber se uma transação do
+cliente existiu de fato.
+
+Fonte: `people.person_client_link_ultimas_compras(link_id)`;
 rotas JSON `GET /clientes/vinculo-cliente/<link_id>/compras` (web e mobile), com checagem de acesso
 por portal (`vw_user_store_access` + `stores.microvix_portal`), já que a busca não é escopada a uma
 loja específica.
