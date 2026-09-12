@@ -91,19 +91,29 @@ menu "Mais" esconde Visitas/Ranking, deixando só Clientes/Trocar Senha/Sair.
 
 ```sql
 cancelado <> 'S' AND excluido <> 'S' AND soma_relatorio = 'S'
-AND (tipo_transacao <> 'J' OR tipo_transacao IS NULL)
-AND codigo_cliente = 1
+AND (transacao_pedido_venda = 0 OR transacao_pedido_venda IS NULL)
+AND (forma_pix = true OR forma_cartao = true OR forma_dinheiro = true)
 AND cod_natureza_operacao = '10030'
 ```
 
-**Restrição de `tipo_transacao` (2026-09, 2ª versão):** o filtro de `tipo_transacao` já passou por
-três formatos. Originalmente um allowlist, `tipo_transacao IN ('P','V','S') OR tipo_transacao IS
-NULL`. Depois (migration `migrations/remover_filtro_tipo_transacao_mv_vendas.sql`) foi removido
-por completo — todo `tipo_transacao` contava como faturamento. Hoje é uma exclusão:
-`tipo_transacao <> 'J' OR tipo_transacao IS NULL` — todo `tipo_transacao` conta como faturamento
-**exceto `J`** (Ajuste de Estoque, ver `doc_microvix.sql`: não é venda real). Aplicado em todo o
-projeto (`people.py`, `routes/auth.py`, `routes/mobile.py`, e a materialized view
-`mv_microvix_vendas` — migration `migrations/filtro_tipo_transacao_diferente_j.sql`).
+**Restrição de forma de pagamento e de `transacao_pedido_venda` (2026-09, substitui a restrição de
+`tipo_transacao` abaixo):** por pedido do usuário, o filtro de venda válida passou a exigir
+`transacao_pedido_venda = 0 OR IS NULL` (exclui transações originadas de pedido de venda) e
+`forma_pix = true OR forma_cartao = true OR forma_dinheiro = true` (só as três formas de pagamento
+aceitas em loja — exclui Cheque, Cheque a prazo, Crediário, Convênio e Depósito bancário). Isso
+substitui a exclusão anterior por `tipo_transacao <> 'J'` (não é mais parte do filtro padrão).
+Aplicado em todo o projeto (`people.py`, `routes/auth.py`, `routes/mobile.py`, e a materialized view
+`mv_microvix_vendas` — migration `migrations/filtro_forma_pagamento_e_transacao_pedido.sql`).
+Nota: a doc anterior deste filtro também listava `codigo_cliente = 1`, mas essa condição nunca
+existiu de fato no código-base (só nesta doc) — removida por estar desatualizada.
+
+**Histórico do filtro de `tipo_transacao` (descontinuado 2026-09):** já passou por três formatos.
+Originalmente um allowlist, `tipo_transacao IN ('P','V','S') OR tipo_transacao IS NULL`. Depois
+(migration `migrations/remover_filtro_tipo_transacao_mv_vendas.sql`) foi removido por completo —
+todo `tipo_transacao` contava como faturamento. Depois virou uma exclusão, `tipo_transacao <> 'J'
+OR tipo_transacao IS NULL` (excluindo só `J`, Ajuste de Estoque — migration
+`migrations/filtro_tipo_transacao_diferente_j.sql`). Essa exclusão foi removida do filtro padrão em
+2026-09, substituída pelos critérios de forma de pagamento e `transacao_pedido_venda` acima.
 
 **Classificação PF vs. PJ (2026-09):** cada transação de `microvix_movimento` é classificada como
 Pessoa Física ou Jurídica pelo `tipo_cliente` do cliente em `microvix.microvix_clientes_fornecedores`
@@ -443,7 +453,7 @@ formatadas em R$ via `br_valor_k`; clicar num vendedor mostra o dia a dia da sem
 | `vw_goal_daily_target` | Valor efetivo da meta: prioriza override (goal_values) sobre template |
 | `vw_goal_performance` | Apuração com `achievement_pct` e `status` (achieved/not_achieved/pending/no_target) |
 | `vw_customer_ranking` | Ranking de clientes em tempo real (fonte do cache `customer_ranking`). Score = (visitas_com_compra × pts) + (visitas_sem_compra × pts) + (total_gasto × pts_por_real). Usa `mv_microvix_vendas` para performance |
-| `mv_microvix_vendas` *(MATERIALIZED)* | Cache de vendas válidas do Microvix, usado como fonte de `vw_customer_ranking`. Precisa de `REFRESH` antes do cálculo do ranking — feito pelo cron. Agregado por `(cnpj_emp, documento, serie, data_documento)` — `serie` incluída desde 2026-09 (migration `migrations/person_purchases_serie_data.sql`) pra permitir a `vw_customer_ranking` casar por `pp.serie` exata e não só `documento`. Filtro: `cod_natureza_operacao='10030'`/`cancelado<>'S'`/`excluido<>'S'`/`soma_relatorio='S'`, `documento IS NOT NULL`, `tipo_transacao<>'J' OR tipo_transacao IS NULL` (2026-09 — migration `migrations/filtro_tipo_transacao_diferente_j.sql`; ver "Filtro padrão Microvix" acima), e classificado como PF via `LEFT JOIN faciais.stores` (restringe a lojas cadastradas) + `LEFT JOIN microvix.microvix_clientes_fornecedores` (`tipo_cliente IS NULL OR tipo_cliente='F'`) — trocado de série pra `tipo_cliente` em 2026-09 (ver "Classificação PF vs. PJ" acima; migration `migrations/descontinuar_store_serie_rules.sql`) |
+| `mv_microvix_vendas` *(MATERIALIZED)* | Cache de vendas válidas do Microvix, usado como fonte de `vw_customer_ranking`. Precisa de `REFRESH` antes do cálculo do ranking — feito pelo cron. Agregado por `(cnpj_emp, documento, serie, data_documento)` — `serie` incluída desde 2026-09 (migration `migrations/person_purchases_serie_data.sql`) pra permitir a `vw_customer_ranking` casar por `pp.serie` exata e não só `documento`. Filtro: `cod_natureza_operacao='10030'`/`cancelado<>'S'`/`excluido<>'S'`/`soma_relatorio='S'`, `documento IS NOT NULL`, `transacao_pedido_venda=0 OR IS NULL`, `forma_pix=true OR forma_cartao=true OR forma_dinheiro=true` (2026-09 — migration `migrations/filtro_forma_pagamento_e_transacao_pedido.sql`; ver "Filtro padrão Microvix" acima), e classificado como PF via `LEFT JOIN faciais.stores` (restringe a lojas cadastradas) + `LEFT JOIN microvix.microvix_clientes_fornecedores` (`tipo_cliente IS NULL OR tipo_cliente='F'`) — trocado de série pra `tipo_cliente` em 2026-09 (ver "Classificação PF vs. PJ" acima; migration `migrations/descontinuar_store_serie_rules.sql`) |
 | `vw_primeira_aparicao_clientes` *(MATERIALIZED)* | Primeira detecção de cada cliente (person_type_id='C'). Campo `first_record`. Index único em `person_id` |
 
 **Funções:** `fn_set_updated_at()` — trigger que atualiza `updated_at` em todas as tabelas. `create_updated_at_trigger(p_table)` — helper para criar trigger em nova tabela.

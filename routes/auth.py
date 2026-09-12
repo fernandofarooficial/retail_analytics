@@ -1018,11 +1018,14 @@ def _compute_charts_data(store_id, data_str, active_store_cnpj, active_microvix_
             "NOT EXISTS (SELECT 1 FROM microvix.microvix_clientes_fornecedores cf "
             "WHERE cf.portal = {alias}.portal AND cf.cod_cliente = {alias}.codigo_cliente AND cf.tipo_cliente = 'J')"
         )
-        _NAO_J = "({alias}.tipo_transacao <> 'J' OR {alias}.tipo_transacao IS NULL)"
+        _VENDA_VALIDA = (
+            "({alias}.transacao_pedido_venda = 0 OR {alias}.transacao_pedido_venda IS NULL) "
+            "AND ({alias}.forma_pix = true OR {alias}.forma_cartao = true OR {alias}.forma_dinheiro = true)"
+        )
         _FILTRO_MV = (
             "m.portal = %s AND m.cnpj_emp = %s "
             "AND m.cancelado <> 'S' AND m.excluido <> 'S' AND m.soma_relatorio = 'S' "
-            "AND " + _NAO_J.format(alias='m') + " AND " + _NAO_PJ.format(alias='m') +
+            "AND " + _VENDA_VALIDA.format(alias='m') + " AND " + _NAO_PJ.format(alias='m') +
             " AND m.cod_natureza_operacao = '10030'"
         )
         _JOIN_PROD = (
@@ -1057,9 +1060,9 @@ def _compute_charts_data(store_id, data_str, active_store_cnpj, active_microvix_
                 JOIN microvix.microvix_produtos pb ON pb.portal = b.portal AND pb.cod_produto = b.cod_produto
                 WHERE a.portal = %s AND a.cnpj_emp = %s
                   AND a.cancelado <> 'S' AND a.excluido <> 'S' AND a.soma_relatorio = 'S'
-                  AND {_NAO_J.format(alias='a')} AND {_NAO_PJ.format(alias='a')} AND a.cod_natureza_operacao = '10030'
+                  AND {_VENDA_VALIDA.format(alias='a')} AND {_NAO_PJ.format(alias='a')} AND a.cod_natureza_operacao = '10030'
                   AND b.cancelado <> 'S' AND b.excluido <> 'S' AND b.soma_relatorio = 'S'
-                  AND {_NAO_J.format(alias='b')} AND {_NAO_PJ.format(alias='b')} AND b.cod_natureza_operacao = '10030'
+                  AND {_VENDA_VALIDA.format(alias='b')} AND {_NAO_PJ.format(alias='b')} AND b.cod_natureza_operacao = '10030'
                   AND a.data_documento >= %s::date AND a.data_documento < %s::date + INTERVAL '1 day'
                 GROUP BY nome_a, nome_b ORDER BY qtd DESC LIMIT 10
             """
