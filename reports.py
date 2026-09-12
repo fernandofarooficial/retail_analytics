@@ -21,24 +21,18 @@ CAMPOS_IDENTIFICADOS = [
     ('full_name',           'Nome completo'),
     ('nickname',            'Apelido'),
     ('document',            'Documento'),
-    ('crm_key',             'Chave CRM'),
     ('birth_date',          'Data nasc.'),
     ('age',                 'Idade'),
     ('gender_name',         'Gênero'),
     ('person_type_name',    'Tipo'),
-    ('reference_track_id',  'Track ID ref.'),
     ('notes',               'Observações'),
     ('phone',               'Telefone'),
     ('email',               'E-mail'),
-    ('review_status',       'Situação'),
     ('reviewed_by_name',    'Revisado por'),
     ('reviewed_at',         'Revisado em'),
     ('created_at',          'Criado em'),
     ('updated_at',          'Atualizado em'),
 ]
-
-_REVIEW_STATUS_LABEL = {'keep': 'Manter', 'duplicate': 'Duplicado'}
-
 
 def _fmt(key, value):
     if value is None:
@@ -47,8 +41,6 @@ def _fmt(key, value):
         return value.strftime('%d/%m/%Y')
     if key in ('created_at', 'updated_at', 'reviewed_at'):
         return value.strftime('%d/%m/%Y %H:%M')
-    if key == 'review_status':
-        return _REVIEW_STATUS_LABEL.get(value, value)
     return str(value)
 
 
@@ -108,9 +100,9 @@ def gerar_pdf_identificados_sem_foto(rows, loja_nome, data_ini, data_fim):
     # nome/observações/e-mail ganham mais espaço; id/idade/data menos
     largura_relativa = {
         'person_id': 0.4, 'full_name': 1.6, 'nickname': 0.9, 'document': 0.9,
-        'crm_key': 0.9, 'birth_date': 0.8, 'age': 0.5, 'gender_name': 0.7,
-        'person_type_name': 0.8, 'reference_track_id': 1.1, 'notes': 1.6,
-        'phone': 0.9, 'email': 1.3, 'review_status': 0.8, 'reviewed_by_name': 1.0,
+        'birth_date': 0.8, 'age': 0.5, 'gender_name': 0.7,
+        'person_type_name': 0.8, 'notes': 1.6,
+        'phone': 0.9, 'email': 1.3, 'reviewed_by_name': 1.0,
         'reviewed_at': 1.0, 'created_at': 1.0, 'updated_at': 1.0,
     }
     pesos = [largura_relativa.get(key, 1.0) for key, _ in CAMPOS_IDENTIFICADOS]

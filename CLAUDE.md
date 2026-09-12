@@ -363,17 +363,21 @@ ou sem acento, placeholder do pipeline facial pra rostos sem nome atribuído) co
 detecção na loja em vista,
 filtrados por período de **última atualização do cadastro** (`people.updated_at`, não
 `created_at`) — filtro `data_ini`/`data_fim` (padrão: últimos 10 dias, hoje incluso). Fonte:
-`people.identificados_lista(store_id, data_ini, data_fim)`, que traz todas as colunas de
+`people.identificados_lista(store_id, data_ini, data_fim)`, que traz (quase) todas as colunas de
 `faciais.people` (com `gender_name`/`person_type_name`/`reviewed_by_name` resolvidos via join, no
 lugar dos códigos brutos) mais a foto mais recente da pessoa nessa loja
-(`detection_records.image_path` mais recente, mesmo padrão de `clientes_do_dia`).
+(`detection_records.image_path` mais recente, mesmo padrão de `clientes_do_dia`). A query traz
+todas as colunas, mas o relatório (PDF/Excel) exibe só um subconjunto — `crm_key`,
+`reference_track_id` e `review_status` ficam de fora da exibição (pedido do usuário, 2026-09, ver
+`reports.CAMPOS_IDENTIFICADOS`); `review_status` continua vindo na query porque a **prévia** na
+tela (`identificados.html`/mobile) usa ele pro selo "Duplicado".
 
-Duas versões: **Com foto** (só gera em PDF — cartões um por pessoa, foto + todos os campos, A4
-retrato) e **Sem foto** (gera em PDF — tabela larga em A3 paisagem, uma linha por pessoa — ou
-Excel — uma planilha, mesma estrutura). Geração em `reports.py` (raiz do projeto, novo módulo,
-2026-09): `gerar_pdf_identificados_com_foto`/`_sem_foto` (reportlab) e `gerar_excel_identificados`
-(openpyxl) — nenhuma das duas libs precisa de dependência de sistema (diferente de
-weasyprint/wkhtmltopdf), só `pip install`. Download via rota própria
+Duas versões: **Com foto** (só gera em PDF — cartões um por pessoa, foto + campos de
+`CAMPOS_IDENTIFICADOS`, A4 retrato) e **Sem foto** (gera em PDF — tabela larga em A3 paisagem, uma
+linha por pessoa — ou Excel — uma planilha, mesma estrutura). Geração em `reports.py` (raiz do
+projeto, novo módulo, 2026-09): `gerar_pdf_identificados_com_foto`/`_sem_foto` (reportlab) e
+`gerar_excel_identificados` (openpyxl) — nenhuma das duas libs precisa de dependência de sistema
+(diferente de weasyprint/wkhtmltopdf), só `pip install`. Download via rota própria
 (`relatorios.identificados_download`/`mobile.relatorios_identificados_download`, `?formato=pdf|excel&versao=com_foto|sem_foto`,
 mais `data_ini`/`data_fim`/`store_id`/`company_id`) que rejeita com `400` a combinação inválida
 `com_foto`+`excel`. A foto de cada pessoa no PDF "com foto" é baixada em tempo de requisição do
