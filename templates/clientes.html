@@ -49,9 +49,36 @@
     border-radius: 6px;
   }
   .cli-nota-btn:hover { color: var(--theme-primary); background: #F9FAFB; }
+  .cli-vinculo-btn {
+    position: absolute;
+    top: 0.6rem;
+    right: 4.1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9CA3AF;
+    font-size: 1.05rem;
+    line-height: 1;
+    padding: 0.3rem;
+    border-radius: 6px;
+  }
+  .cli-vinculo-btn:hover { color: var(--theme-primary); background: #F9FAFB; }
 
   .cli-tag-nota-pend { background: #FEF3C7; color: #92400E; }
   .cli-tag-nota-nf   { background: #FEE2E2; color: #991B1B; }
+  .cli-tag-pf { background: #DBEAFE; color: #1E40AF; display: inline-flex; align-items: center; gap: 0.25rem; }
+  .cli-tag-pj { background: #EDE9FE; color: #5B21B6; display: inline-flex; align-items: center; gap: 0.25rem; }
+  .cli-tag-remove {
+    border: none; background: none; cursor: pointer; color: inherit;
+    font-size: 0.9rem; line-height: 1; padding: 0; opacity: 0.65;
+  }
+  .cli-tag-remove:hover { opacity: 1; }
+
+  .vc-result-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    padding: 0.6rem 0; border-top: 1px solid #F3F4F6; font-size: 0.8125rem;
+  }
+  .vc-result-sub { color: #6B7280; font-size: 0.75rem; }
 
   .cli-notas-panel {
     background: #fff;
@@ -309,6 +336,10 @@
               data-store-id="{{ c.store_id }}"
               data-sugestao-numero="{{ c.nota_sugestao_numero or '' }}"
               data-sugestao-serie="{{ c.nota_sugestao_serie or '' }}">&#129534;</button>
+      <button type="button" class="cli-vinculo-btn" title="Vincular cliente Microvix (PF/PJ)"
+              onclick="abrirVinculoCliente(this)"
+              data-person-id="{{ c.person_id }}"
+              data-store-id="{{ c.store_id }}">&#127970;</button>
       {% endif %}
 
       <div class="cli-photo-wrap">
@@ -344,6 +375,17 @@
           {% if c.notas_nao_localizadas %}
           <span class="cli-tag cli-tag-nota-nf">{{ c.notas_nao_localizadas }} nota{{ 's' if c.notas_nao_localizadas != 1 else '' }} não localizada{{ 's' if c.notas_nao_localizadas != 1 else '' }}</span>
           {% endif %}
+          {% for link in c.client_links %}
+          <span class="cli-tag {{ 'cli-tag-pf' if link.tipo_cliente == 'F' else 'cli-tag-pj' }}">
+            {{ 'PF' if link.tipo_cliente == 'F' else 'PJ' }}: {{ link.nome }}
+            <form method="POST" action="{{ url_for('auth.clientes_apagar_vinculo_cliente', link_id=link.link_id) }}"
+                  onsubmit="return confirm('Remover este vínculo?');" style="display:inline;">
+              <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
+              <input type="hidden" name="store_id_scope" value="{{ selected_store_id or '' }}">
+              <button type="submit" class="cli-tag-remove" title="Remover vínculo">&times;</button>
+            </form>
+          </span>
+          {% endfor %}
         </div>
 
         <div class="cli-datagrid">
@@ -489,6 +531,33 @@
     </div>
   </form>
 </dialog>
+
+<!-- ── Modal: vincular cliente Microvix (PF/PJ) por CPF/CNPJ ──────────── -->
+<dialog id="vinculo-cliente-modal">
+  <div class="modal-header">
+    <h2>Vincular cliente Microvix</h2>
+    <button type="button" class="modal-close" onclick="fecharVinculoClienteModal()">&times;</button>
+  </div>
+  <div class="modal-body">
+    <div class="form-row">
+      <div class="form-group" style="flex:1">
+        <label>CPF/CNPJ</label>
+        <input type="text" id="vc-documento" inputmode="numeric" placeholder="Só números">
+      </div>
+    </div>
+    <button type="button" class="btn-secondary" onclick="buscarVinculoCliente()">Buscar</button>
+    <div id="vc-resultados" style="margin-top: 0.5rem;"></div>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn-secondary" onclick="fecharVinculoClienteModal()">Fechar</button>
+  </div>
+</dialog>
+<form method="POST" id="vinculo-cliente-form" style="display:none;">
+  <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
+  <input type="hidden" name="store_id_scope" value="{{ selected_store_id or '' }}">
+  <input type="hidden" name="cod_cliente" id="vc-cod-cliente">
+  <input type="hidden" name="tipo_cliente" id="vc-tipo-cliente">
+</form>
 
 <!-- ── Modal: editar dados do cliente (reaproveitado de Visitação) ────── -->
 <dialog id="pessoa-modal">
@@ -640,6 +709,61 @@ function abrirEditarNota(btn) {
 function fecharNotaModal() { cliModalAberto = false; notaModal.close(); }
 notaModal.addEventListener('click', e => { if (e.target === notaModal) fecharNotaModal(); });
 notaModal.addEventListener('close', () => { cliModalAberto = false; });
+
+const vinculoClienteModal = document.getElementById('vinculo-cliente-modal');
+const vinculoClienteForm  = document.getElementById('vinculo-cliente-form');
+let vcPersonId = null, vcStoreId = null;
+
+function abrirVinculoCliente(btn) {
+  const d = btn.dataset;
+  vcPersonId = d.personId;
+  vcStoreId  = d.storeId;
+  document.getElementById('vc-documento').value = '';
+  document.getElementById('vc-resultados').innerHTML = '';
+  cliModalAberto = true;
+  vinculoClienteModal.showModal();
+}
+function fecharVinculoClienteModal() { cliModalAberto = false; vinculoClienteModal.close(); }
+vinculoClienteModal.addEventListener('click', e => { if (e.target === vinculoClienteModal) fecharVinculoClienteModal(); });
+vinculoClienteModal.addEventListener('close', () => { cliModalAberto = false; });
+
+function buscarVinculoCliente() {
+  const documento  = document.getElementById('vc-documento').value;
+  const resultados = document.getElementById('vc-resultados');
+  resultados.innerHTML = '<p class="kpi-hint">Buscando…</p>';
+  const url = '/retail_analytics/clientes/pessoa/' + vcPersonId + '/vinculo-cliente/buscar'
+    + '?documento=' + encodeURIComponent(documento) + '&store_id_scope=' + vcStoreId;
+  fetch(url).then(r => r.json()).then(data => {
+    if (data.error) { resultados.innerHTML = '<p class="kpi-hint">' + data.error + '</p>'; return; }
+    if (!data.resultados.length) {
+      resultados.innerHTML = '<p class="kpi-hint">Nenhum cliente encontrado com esse documento nesta loja.</p>';
+      return;
+    }
+    resultados.innerHTML = '';
+    data.resultados.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'vc-result-item';
+      const info = document.createElement('div');
+      info.innerHTML = '<strong>' + r.nome + '</strong><br><span class="vc-result-sub">' +
+        (r.tipo_cliente === 'F' ? 'Pessoa física' : 'Pessoa jurídica') +
+        (r.doc_cliente ? ' · ' + r.doc_cliente : '') + '</span>';
+      const btnVincular = document.createElement('button');
+      btnVincular.type = 'button';
+      btnVincular.className = 'btn-secondary';
+      btnVincular.textContent = 'Vincular';
+      btnVincular.onclick = () => vincularCliente(r.cod_cliente, r.tipo_cliente);
+      item.appendChild(info);
+      item.appendChild(btnVincular);
+      resultados.appendChild(item);
+    });
+  }).catch(() => { resultados.innerHTML = '<p class="kpi-hint">Erro na busca.</p>'; });
+}
+function vincularCliente(codCliente, tipoCliente) {
+  vinculoClienteForm.action = '/retail_analytics/clientes/pessoa/' + vcPersonId + '/vinculo-cliente';
+  document.getElementById('vc-cod-cliente').value = codCliente;
+  document.getElementById('vc-tipo-cliente').value = tipoCliente;
+  vinculoClienteForm.submit();
+}
 
 function selecionarEmpresa(id) {
   const url = new URL(window.location.href);

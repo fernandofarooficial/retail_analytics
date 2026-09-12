@@ -57,6 +57,20 @@
     border-radius: 6px;
   }
   .m-cli-nota-btn:active { color: var(--theme-primary); background: #F9FAFB; }
+  .m-cli-vinculo-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 3.7rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9CA3AF;
+    font-size: 0.95rem;
+    line-height: 1;
+    padding: 0.35rem;
+    border-radius: 6px;
+  }
+  .m-cli-vinculo-btn:active { color: var(--theme-primary); background: #F9FAFB; }
   .m-pessoa-erro, .m-nota-msg-ok {
     font-size: 0.8rem;
     padding: 0.6rem 0.75rem;
@@ -123,9 +137,20 @@
   .m-cli-tag-rec  { background: #D1FAE5; color: #065F46; }
   .m-cli-tag-novo { background: #DBEAFE; color: #1E40AF; }
   .m-cli-tag-duplicado { background: #EDE9FE; color: #5B21B6; }
+  .m-cli-tag-pf { background: #DBEAFE; color: #1E40AF; display: inline-flex; align-items: center; gap: 0.2rem; }
+  .m-cli-tag-pj { background: #EDE9FE; color: #5B21B6; display: inline-flex; align-items: center; gap: 0.2rem; }
+  .m-cli-tag-remove {
+    border: none; background: none; cursor: pointer; color: inherit;
+    font-size: 0.85rem; line-height: 1; padding: 0; opacity: 0.65;
+  }
   .m-cli-row { font-size: 0.78rem; color: #374151; margin-top: 0.25rem; display: flex; gap: 0.3rem; }
   .m-cli-row-label { color: #9CA3AF; }
   .m-cli-row-sub { color: #9CA3AF; font-size: 0.7rem; }
+  .m-vc-result-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.6rem;
+    padding: 0.55rem 0; border-top: 1px solid #F3F4F6; font-size: 0.78rem;
+  }
+  .m-vc-result-sub { color: #6B7280; font-size: 0.7rem; }
 
   .m-cli-notes { font-size: 0.75rem; color: #6B7280; font-style: italic; margin-top: 0.5rem; word-break: break-word; }
 
@@ -285,6 +310,10 @@
                 data-store-id="{{ c.store_id }}"
                 data-sugestao-numero="{{ c.nota_sugestao_numero or '' }}"
                 data-sugestao-serie="{{ c.nota_sugestao_serie or '' }}">&#129534;</button>
+        <button type="button" class="m-cli-vinculo-btn" title="Vincular cliente Microvix (PF/PJ)"
+                onclick="abrirVinculoCliente(this)"
+                data-person-id="{{ c.person_id }}"
+                data-store-id="{{ c.store_id }}">&#127970;</button>
         {% endif %}
 
         <div class="m-cli-top">
@@ -321,6 +350,17 @@
               {% if c.notas_nao_localizadas %}
               <span class="m-cli-tag m-cli-tag-nota-nf">{{ c.notas_nao_localizadas }} não localizada{{ 's' if c.notas_nao_localizadas != 1 else '' }}</span>
               {% endif %}
+              {% for link in c.client_links %}
+              <span class="m-cli-tag {{ 'm-cli-tag-pf' if link.tipo_cliente == 'F' else 'm-cli-tag-pj' }}">
+                {{ 'PF' if link.tipo_cliente == 'F' else 'PJ' }}: {{ link.nome }}
+                <form method="POST" action="{{ url_for('mobile.clientes_apagar_vinculo_cliente', link_id=link.link_id) }}"
+                      onsubmit="return confirm('Remover este vínculo?');" style="display:inline;">
+                  <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
+                  <input type="hidden" name="store_id_scope" value="{{ selected_store_id or '' }}">
+                  <button type="submit" class="m-cli-tag-remove" title="Remover vínculo">&times;</button>
+                </form>
+              </span>
+              {% endfor %}
             </div>
 
             {% if c.primeiro_registro %}
@@ -448,6 +488,30 @@
     <button type="submit" class="m-cli-refresh-btn" style="width:100%; justify-content:center; padding:0.75rem;">Salvar</button>
   </form>
   <button class="m-sheet-close" onclick="fecharNotaSheet()">Cancelar</button>
+</div>
+
+<!-- ── Bottom-sheet: vincular cliente Microvix (PF/PJ) por CPF/CNPJ ──── -->
+<div id="m-vc-overlay" class="m-sheet-overlay" onclick="fecharVinculoClienteSheet()"></div>
+<div id="m-vc-sheet" class="m-store-sheet">
+  <div class="m-sheet-handle"></div>
+  <div class="m-sheet-title">Vincular cliente Microvix</div>
+
+  <div class="m-field" style="margin-bottom:0.6rem;">
+    <label class="m-label">CPF/CNPJ</label>
+    <input class="m-input" type="text" id="m-vc-documento" inputmode="numeric" placeholder="Só números">
+  </div>
+  <button type="button" class="m-cli-refresh-btn" style="width:100%; justify-content:center; padding:0.65rem; margin-bottom:0.5rem;"
+          onclick="buscarVinculoClienteM()">Buscar</button>
+  <div id="m-vc-resultados"></div>
+
+  <form method="POST" id="m-vc-form" style="display:none;">
+    <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
+    <input type="hidden" name="store_id_scope" value="{{ selected_store_id or '' }}">
+    <input type="hidden" name="cod_cliente" id="m-vc-cod-cliente">
+    <input type="hidden" name="tipo_cliente" id="m-vc-tipo-cliente">
+  </form>
+
+  <button class="m-sheet-close" onclick="fecharVinculoClienteSheet()">Fechar</button>
 </div>
 
 <!-- ── Bottom-sheet: editar cliente (reaproveitado de Visitação) ────── -->
@@ -595,6 +659,62 @@ function fecharNotaSheet() {
   document.getElementById('m-nota-overlay').classList.remove('open');
   document.getElementById('m-nota-sheet').classList.remove('open');
 }
+
+let mVcPersonId = null, mVcStoreId = null;
+function abrirVinculoCliente(btn) {
+  const d = btn.dataset;
+  mVcPersonId = d.personId;
+  mVcStoreId  = d.storeId;
+  document.getElementById('m-vc-documento').value = '';
+  document.getElementById('m-vc-resultados').innerHTML = '';
+  cliModalAberto = true;
+  document.getElementById('m-vc-overlay').classList.add('open');
+  document.getElementById('m-vc-sheet').classList.add('open');
+}
+function fecharVinculoClienteSheet() {
+  cliModalAberto = false;
+  document.getElementById('m-vc-overlay').classList.remove('open');
+  document.getElementById('m-vc-sheet').classList.remove('open');
+}
+function buscarVinculoClienteM() {
+  const documento  = document.getElementById('m-vc-documento').value;
+  const resultados = document.getElementById('m-vc-resultados');
+  resultados.innerHTML = '<p class="m-hint">Buscando…</p>';
+  const url = '/retail_analytics/m/clientes/pessoa/' + mVcPersonId + '/vinculo-cliente/buscar'
+    + '?documento=' + encodeURIComponent(documento) + '&store_id_scope=' + mVcStoreId;
+  fetch(url).then(r => r.json()).then(data => {
+    if (data.error) { resultados.innerHTML = '<p class="m-hint">' + data.error + '</p>'; return; }
+    if (!data.resultados.length) {
+      resultados.innerHTML = '<p class="m-hint">Nenhum cliente encontrado com esse documento nesta loja.</p>';
+      return;
+    }
+    resultados.innerHTML = '';
+    data.resultados.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'm-vc-result-item';
+      const info = document.createElement('div');
+      info.innerHTML = '<strong>' + r.nome + '</strong><br><span class="m-vc-result-sub">' +
+        (r.tipo_cliente === 'F' ? 'Pessoa física' : 'Pessoa jurídica') +
+        (r.doc_cliente ? ' · ' + r.doc_cliente : '') + '</span>';
+      const btnVincular = document.createElement('button');
+      btnVincular.type = 'button';
+      btnVincular.textContent = 'Vincular';
+      btnVincular.style.cssText = 'font-size:0.72rem;border:1px solid #E5E7EB;background:#fff;border-radius:6px;padding:0.3rem 0.6rem;flex-shrink:0;';
+      btnVincular.onclick = () => vincularClienteM(r.cod_cliente, r.tipo_cliente);
+      item.appendChild(info);
+      item.appendChild(btnVincular);
+      resultados.appendChild(item);
+    });
+  }).catch(() => { resultados.innerHTML = '<p class="m-hint">Erro na busca.</p>'; });
+}
+function vincularClienteM(codCliente, tipoCliente) {
+  const form = document.getElementById('m-vc-form');
+  form.action = '/retail_analytics/m/clientes/pessoa/' + mVcPersonId + '/vinculo-cliente';
+  document.getElementById('m-vc-cod-cliente').value = codCliente;
+  document.getElementById('m-vc-tipo-cliente').value = tipoCliente;
+  form.submit();
+}
+
 function selecionarEmpresa(id) {
   const url = new URL(window.location.href);
   if (id) { url.searchParams.set('company_id', id); }

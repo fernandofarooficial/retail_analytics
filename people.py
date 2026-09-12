@@ -1538,3 +1538,80 @@ def identificados_lista(store_id, data_ini, data_fim):
           )
         ORDER  BY p.updated_at DESC
     """, {'store_id': store_id, 'data_ini': data_ini, 'data_fim': data_fim})
+
+
+# ── Vínculo pessoa × cliente Microvix (identidade, tela Clientes) ──────────────
+
+def microvix_cliente_buscar_documento(portal, documento):
+    """Busca clientes/fornecedores do Microvix (nesse portal) por CPF/CNPJ, comparando
+    só os dígitos dos dois lados (ignora pontuação). Pode retornar mais de um resultado
+    — doc_cliente não é garantidamente único por portal na base real (ex: cadastros
+    duplicados no Microvix)."""
+    digitos = ''.join(ch for ch in (documento or '') if ch.isdigit())
+    if not digitos:
+        return []
+    return db.query_all("""
+        SELECT cod_cliente, nome_cliente, razao_cliente, doc_cliente, tipo_cliente
+        FROM   microvix.microvix_clientes_fornecedores
+        WHERE  portal = %s
+          AND  regexp_replace(COALESCE(doc_cliente, ''), '\\D', '', 'g') = %s
+        ORDER  BY cod_cliente
+    """, (portal, digitos))
+
+
+def person_client_links_por_pessoa(person_ids):
+    """Vínculos de identidade confirmados (faciais.person_client_links) para uma lista de
+    pessoas, com nome/documento atuais do cliente Microvix (busca ao vivo — só
+    tipo_cliente fica gravado na tabela). Retorna {person_id: [links...]}, cada link com
+    link_id, portal, cod_cliente, tipo_cliente, nome, doc_cliente."""
+    if not person_ids:
+        return {}
+    rows = db.query_all("""
+        SELECT pcl.person_client_link_id AS link_id, pcl.person_id, pcl.portal,
+               pcl.cod_cliente, pcl.tipo_cliente,
+               COALESCE(NULLIF(TRIM(cf.nome_cliente), ''), cf.razao_cliente,
+                        pcl.cod_cliente::text) AS nome,
+               cf.doc_cliente
+        FROM   faciais.person_client_links pcl
+        LEFT   JOIN microvix.microvix_clientes_fornecedores cf
+               ON  cf.portal = pcl.portal AND cf.cod_cliente = pcl.cod_cliente
+        WHERE  pcl.person_id = ANY(%s)
+        ORDER  BY pcl.tipo_cliente, nome
+    """, (person_ids,))
+    result = {}
+    for r in rows:
+        result.setdefault(r['person_id'], []).append({
+            'link_id':      r['link_id'],
+            'portal':       r['portal'],
+            'cod_cliente':  r['cod_cliente'],
+            'tipo_cliente': r['tipo_cliente'],
+            'nome':         r['nome'],
+            'doc_cliente':  r['doc_cliente'],
+        })
+    return result
+
+
+def person_client_link_criar(person_id, portal, cod_cliente, tipo_cliente, user_id):
+    """Confirma o vínculo de identidade pessoa <-> cliente Microvix. Retorna
+    (ok, mensagem_erro). Regras (garantidas por índice único parcial no banco):
+    no máximo 1 cliente PF por pessoa; um cliente PF só pode estar em uma pessoa."""
+    try:
+        db.execute("""
+            INSERT INTO faciais.person_client_links
+                (person_id, portal, cod_cliente, tipo_cliente, entered_by)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (person_id, portal, cod_cliente, tipo_cliente, user_id))
+        return True, None
+    except psycopg2.errors.UniqueViolation as e:
+        constraint = getattr(e.diag, 'constraint_name', '') or ''
+        if constraint == 'ux_person_client_links_pf_por_pessoa':
+            return False, 'Essa pessoa já tem um cliente pessoa física vinculado.'
+        if constraint == 'ux_person_client_links_pf_unico':
+            return False, 'Esse cliente pessoa física já está vinculado a outra pessoa.'
+        return False, 'Esse cliente já está vinculado a essa pessoa.'
+
+
+def person_client_link_apagar(link_id):
+    """Remove o vínculo de identidade. É só uma anotação — não mexe em person_purchases
+    nem em nenhum dado financeiro —, por isso pode ser apagado livremente."""
+    db.execute("DELETE FROM faciais.person_client_links WHERE person_client_link_id = %s", (link_id,))

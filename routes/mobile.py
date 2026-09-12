@@ -56,7 +56,11 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     manual_purchase_links_listar as _manual_purchase_links_listar,
                     manual_purchase_link_editar as _manual_purchase_link_editar,
                     manual_purchase_link_apagar as _manual_purchase_link_apagar,
-                    identificados_lista as _identificados_lista)
+                    identificados_lista as _identificados_lista,
+                    microvix_cliente_buscar_documento as _microvix_cliente_buscar_documento,
+                    person_client_links_por_pessoa as _person_client_links_por_pessoa,
+                    person_client_link_criar as _person_client_link_criar,
+                    person_client_link_apagar as _person_client_link_apagar)
 from routes.utils import (fmt_permanencia, kpi_tempo_loja, kpi_tempo_loja_range,
                            tempo_gauge, HEIMDALL_IMAGE_BASE, block_user_types)
 from reports import (gerar_pdf_identificados_sem_foto as _pdf_identificados_sem_foto,
@@ -1841,6 +1845,7 @@ def clientes():
         ranking_map = _ranking_posicao_pessoas(active_store['store_id'], person_ids)
         notas_map   = _manual_purchase_links_por_pessoa(person_ids)
         notas_pendentes = _manual_purchase_links_listar(store_scope_ids)
+        client_links_map = _person_client_links_por_pessoa(person_ids)
 
         for r in rows:
             visitas = visitas_map.get(r['person_id'])
@@ -1878,6 +1883,7 @@ def clientes():
                 'nota_sugestao_numero': sugestao['numero_nota'],
                 'primeiro_registro': r['primeiro_registro'].strftime('%H:%M') if r['primeiro_registro'] else None,
                 'img_url':           (HEIMDALL_IMAGE_BASE + r['image_path']) if r['image_path'] else None,
+                'client_links':      client_links_map.get(r['person_id'], []),
             })
 
     # ── Tema da empresa ───────────────────────────────────────────────────────
@@ -1966,6 +1972,72 @@ def clientes_editar_nota(link_id):
 @_login_required
 def clientes_apagar_nota(link_id):
     _manual_purchase_link_apagar(link_id)
+    return redirect(url_for('mobile.clientes',
+                            company_id=request.form.get('company_id') or None,
+                            store_id=request.form.get('store_id_scope') or None,
+                            nota_msg='Vínculo removido.', nota_status='ok'))
+
+
+def _portal_da_loja_do_usuario_m(store_id, user_id):
+    """Confirma que o usuário tem acesso a essa loja e devolve o microvix_portal dela
+    (ou None se não tiver acesso ou a loja não tiver portal configurado)."""
+    row = db.query_one("""
+        SELECT s.microvix_portal
+        FROM   faciais.vw_user_store_access vsa
+        JOIN   faciais.stores s ON s.store_id = vsa.store_id
+        WHERE  vsa.user_id = %s AND vsa.store_id = %s
+    """, (user_id, store_id))
+    return row['microvix_portal'] if row else None
+
+
+@mobile_bp.route('/clientes/pessoa/<int:person_id>/vinculo-cliente/buscar')
+@_login_required
+def clientes_buscar_vinculo_cliente(person_id):
+    store_id  = request.args.get('store_id_scope', type=int)
+    documento = request.args.get('documento', '')
+    portal = _portal_da_loja_do_usuario_m(store_id, session['user_id']) if store_id else None
+    if not portal:
+        return jsonify({'error': 'Loja inválida.'}), 400
+
+    resultados = _microvix_cliente_buscar_documento(portal, documento)
+    return jsonify({
+        'resultados': [
+            {
+                'cod_cliente':  r['cod_cliente'],
+                'nome':         (r['nome_cliente'] or '').strip() or (r['razao_cliente'] or '').strip()
+                                or f"Cliente {r['cod_cliente']}",
+                'doc_cliente':  r['doc_cliente'],
+                'tipo_cliente': r['tipo_cliente'],
+            }
+            for r in resultados
+        ]
+    })
+
+
+@mobile_bp.route('/clientes/pessoa/<int:person_id>/vinculo-cliente', methods=['POST'])
+@_login_required
+def clientes_criar_vinculo_cliente(person_id):
+    store_id     = request.form.get('store_id_scope', type=int)
+    cod_cliente  = request.form.get('cod_cliente', type=int)
+    tipo_cliente = request.form.get('tipo_cliente', '')
+
+    portal = _portal_da_loja_do_usuario_m(store_id, session['user_id']) if store_id else None
+    if not portal or not cod_cliente or tipo_cliente not in ('F', 'J'):
+        msg, status = 'Não foi possível vincular esse cliente.', 'erro'
+    else:
+        ok, erro = _person_client_link_criar(person_id, portal, cod_cliente, tipo_cliente, session['user_id'])
+        msg, status = (('Cliente vinculado.', 'ok') if ok else (erro, 'erro'))
+
+    return redirect(url_for('mobile.clientes',
+                            company_id=request.form.get('company_id') or None,
+                            store_id=request.form.get('store_id_scope') or None,
+                            nota_msg=msg, nota_status=status))
+
+
+@mobile_bp.route('/clientes/vinculo-cliente/<int:link_id>/apagar', methods=['POST'])
+@_login_required
+def clientes_apagar_vinculo_cliente(link_id):
+    _person_client_link_apagar(link_id)
     return redirect(url_for('mobile.clientes',
                             company_id=request.form.get('company_id') or None,
                             store_id=request.form.get('store_id_scope') or None,

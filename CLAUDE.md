@@ -49,8 +49,8 @@ logo depois do ranking) — resolve/expira `faciais.manual_purchase_links` pende
 ## Arquitetura
 
 **Blueprints (`routes/`):**
-- `auth.py` (~2320 linhas) — login/logout, dashboard web, `/visitacao` (+ `/visitacao/pessoa/<person_id>` POST — edição de dados do cliente, ver seção "Visitação" abaixo), `/clientes` (+ `/clientes/pessoa/<person_id>/nota`, `/clientes/notas/<link_id>/editar`, `/clientes/notas/<link_id>/apagar` POST — vínculo manual de nota fiscal, 2026-08, ver seção "Clientes — vínculo manual de nota fiscal" abaixo), `/mapa-calor`, `/ranking` (+ `/ranking/<person_id>`, `/ranking/recalcular`), `/heatmap-imagem`. Prefix: `/retail_analytics`
-- `mobile.py` (~3090 linhas) — espelho do auth.py para mobile (login, dashboard, `/visitacao` + `/visitacao/pessoa/<person_id>` POST, `/clientes` + rotas de nota fiscal manual (`/clientes/pessoa/<person_id>/nota`, `/clientes/notas/<link_id>/editar`, `/clientes/notas/<link_id>/apagar`), `/ranking` (+ `/ranking/<person_id>`, `/ranking/<person_id>/dados` — JSON usado pelo painel expansível inline de `/ranking`), `/mapa-calor`, `/heatmap-imagem`) + `/sw.js` (PWA) + reimplementação própria (não reuso de blueprint) das telas de `gestao.py` (`/gestao/faturamento|vendas|estoque`) e `motor.py` (`/motor/faturamento|vendas|estoque`). Prefix: `/retail_analytics/m`. **Equivalente parcial de `relatorios.py`** (2026-09): tem `/relatorios/identificados` (+ `/relatorios/identificados/download`), mas **não** tem o quadro "Pedidos" (meta/realizado por vendedor) — foi removido do mobile em 2026-08, só existe na versão web (`Relatórios > Pedidos`). O contexto de empresa/loja de `/relatorios/identificados` reusa `_gestao_mobile_ctx` (já compartilhado por `gestao_*`/`motor_*` no mobile), diferente do padrão de cópia local usado no lado web (ver `_store_context` abaixo).
+- `auth.py` (~2320 linhas) — login/logout, dashboard web, `/visitacao` (+ `/visitacao/pessoa/<person_id>` POST — edição de dados do cliente, ver seção "Visitação" abaixo), `/clientes` (+ `/clientes/pessoa/<person_id>/nota`, `/clientes/notas/<link_id>/editar`, `/clientes/notas/<link_id>/apagar` POST — vínculo manual de nota fiscal, 2026-08, ver seção "Clientes — vínculo manual de nota fiscal" abaixo; + `/clientes/pessoa/<person_id>/vinculo-cliente/buscar` GET (JSON), `/clientes/pessoa/<person_id>/vinculo-cliente` POST, `/clientes/vinculo-cliente/<link_id>/apagar` POST — vínculo de identidade com cliente Microvix PF/PJ, 2026-09, ver seção "Clientes — vínculo de identidade com cliente Microvix" abaixo), `/mapa-calor`, `/ranking` (+ `/ranking/<person_id>`, `/ranking/recalcular`), `/heatmap-imagem`. Prefix: `/retail_analytics`
+- `mobile.py` (~3090 linhas) — espelho do auth.py para mobile (login, dashboard, `/visitacao` + `/visitacao/pessoa/<person_id>` POST, `/clientes` + rotas de nota fiscal manual (`/clientes/pessoa/<person_id>/nota`, `/clientes/notas/<link_id>/editar`, `/clientes/notas/<link_id>/apagar`) + rotas de vínculo de identidade com cliente Microvix (mesmos paths de auth.py, 2026-09), `/ranking` (+ `/ranking/<person_id>`, `/ranking/<person_id>/dados` — JSON usado pelo painel expansível inline de `/ranking`), `/mapa-calor`, `/heatmap-imagem`) + `/sw.js` (PWA) + reimplementação própria (não reuso de blueprint) das telas de `gestao.py` (`/gestao/faturamento|vendas|estoque`) e `motor.py` (`/motor/faturamento|vendas|estoque`). Prefix: `/retail_analytics/m`. **Equivalente parcial de `relatorios.py`** (2026-09): tem `/relatorios/identificados` (+ `/relatorios/identificados/download`), mas **não** tem o quadro "Pedidos" (meta/realizado por vendedor) — foi removido do mobile em 2026-08, só existe na versão web (`Relatórios > Pedidos`). O contexto de empresa/loja de `/relatorios/identificados` reusa `_gestao_mobile_ctx` (já compartilhado por `gestao_*`/`motor_*` no mobile), diferente do padrão de cópia local usado no lado web (ver `_store_context` abaixo).
 - `cadastros.py` — CRUD empresas, lojas, câmeras, temas, regras de ranking (`/ranking-regras`)
 - `usuarios.py` — gestão de usuários e permissões
 - `conta.py` — troca de senha
@@ -327,6 +327,43 @@ das lojas em vista, com ação de corrigir (número/série, volta pra `pending`)
 permissão de Visitação/Clientes (`screen_required('dashboard')`), sem restrição por quem lançou —
 qualquer usuário com acesso pode revisar o lançamento de outro.
 
+**Clientes — vínculo de identidade com cliente Microvix (PF/PJ) (2026-09):** distinto do vínculo
+manual de nota fiscal acima — este vínculo é de **identidade**, não financeiro, e não mexe em
+`person_purchases`. Hoje a relação entre uma pessoa reconhecida (`faciais.people`) e um cliente
+cadastrado no Microvix (`microvix.microvix_clientes_fornecedores`, PF ou PJ) só existe
+implicitamente, nota a nota, via `person_purchases` → `microvix_movimento.codigo_cliente`. A tabela
+`faciais.person_client_links` (migration `migrations/add_person_client_links.sql`) grava esse
+vínculo de forma direta e persistente, confirmado manualmente pelo usuário — **não** há sugestão
+automática a partir das compras (decisão do usuário, 2026-09). Ausência de vínculo é o estado
+normal e permanente pra qualquer pessoa (pode nunca ter um cliente Microvix associado) — não é
+staging, não expira, diferente de `manual_purchase_links`.
+
+Regra de negócio: uma pessoa pode ter **no máximo 1 cliente PF** vinculado (é ela mesma) e **N
+clientes PJ** (empresas em cujo nome ela compra); um cliente PJ pode estar vinculado a várias
+pessoas (vários funcionários comprando no mesmo CNPJ); um cliente PF só pode estar vinculado a uma
+única pessoa. Garantido por dois índices únicos parciais em `person_client_links` sobre
+`tipo_cliente = 'F'` (um por `person_id`, outro por `(portal, cod_cliente)`) — `tipo_cliente` fica
+denormalizado na tabela (copiado de `microvix_clientes_fornecedores` no momento do vínculo) só pra
+viabilizar esses índices sem trigger; PJ não tem nenhuma dessas restrições (N:N livre nos dois
+sentidos). Sem FK real pra `microvix.microvix_clientes_fornecedores` (schema `microvix` é só
+sincronizado — mesmo padrão de `person_purchases`/`sellers`).
+
+Tela Clientes (web e mobile): botão &#127970; no card da pessoa abre busca por **CPF/CNPJ** (só
+esse campo — nome/código não são usados na busca, decisão do usuário), restrita ao `microvix_portal`
+da loja em vista (nunca busca em outro portal). `doc_cliente` **não é garantidamente único** por
+portal na base real (medido: alguns casos de cadastro duplicado) — a busca (`people.
+microvix_cliente_buscar_documento`, JSON via `GET /clientes/pessoa/<person_id>/vinculo-cliente/buscar`)
+pode retornar mais de um resultado, e o usuário escolhe qual `cod_cliente` vincular antes de
+confirmar (`POST /clientes/pessoa/<person_id>/vinculo-cliente`). Vínculos confirmados aparecem como
+tags no card (`PF: Nome` / `PJ: Nome`, nome buscado ao vivo em `microvix_clientes_fornecedores` —
+só `tipo_cliente` é lido da tabela local) com um "×" pra apagar (`POST
+/clientes/vinculo-cliente/<link_id>/apagar`) — apagar é sempre permitido, sem confirmação além do
+`confirm()` do navegador, já que não é uma correção financeira.
+
+**Escopo desta rodada (2026-09): só identificação/exibição.** Ranking, relatório Identificados e
+qualquer cálculo financeiro **não** usam esse vínculo ainda — é decisão deliberada, a confirmar
+antes de estender o uso.
+
 **Cuidado de dado herdado do camera300:** `faciais.person_purchases` é escrita pelo camera300 (este
 repo só lia, até esta feature) — a decisão de gravar direto nela em vez de manter uma view de
 override foi tomada sabendo que a escrita do camera300 nessa tabela também é um processo manual
@@ -506,6 +543,7 @@ formatadas em R$ via `br_valor_k`; clicar num vendedor mostra o dia a dia da sem
 |---|---|
 | `person_purchases` | Vínculo NF × pessoa reconhecida. Campos: `person_purchase_id`, `person_id` (NULL=não identificado), `store_id`, `bill` (nº NF — não é único sozinho, repete entre séries da mesma loja), `serie` (junto com `bill` identifica a NF exata — coluna adicionada pelo camera300 em 2026-09, com backfill parcial; `NULL` nas linhas residuais não resolvidas; o camera300 chegou a ter também uma coluna `data`, removida no mesmo dia), `is_cancelled`, `is_identified`. Unique `(store_id, bill, serie)`. Escrita pelo camera300; desde 2026-08 também escrita por este app (resolução de `manual_purchase_links`, ver seção "Clientes — vínculo manual de nota fiscal", que grava `serie` desde 2026-09) |
 | `manual_purchase_links` | (2026-08) Staging do vínculo manual nota×pessoa da tela Clientes, até a nota aparecer em `microvix_movimento`. Campos: `link_id`, `person_id`, `store_id`, `numero_nota`, `serie`, `status` (`pending`/`confirmed`/`not_found`), `entered_by`, `entered_at`, `resolved_at`. Unique `(store_id, serie, numero_nota)`. Ver seção "Clientes — vínculo manual de nota fiscal" |
+| `person_client_links` | (2026-09) Vínculo de identidade (não financeiro) pessoa×cliente Microvix, confirmado manualmente na tela Clientes. Campos: `person_client_link_id`, `person_id`, `portal`, `cod_cliente` (junto, chave de `microvix_clientes_fornecedores`), `tipo_cliente` (`F`/`J`, denormalizado), `entered_by`, `entered_at`. Unique `(person_id, portal, cod_cliente)` + índices únicos parciais garantindo no máximo 1 cliente PF por pessoa e um cliente PF só numa pessoa. Ver seção "Clientes — vínculo de identidade com cliente Microvix" |
 
 #### Views e materialized views
 
