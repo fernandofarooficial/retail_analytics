@@ -1615,3 +1615,75 @@ def person_client_link_apagar(link_id):
     """Remove o vínculo de identidade. É só uma anotação — não mexe em person_purchases
     nem em nenhum dado financeiro —, por isso pode ser apagado livremente."""
     db.execute("DELETE FROM faciais.person_client_links WHERE person_client_link_id = %s", (link_id,))
+
+
+def person_client_link_ultimas_compras(link_id, max_notas=5):
+    """Últimas max_notas notas fiscais do cliente Microvix vinculado (qualquer loja/cnpj_emp
+    dentro do mesmo portal — o cadastro do cliente é do portal, não de uma loja específica),
+    com as linhas de produto de cada nota. Diferente de compras_recentes_pessoa[_detalhe]: não
+    passa por person_purchases, é o histórico do cliente Microvix em si (pode incluir compras
+    feitas por outras pessoas reconhecidas vinculadas ao mesmo cliente PJ, ou nenhuma pessoa).
+    Retorna (link_info_ou_None, lista_de_notas)."""
+    link = db.query_one("""
+        SELECT pcl.person_client_link_id AS link_id, pcl.portal, pcl.cod_cliente, pcl.tipo_cliente,
+               COALESCE(NULLIF(TRIM(cf.nome_cliente), ''), cf.razao_cliente,
+                        pcl.cod_cliente::text) AS nome
+        FROM   faciais.person_client_links pcl
+        LEFT   JOIN microvix.microvix_clientes_fornecedores cf
+               ON  cf.portal = pcl.portal AND cf.cod_cliente = pcl.cod_cliente
+        WHERE  pcl.person_client_link_id = %s
+    """, (link_id,))
+    if not link:
+        return None, []
+
+    rows = db.query_all("""
+        WITH notas AS (
+            SELECT mm.cnpj_emp, mm.serie, mm.documento,
+                   MAX(mm.data_documento::date) AS dia,
+                   SUM(mm.valor_total) AS valor_nota
+            FROM   microvix.microvix_movimento mm
+            WHERE  mm.portal          = %(portal)s
+              AND  mm.codigo_cliente  = %(cod_cliente)s
+              AND  mm.cancelado      <> 'S'
+              AND  mm.excluido       <> 'S'
+              AND  mm.soma_relatorio  = 'S'
+              AND  (mm.transacao_pedido_venda = 0 OR mm.transacao_pedido_venda IS NULL)
+              AND  (mm.forma_pix = true OR mm.forma_cartao = true OR mm.forma_dinheiro = true)
+              AND  mm.cod_natureza_operacao = '10030'
+            GROUP  BY mm.cnpj_emp, mm.serie, mm.documento
+            ORDER  BY dia DESC
+            LIMIT  %(max_notas)s
+        )
+        SELECT n.cnpj_emp, n.serie, n.documento, n.dia, n.valor_nota,
+               COALESCE(NULLIF(TRIM(mp.descricao_basica), ''), mp.nome) AS produto_nome,
+               mm.quantidade
+        FROM   notas n
+        JOIN   microvix.microvix_movimento mm
+               ON  mm.portal = %(portal)s AND mm.codigo_cliente = %(cod_cliente)s
+              AND  mm.cnpj_emp = n.cnpj_emp AND mm.serie = n.serie AND mm.documento = n.documento
+              AND  mm.cancelado <> 'S' AND mm.excluido <> 'S' AND mm.soma_relatorio = 'S'
+              AND  (mm.transacao_pedido_venda = 0 OR mm.transacao_pedido_venda IS NULL)
+              AND  (mm.forma_pix = true OR mm.forma_cartao = true OR mm.forma_dinheiro = true)
+              AND  mm.cod_natureza_operacao = '10030'
+        LEFT   JOIN microvix.microvix_produtos mp
+               ON  mp.portal = mm.portal AND mp.cod_produto = mm.cod_produto
+        ORDER  BY n.dia DESC, n.cnpj_emp, n.serie, n.documento, produto_nome
+    """, {'portal': link['portal'], 'cod_cliente': link['cod_cliente'], 'max_notas': max_notas})
+
+    notas = {}
+    ordem = []
+    for r in rows:
+        chave = (r['cnpj_emp'], r['serie'], r['documento'])
+        if chave not in notas:
+            notas[chave] = {
+                'dia': r['dia'],
+                'valor_nota': float(r['valor_nota'] or 0),
+                'produtos': [],
+            }
+            ordem.append(chave)
+        if r['produto_nome'] is not None:
+            notas[chave]['produtos'].append({
+                'nome': r['produto_nome'],
+                'quantidade': float(r['quantidade'] or 0),
+            })
+    return link, [notas[chave] for chave in ordem]

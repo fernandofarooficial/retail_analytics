@@ -143,6 +143,17 @@
     border: none; background: none; cursor: pointer; color: inherit;
     font-size: 0.85rem; line-height: 1; padding: 0; opacity: 0.65;
   }
+  .m-cli-tag-compras-btn {
+    border: none; background: none; cursor: pointer; color: inherit;
+    font-size: 0.75rem; line-height: 1; padding: 0; opacity: 0.75;
+  }
+  .m-vc-compra-item { padding: 0.6rem 0; border-top: 1px solid #F3F4F6; }
+  .m-vc-compra-item:first-child { border-top: none; padding-top: 0; }
+  .m-vc-compra-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 0.8rem; font-weight: 700; color: #111827; margin-bottom: 0.3rem;
+  }
+  .m-vc-compra-produto { font-size: 0.75rem; color: #374151; padding: 0.05rem 0; }
   .m-cli-row { font-size: 0.78rem; color: #374151; margin-top: 0.25rem; display: flex; gap: 0.3rem; }
   .m-cli-row-label { color: #9CA3AF; }
   .m-cli-row-sub { color: #9CA3AF; font-size: 0.7rem; }
@@ -353,6 +364,8 @@
               {% for link in c.client_links %}
               <span class="m-cli-tag {{ 'm-cli-tag-pf' if link.tipo_cliente == 'F' else 'm-cli-tag-pj' }}">
                 {{ 'PF' if link.tipo_cliente == 'F' else 'PJ' }}: {{ link.nome }}
+                <button type="button" class="m-cli-tag-compras-btn" title="Últimas compras deste cliente"
+                        onclick="abrirComprasClienteM({{ link.link_id }})">&#128717;</button>
                 <form method="POST" action="{{ url_for('mobile.clientes_apagar_vinculo_cliente', link_id=link.link_id) }}"
                       onsubmit="return confirm('Remover este vínculo?');" style="display:inline;">
                   <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
@@ -512,6 +525,15 @@
   </form>
 
   <button class="m-sheet-close" onclick="fecharVinculoClienteSheet()">Fechar</button>
+</div>
+
+<!-- ── Bottom-sheet (separado): últimas compras de um cliente vinculado ── -->
+<div id="m-vc-compras-overlay" class="m-sheet-overlay" onclick="fecharComprasClienteSheetM()"></div>
+<div id="m-vc-compras-sheet" class="m-store-sheet" style="max-height:80vh; overflow-y:auto;">
+  <div class="m-sheet-handle"></div>
+  <div class="m-sheet-title" id="m-vc-compras-title">Últimas compras</div>
+  <div id="m-vc-compras-body"></div>
+  <button class="m-sheet-close" onclick="fecharComprasClienteSheetM()">Fechar</button>
 </div>
 
 <!-- ── Bottom-sheet: editar cliente (reaproveitado de Visitação) ────── -->
@@ -713,6 +735,40 @@ function vincularClienteM(codCliente, tipoCliente) {
   document.getElementById('m-vc-cod-cliente').value = codCliente;
   document.getElementById('m-vc-tipo-cliente').value = tipoCliente;
   form.submit();
+}
+
+function abrirComprasClienteM(linkId) {
+  document.getElementById('m-vc-compras-title').textContent = 'Últimas compras';
+  const body = document.getElementById('m-vc-compras-body');
+  body.innerHTML = '<p class="m-hint">Carregando…</p>';
+  cliModalAberto = true;
+  document.getElementById('m-vc-compras-overlay').classList.add('open');
+  document.getElementById('m-vc-compras-sheet').classList.add('open');
+  fetch('/retail_analytics/m/clientes/vinculo-cliente/' + linkId + '/compras')
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { body.innerHTML = '<p class="m-hint">' + data.error + '</p>'; return; }
+      document.getElementById('m-vc-compras-title').textContent =
+        'Últimas compras — ' + (data.tipo_cliente === 'F' ? 'PF' : 'PJ') + ': ' + data.nome;
+      if (!data.notas.length) {
+        body.innerHTML = '<p class="m-hint">Nenhuma compra encontrada para esse cliente.</p>';
+        return;
+      }
+      body.innerHTML = data.notas.map(n => {
+        const produtos = n.produtos.length
+          ? n.produtos.map(p => '<div class="m-vc-compra-produto">' + p.quantidade + '&times; ' + p.nome + '</div>').join('')
+          : '<div class="m-vc-compra-produto">—</div>';
+        return '<div class="m-vc-compra-item">' +
+          '<div class="m-vc-compra-header"><span>' + n.dia_fmt + '</span><span>' + n.valor_fmt + '</span></div>' +
+          produtos + '</div>';
+      }).join('');
+    })
+    .catch(() => { body.innerHTML = '<p class="m-hint">Erro ao carregar.</p>'; });
+}
+function fecharComprasClienteSheetM() {
+  cliModalAberto = false;
+  document.getElementById('m-vc-compras-overlay').classList.remove('open');
+  document.getElementById('m-vc-compras-sheet').classList.remove('open');
 }
 
 function selecionarEmpresa(id) {

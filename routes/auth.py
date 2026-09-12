@@ -28,7 +28,8 @@ from people import (qtd_novos_recorrentes as _qtd_novos_recorrentes,
                     microvix_cliente_buscar_documento as _microvix_cliente_buscar_documento,
                     person_client_links_por_pessoa as _person_client_links_por_pessoa,
                     person_client_link_criar as _person_client_link_criar,
-                    person_client_link_apagar as _person_client_link_apagar)
+                    person_client_link_apagar as _person_client_link_apagar,
+                    person_client_link_ultimas_compras as _person_client_link_ultimas_compras)
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -1858,6 +1859,41 @@ def clientes_apagar_vinculo_cliente(link_id):
     return redirect(url_for('auth.clientes',
                             company_id=request.form.get('company_id') or None,
                             store_id=request.form.get('store_id_scope') or None))
+
+
+def _usuario_tem_acesso_portal(user_id, portal):
+    row = db.query_one("""
+        SELECT 1
+        FROM   faciais.vw_user_store_access vsa
+        JOIN   faciais.stores s ON s.store_id = vsa.store_id
+        WHERE  vsa.user_id = %s AND s.microvix_portal = %s
+        LIMIT  1
+    """, (user_id, portal))
+    return bool(row)
+
+
+@auth_bp.route('/clientes/vinculo-cliente/<int:link_id>/compras')
+@login_required
+@screen_required('dashboard')
+def clientes_compras_vinculo_cliente(link_id):
+    link, notas = _person_client_link_ultimas_compras(link_id)
+    if not link:
+        return jsonify({'error': 'Vínculo não encontrado.'}), 404
+    if not _usuario_tem_acesso_portal(session['user_id'], link['portal']):
+        return jsonify({'error': 'Acesso negado.'}), 403
+
+    return jsonify({
+        'nome':         link['nome'],
+        'tipo_cliente': link['tipo_cliente'],
+        'notas': [
+            {
+                'dia_fmt':   n['dia'].strftime('%d/%m/%Y') if n['dia'] else '—',
+                'valor_fmt': f"R$ {n['valor_nota']:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.'),
+                'produtos':  n['produtos'],
+            }
+            for n in notas
+        ]
+    })
 
 
 # ── Mapa de Calor ─────────────────────────────────────────────────────────────

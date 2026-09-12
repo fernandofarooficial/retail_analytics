@@ -73,12 +73,25 @@
     font-size: 0.9rem; line-height: 1; padding: 0; opacity: 0.65;
   }
   .cli-tag-remove:hover { opacity: 1; }
+  .cli-tag-compras-btn {
+    border: none; background: none; cursor: pointer; color: inherit;
+    font-size: 0.8rem; line-height: 1; padding: 0; opacity: 0.75;
+  }
+  .cli-tag-compras-btn:hover { opacity: 1; }
 
   .vc-result-item {
     display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
     padding: 0.6rem 0; border-top: 1px solid #F3F4F6; font-size: 0.8125rem;
   }
   .vc-result-sub { color: #6B7280; font-size: 0.75rem; }
+
+  .vc-compra-item { padding: 0.75rem 0; border-top: 1px solid #F3F4F6; }
+  .vc-compra-item:first-child { border-top: none; padding-top: 0; }
+  .vc-compra-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 0.875rem; font-weight: 700; color: #111827; margin-bottom: 0.35rem;
+  }
+  .vc-compra-produto { font-size: 0.8125rem; color: #374151; padding: 0.1rem 0; }
 
   .cli-notas-panel {
     background: #fff;
@@ -378,6 +391,8 @@
           {% for link in c.client_links %}
           <span class="cli-tag {{ 'cli-tag-pf' if link.tipo_cliente == 'F' else 'cli-tag-pj' }}">
             {{ 'PF' if link.tipo_cliente == 'F' else 'PJ' }}: {{ link.nome }}
+            <button type="button" class="cli-tag-compras-btn" title="Últimas compras deste cliente"
+                    onclick="abrirComprasCliente({{ link.link_id }})">&#128717;</button>
             <form method="POST" action="{{ url_for('auth.clientes_apagar_vinculo_cliente', link_id=link.link_id) }}"
                   onsubmit="return confirm('Remover este vínculo?');" style="display:inline;">
               <input type="hidden" name="company_id" value="{{ selected_company_id or '' }}">
@@ -558,6 +573,18 @@
   <input type="hidden" name="cod_cliente" id="vc-cod-cliente">
   <input type="hidden" name="tipo_cliente" id="vc-tipo-cliente">
 </form>
+
+<!-- ── Modal (separado): últimas compras de um cliente Microvix vinculado ── -->
+<dialog id="vc-compras-modal">
+  <div class="modal-header">
+    <h2 id="vc-compras-title">Últimas compras</h2>
+    <button type="button" class="modal-close" onclick="fecharComprasClienteModal()">&times;</button>
+  </div>
+  <div class="modal-body" id="vc-compras-body"></div>
+  <div class="modal-footer">
+    <button type="button" class="btn-secondary" onclick="fecharComprasClienteModal()">Fechar</button>
+  </div>
+</dialog>
 
 <!-- ── Modal: editar dados do cliente (reaproveitado de Visitação) ────── -->
 <dialog id="pessoa-modal">
@@ -764,6 +791,39 @@ function vincularCliente(codCliente, tipoCliente) {
   document.getElementById('vc-tipo-cliente').value = tipoCliente;
   vinculoClienteForm.submit();
 }
+
+const comprasClienteModal = document.getElementById('vc-compras-modal');
+
+function abrirComprasCliente(linkId) {
+  document.getElementById('vc-compras-title').textContent = 'Últimas compras';
+  const body = document.getElementById('vc-compras-body');
+  body.innerHTML = '<p class="kpi-hint">Carregando…</p>';
+  cliModalAberto = true;
+  comprasClienteModal.showModal();
+  fetch('/retail_analytics/clientes/vinculo-cliente/' + linkId + '/compras')
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { body.innerHTML = '<p class="kpi-hint">' + data.error + '</p>'; return; }
+      document.getElementById('vc-compras-title').textContent =
+        'Últimas compras — ' + (data.tipo_cliente === 'F' ? 'PF' : 'PJ') + ': ' + data.nome;
+      if (!data.notas.length) {
+        body.innerHTML = '<p class="kpi-hint">Nenhuma compra encontrada para esse cliente.</p>';
+        return;
+      }
+      body.innerHTML = data.notas.map(n => {
+        const produtos = n.produtos.length
+          ? n.produtos.map(p => '<div class="vc-compra-produto">' + p.quantidade + '&times; ' + p.nome + '</div>').join('')
+          : '<div class="vc-compra-produto">—</div>';
+        return '<div class="vc-compra-item">' +
+          '<div class="vc-compra-header"><span>' + n.dia_fmt + '</span><span>' + n.valor_fmt + '</span></div>' +
+          produtos + '</div>';
+      }).join('');
+    })
+    .catch(() => { body.innerHTML = '<p class="kpi-hint">Erro ao carregar.</p>'; });
+}
+function fecharComprasClienteModal() { cliModalAberto = false; comprasClienteModal.close(); }
+comprasClienteModal.addEventListener('click', e => { if (e.target === comprasClienteModal) fecharComprasClienteModal(); });
+comprasClienteModal.addEventListener('close', () => { cliModalAberto = false; });
 
 function selecionarEmpresa(id) {
   const url = new URL(window.location.href);
