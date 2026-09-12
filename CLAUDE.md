@@ -119,13 +119,29 @@ OR tipo_transacao IS NULL` (excluindo só `J`, Ajuste de Estoque — migration
 Pessoa Física ou Jurídica pelo `tipo_cliente` do cliente em `microvix.microvix_clientes_fornecedores`
 (join por `portal` + `codigo_cliente`/`cod_cliente`, chave `(portal, cod_cliente)`): `tipo_cliente='J'`
 → PJ; `'F'` ou `NULL` (cliente sem cadastro correspondente, ex. consumidor não identificado) → PF.
-A maioria das queries analíticas (faturamento, ticket médio, ranking de clientes) usa
-`NOT EXISTS (... cf.tipo_cliente = 'J')` pra considerar só PF, enquanto concentração/venda por
-vendedor a PJ usa `EXISTS`/`JOIN ... cf.tipo_cliente = 'J'`. Isso substitui (migration
-`migrations/descontinuar_store_serie_rules.sql`) o esquema anterior baseado em série da NF por
-loja — a tabela `faciais.store_serie_rules` e a view `faciais.vw_store_series` foram removidas; a
-série da NF continua normalmente usada pra identificar a nota fiscal (`(cnpj_emp, serie,
-documento)`), só deixou de servir pra classificação PF/PJ.
+Isso substitui (migration `migrations/descontinuar_store_serie_rules.sql`) o esquema anterior
+baseado em série da NF por loja — a tabela `faciais.store_serie_rules` e a view
+`faciais.vw_store_series` foram removidas; a série da NF continua normalmente usada pra identificar
+a nota fiscal (`(cnpj_emp, serie, documento)`), só deixou de servir pra classificação PF/PJ.
+
+**Faturamento na loja não é PF-only (2026-09, corrige a versão anterior desta seção):** o
+faturamento geral da loja **não** é restrito a PF — uma compra feita fisicamente na loja pode ser
+faturada tanto no CPF quanto no CNPJ do cliente (ex: funcionário comprando pra empresa no balcão),
+e ainda assim é faturamento da loja. Por isso `kpi_microvix`, `faixa_horaria`, `ticket_por_tipo`,
+`top5_por_tipo` (`people.py`) e as queries de gráfico do dashboard (`_compute_charts_data` em
+`routes/auth.py`/`routes/mobile.py`) **não** filtram por `tipo_cliente` — contam PF e PJ igual.
+O mesmo vale pras consultas por pessoa reconhecida da tela Clientes (`ticket_medio_pessoas`,
+`compras_recentes_pessoa`, `compras_recentes_pessoa_detalhe`) e pro ranking de clientes
+(`mv_microvix_vendas`/`vw_customer_ranking`, migration
+`migrations/faturamento_loja_inclui_pf_e_pj.sql`) — quem compra fisicamente na loja é a pessoa
+reconhecida pela câmera, independente de a nota ter saído no CPF ou no CNPJ dela.
+
+O recorte por `tipo_cliente` continua existindo, mas só nos relatórios que são deliberadamente
+sobre clientes PJ (não é mais "faturamento geral menos PJ"): `top10_clientes_vendedor`,
+`top10_produtos_vendedor`, `top10_clientes_loja` (`EXISTS`/`JOIN ... cf.tipo_cliente = 'J'`),
+`concentracao_clientes_mensal` (`JOIN ... cf.tipo_cliente = 'J'`, "% do faturamento PJ concentrado
+nos top N clientes") e o split `loja`/`pedidos` de `faturamento_mensal` (`CASE WHEN` por
+`tipo_cliente`, mas a coluna `total` dessa função já somava PF+PJ mesmo antes desta correção).
 
 **Inadimplência — `people.top10_inadimplentes` (2026-08):** quadro "Top 10 Inadimplentes" em
 Motor > Vendas (web e mobile), com toggle de ordenação por valor em aberto ou dias de atraso
@@ -453,7 +469,7 @@ formatadas em R$ via `br_valor_k`; clicar num vendedor mostra o dia a dia da sem
 | `vw_goal_daily_target` | Valor efetivo da meta: prioriza override (goal_values) sobre template |
 | `vw_goal_performance` | Apuração com `achievement_pct` e `status` (achieved/not_achieved/pending/no_target) |
 | `vw_customer_ranking` | Ranking de clientes em tempo real (fonte do cache `customer_ranking`). Score = (visitas_com_compra × pts) + (visitas_sem_compra × pts) + (total_gasto × pts_por_real). Usa `mv_microvix_vendas` para performance |
-| `mv_microvix_vendas` *(MATERIALIZED)* | Cache de vendas válidas do Microvix, usado como fonte de `vw_customer_ranking`. Precisa de `REFRESH` antes do cálculo do ranking — feito pelo cron. Agregado por `(cnpj_emp, documento, serie, data_documento)` — `serie` incluída desde 2026-09 (migration `migrations/person_purchases_serie_data.sql`) pra permitir a `vw_customer_ranking` casar por `pp.serie` exata e não só `documento`. Filtro: `cod_natureza_operacao='10030'`/`cancelado<>'S'`/`excluido<>'S'`/`soma_relatorio='S'`, `documento IS NOT NULL`, `transacao_pedido_venda=0 OR IS NULL`, `forma_pix=true OR forma_cartao=true OR forma_dinheiro=true` (2026-09 — migration `migrations/filtro_forma_pagamento_e_transacao_pedido.sql`; ver "Filtro padrão Microvix" acima), e classificado como PF via `LEFT JOIN faciais.stores` (restringe a lojas cadastradas) + `LEFT JOIN microvix.microvix_clientes_fornecedores` (`tipo_cliente IS NULL OR tipo_cliente='F'`) — trocado de série pra `tipo_cliente` em 2026-09 (ver "Classificação PF vs. PJ" acima; migration `migrations/descontinuar_store_serie_rules.sql`) |
+| `mv_microvix_vendas` *(MATERIALIZED)* | Cache de vendas válidas do Microvix, usado como fonte de `vw_customer_ranking`. Precisa de `REFRESH` antes do cálculo do ranking — feito pelo cron. Agregado por `(cnpj_emp, documento, serie, data_documento)` — `serie` incluída desde 2026-09 (migration `migrations/person_purchases_serie_data.sql`) pra permitir a `vw_customer_ranking` casar por `pp.serie` exata e não só `documento`. Filtro: `cod_natureza_operacao='10030'`/`cancelado<>'S'`/`excluido<>'S'`/`soma_relatorio='S'`, `documento IS NOT NULL`, `transacao_pedido_venda=0 OR IS NULL`, `forma_pix=true OR forma_cartao=true OR forma_dinheiro=true` (2026-09 — migration `migrations/filtro_forma_pagamento_e_transacao_pedido.sql`; ver "Filtro padrão Microvix" acima), com `JOIN faciais.stores` (restringe a lojas cadastradas). **Não** filtra por `tipo_cliente` (PF/PJ) — faturamento na loja conta os dois (2026-09, migration `migrations/faturamento_loja_inclui_pf_e_pj.sql`; ver "Faturamento na loja não é PF-only" acima) |
 | `vw_primeira_aparicao_clientes` *(MATERIALIZED)* | Primeira detecção de cada cliente (person_type_id='C'). Campo `first_record`. Index único em `person_id` |
 
 **Funções:** `fn_set_updated_at()` — trigger que atualiza `updated_at` em todas as tabelas. `create_updated_at_trigger(p_table)` — helper para criar trigger em nova tabela.

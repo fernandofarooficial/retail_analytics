@@ -19,10 +19,6 @@ def kpi_microvix(store_id, portal, cnpj, dia_i, dia_f):
           AND  mm.soma_relatorio       = 'S'
           AND  (mm.transacao_pedido_venda = 0 OR mm.transacao_pedido_venda IS NULL) AND (mm.forma_pix = true OR mm.forma_cartao = true OR mm.forma_dinheiro = true)
           AND  mm.cod_natureza_operacao = '10030'
-          AND  NOT EXISTS (
-                SELECT 1 FROM microvix.microvix_clientes_fornecedores cf
-                WHERE cf.portal = mm.portal AND cf.cod_cliente = mm.codigo_cliente AND cf.tipo_cliente = 'J'
-          )
     """, (portal, cnpj, dia_i, dia_f))
     if row and row['vendas']:
         v = int(row['vendas'])
@@ -64,10 +60,6 @@ def faixa_horaria(store_id, portal, cnpj, dia_i, dia_f):
           AND  mm.soma_relatorio       = 'S'
           AND  (mm.transacao_pedido_venda = 0 OR mm.transacao_pedido_venda IS NULL) AND (mm.forma_pix = true OR mm.forma_cartao = true OR mm.forma_dinheiro = true)
           AND  mm.cod_natureza_operacao = '10030'
-          AND  NOT EXISTS (
-                SELECT 1 FROM microvix.microvix_clientes_fornecedores cf
-                WHERE cf.portal = mm.portal AND cf.cod_cliente = mm.codigo_cliente AND cf.tipo_cliente = 'J'
-          )
           AND  mm.hora_lancamento IS NOT NULL AND mm.hora_lancamento <> ''
         GROUP  BY hora ORDER BY hora
     """, (portal, cnpj, dia_i, dia_f))
@@ -132,10 +124,6 @@ def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
               AND mm.excluido             <> 'S'
               AND mm.soma_relatorio        = 'S'
               AND (mm.transacao_pedido_venda = 0 OR mm.transacao_pedido_venda IS NULL) AND (mm.forma_pix = true OR mm.forma_cartao = true OR mm.forma_dinheiro = true)
-              AND NOT EXISTS (
-                    SELECT 1 FROM microvix.microvix_clientes_fornecedores cf
-                    WHERE cf.portal = mm.portal AND cf.cod_cliente = mm.codigo_cliente AND cf.tipo_cliente = 'J'
-              )
             GROUP BY pp.person_id
         )
         SELECT
@@ -321,10 +309,6 @@ def top5_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
               AND  mm.soma_relatorio = 'S'
               AND  (mm.transacao_pedido_venda = 0 OR mm.transacao_pedido_venda IS NULL) AND (mm.forma_pix = true OR mm.forma_cartao = true OR mm.forma_dinheiro = true)
               AND  mm.cod_natureza_operacao = '10030'
-              AND  NOT EXISTS (
-                    SELECT 1 FROM microvix.microvix_clientes_fornecedores cf
-                    WHERE cf.portal = mm.portal AND cf.cod_cliente = mm.codigo_cliente AND cf.tipo_cliente = 'J'
-              )
         ),
         totais AS (
             SELECT is_rec, produto, SUM(valor_liquido) AS total_fat
@@ -1118,9 +1102,6 @@ def ticket_medio_pessoas(person_ids):
                    ON  mm.cnpj_emp::bigint = st.cnpj
                   AND  mm.documento        = pp.bill
                   AND  (pp.serie IS NULL OR mm.serie = pp.serie)
-            LEFT   JOIN microvix.microvix_clientes_fornecedores cf
-                   ON  cf.portal      = mm.portal
-                  AND  cf.cod_cliente = mm.codigo_cliente
             WHERE  pp.person_id     = ANY(%s)
               AND  pp.is_cancelled  = FALSE
               AND  mm.cancelado    <> 'S'
@@ -1128,7 +1109,6 @@ def ticket_medio_pessoas(person_ids):
               AND  mm.soma_relatorio = 'S'
               AND  (mm.transacao_pedido_venda = 0 OR mm.transacao_pedido_venda IS NULL) AND (mm.forma_pix = true OR mm.forma_cartao = true OR mm.forma_dinheiro = true)
               AND  mm.cod_natureza_operacao = '10030'
-              AND  (cf.tipo_cliente IS NULL OR cf.tipo_cliente = 'F')
         )
         SELECT person_id,
                SUM(valor_total)                                     AS valor_total,
@@ -1183,9 +1163,6 @@ def compras_recentes_pessoa(person_id, max_dias=5):
                    ON  mm.cnpj_emp::bigint = st.cnpj
                   AND  mm.documento        = pp.bill
                   AND  (pp.serie IS NULL OR mm.serie = pp.serie)
-            LEFT   JOIN microvix.microvix_clientes_fornecedores cf
-                   ON  cf.portal      = mm.portal
-                  AND  cf.cod_cliente = mm.codigo_cliente
             LEFT   JOIN microvix.microvix_produtos mp
                    ON  mp.portal = mm.portal AND mp.cod_produto = mm.cod_produto
             WHERE  pp.person_id     = %(person_id)s
@@ -1195,7 +1172,6 @@ def compras_recentes_pessoa(person_id, max_dias=5):
               AND  mm.soma_relatorio = 'S'
               AND  (mm.transacao_pedido_venda = 0 OR mm.transacao_pedido_venda IS NULL) AND (mm.forma_pix = true OR mm.forma_cartao = true OR mm.forma_dinheiro = true)
               AND  mm.cod_natureza_operacao = '10030'
-              AND  (cf.tipo_cliente IS NULL OR cf.tipo_cliente = 'F')
         ),
         dias AS (
             SELECT DISTINCT dia FROM compras ORDER BY dia DESC LIMIT %(max_dias)s
@@ -1256,9 +1232,6 @@ def compras_recentes_pessoa_detalhe(person_id, max_dias=5):
                    ON  mm.cnpj_emp::bigint = st.cnpj
                   AND  mm.documento        = pp.bill
                   AND  (pp.serie IS NULL OR mm.serie = pp.serie)
-            LEFT   JOIN microvix.microvix_clientes_fornecedores cf
-                   ON  cf.portal      = mm.portal
-                  AND  cf.cod_cliente = mm.codigo_cliente
             LEFT   JOIN microvix.microvix_produtos mp
                    ON  mp.portal = mm.portal AND mp.cod_produto = mm.cod_produto
             WHERE  pp.person_id     = %(person_id)s
@@ -1268,7 +1241,6 @@ def compras_recentes_pessoa_detalhe(person_id, max_dias=5):
               AND  mm.soma_relatorio = 'S'
               AND  (mm.transacao_pedido_venda = 0 OR mm.transacao_pedido_venda IS NULL) AND (mm.forma_pix = true OR mm.forma_cartao = true OR mm.forma_dinheiro = true)
               AND  mm.cod_natureza_operacao = '10030'
-              AND  (cf.tipo_cliente IS NULL OR cf.tipo_cliente = 'F')
         ),
         dias AS (
             SELECT DISTINCT dia FROM compras ORDER BY dia DESC LIMIT %(max_dias)s
