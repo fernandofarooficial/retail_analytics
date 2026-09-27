@@ -140,6 +140,14 @@ gráficos de Faturamento de Gestão e Motor:
   pagamento fora de Pix/Cartão/Dinheiro (ex: Crediário direto de balcão) não cai em nenhuma das
   duas colunas, só no `total` — decisão deliberada do usuário, não bug.
 
+**Mas os dois ainda excluem `tipo_transacao = 'J'` (2026-09):** apesar de não terem mais a
+restrição de forma de pagamento/pedido, `faturamento_diario_mes` e `faturamento_mensal` mantêm
+`(tipo_transacao <> 'J' OR tipo_transacao IS NULL)` — Ajuste de Estoque não é venda e não deve
+compor o faturamento total de Gestão/Motor, mesmo sem as demais restrições. Isso reintroduz,
+só para essas duas funções, o filtro de `tipo_transacao` descontinuado do filtro padrão geral
+(ver "Histórico do filtro de `tipo_transacao`" abaixo) — os demais consumidores do filtro padrão
+não usam `tipo_transacao` de forma alguma.
+
 Todos os demais consumidores do filtro padrão (`kpi_microvix`, `faixa_horaria`, dashboard, ranking,
 `mv_microvix_vendas` etc.) continuam com a restrição normalmente — a exceção é só desses dois
 gráficos de faturamento total.

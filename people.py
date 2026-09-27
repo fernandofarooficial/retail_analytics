@@ -154,7 +154,8 @@ def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
 
 def faturamento_mensal(store_id, portal, cnpj, ano):
     """Faturamento mensal para um dado ano, sem a restrição de forma de pagamento/pedido do
-    filtro padrão no total (aqui ela só separa loja de pedidos, não exclui nada do total).
+    filtro padrão no total (aqui ela só separa loja de pedidos, não exclui nada do total) —
+    mas ainda exclui tipo_transacao='J' (Ajuste de Estoque), que não é venda.
     Loja = sem pedido de venda + forma Pix/Cartão/Dinheiro; Pedidos = com pedido de venda,
     qualquer forma de pagamento. As duas condições não são complementares entre si (uma
     transação sem pedido mas com outra forma de pagamento, ex. Crediário direto de balcão,
@@ -176,6 +177,7 @@ def faturamento_mensal(store_id, portal, cnpj, ano):
           AND mm.excluido             <> 'S'
           AND mm.soma_relatorio        = 'S'
           AND mm.cod_natureza_operacao = '10030'
+          AND (mm.tipo_transacao      <> 'J' OR mm.tipo_transacao IS NULL)
         GROUP BY mes
         ORDER BY mes
     """, (portal, cnpj, ano))
@@ -193,7 +195,8 @@ def faturamento_mensal(store_id, portal, cnpj, ano):
 def faturamento_diario_mes(portal, cnpj, ano, mes):
     """Faturamento total por dia para o mês/ano dado. Retorna dict {dia: total}. Sem a
     restrição de forma de pagamento/pedido do filtro padrão — usado em Motor > Faturamento,
-    que compara contra a meta de Faturamento Total (goal_id=3), não de Faturamento na loja."""
+    que compara contra a meta de Faturamento Total (goal_id=3), não de Faturamento na loja.
+    Ainda exclui tipo_transacao='J' (Ajuste de Estoque), que não é venda."""
     rows = db.query_all("""
         SELECT EXTRACT(DAY FROM data_documento)::int AS dia,
                SUM(valor_total) AS total
@@ -206,6 +209,7 @@ def faturamento_diario_mes(portal, cnpj, ano, mes):
           AND  excluido             <> 'S'
           AND  soma_relatorio        = 'S'
           AND  cod_natureza_operacao = '10030'
+          AND  (tipo_transacao      <> 'J' OR tipo_transacao IS NULL)
         GROUP  BY dia
         ORDER  BY dia
     """, (portal, cnpj, ano, mes))
