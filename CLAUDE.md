@@ -124,6 +124,26 @@ Aplicado em todo o projeto (`people.py`, `routes/auth.py`, `routes/mobile.py`, e
 Nota: a doc anterior deste filtro também listava `codigo_cliente = 1`, mas essa condição nunca
 existiu de fato no código-base (só nesta doc) — removida por estar desatualizada.
 
+**Exceção: Faturamento Total de Gestão/Motor não usa essa restrição (2026-09).** Por decisão do
+usuário, a restrição de forma de pagamento/`transacao_pedido_venda` serve só para definir o que foi
+"gerado na loja" (Pix/Cartão/Dinheiro sem pedido) — não deve reduzir o valor **total** exibido nos
+gráficos de Faturamento de Gestão e Motor:
+- `people.faturamento_diario_mes` (Motor > Faturamento, realizado comparado contra a meta de
+  Faturamento Total/goal_id=3) **não tem mais** essa restrição — soma toda transação válida
+  (`cancelado`/`excluido`/`soma_relatorio`/`cod_natureza_operacao`), com ou sem pedido, qualquer
+  forma de pagamento.
+- `people.faturamento_mensal` (Gestão > Faturamento) também não filtra mais por ela no `total`, mas
+  a usa pra dividir entre as colunas `loja` (sem pedido de venda + forma Pix/Cartão/Dinheiro) e
+  `pedidos` (**com** pedido de venda — `transacao_pedido_venda IS NOT NULL AND <> 0` —, qualquer
+  forma de pagamento) — substituindo o split anterior por `tipo_cliente` PF/PJ, que não é mais usado
+  aqui. As duas condições não são complementares: uma transação sem pedido mas com forma de
+  pagamento fora de Pix/Cartão/Dinheiro (ex: Crediário direto de balcão) não cai em nenhuma das
+  duas colunas, só no `total` — decisão deliberada do usuário, não bug.
+
+Todos os demais consumidores do filtro padrão (`kpi_microvix`, `faixa_horaria`, dashboard, ranking,
+`mv_microvix_vendas` etc.) continuam com a restrição normalmente — a exceção é só desses dois
+gráficos de faturamento total.
+
 **Histórico do filtro de `tipo_transacao` (descontinuado 2026-09):** já passou por três formatos.
 Originalmente um allowlist, `tipo_transacao IN ('P','V','S') OR tipo_transacao IS NULL`. Depois
 (migration `migrations/remover_filtro_tipo_transacao_mv_vendas.sql`) foi removido por completo —

@@ -153,23 +153,28 @@ def ticket_por_tipo(sid, portal, cnpj, data_inicio, data_fim):
 
 
 def faturamento_mensal(store_id, portal, cnpj, ano):
-    """Faturamento mensal separado em loja (PF) e pedidos (PJ) para um dado ano."""
+    """Faturamento mensal para um dado ano, sem a restrição de forma de pagamento/pedido do
+    filtro padrão no total (aqui ela só separa loja de pedidos, não exclui nada do total).
+    Loja = sem pedido de venda + forma Pix/Cartão/Dinheiro; Pedidos = com pedido de venda,
+    qualquer forma de pagamento. As duas condições não são complementares entre si (uma
+    transação sem pedido mas com outra forma de pagamento, ex. Crediário direto de balcão,
+    não entra em nenhuma das duas colunas, só no total)."""
     rows = db.query_all("""
         SELECT
             EXTRACT(MONTH FROM mm.data_documento)::int AS mes,
-            SUM(CASE WHEN cf.tipo_cliente IS NULL OR cf.tipo_cliente = 'F' THEN mm.valor_total ELSE 0 END) AS loja,
-            SUM(CASE WHEN cf.tipo_cliente = 'J' THEN mm.valor_total ELSE 0 END) AS pedidos,
+            SUM(CASE WHEN (mm.transacao_pedido_venda = 0 OR mm.transacao_pedido_venda IS NULL)
+                     AND (mm.forma_pix = true OR mm.forma_cartao = true OR mm.forma_dinheiro = true)
+                THEN mm.valor_total ELSE 0 END) AS loja,
+            SUM(CASE WHEN mm.transacao_pedido_venda IS NOT NULL AND mm.transacao_pedido_venda <> 0
+                THEN mm.valor_total ELSE 0 END) AS pedidos,
             SUM(mm.valor_total) AS total
         FROM microvix.microvix_movimento mm
-        LEFT JOIN microvix.microvix_clientes_fornecedores cf
-               ON cf.portal = mm.portal AND cf.cod_cliente = mm.codigo_cliente
         WHERE mm.portal                = %s
           AND mm.cnpj_emp              = %s
           AND EXTRACT(YEAR FROM mm.data_documento) = %s
           AND mm.cancelado            <> 'S'
           AND mm.excluido             <> 'S'
           AND mm.soma_relatorio        = 'S'
-          AND (mm.transacao_pedido_venda = 0 OR mm.transacao_pedido_venda IS NULL) AND (mm.forma_pix = true OR mm.forma_cartao = true OR mm.forma_dinheiro = true)
           AND mm.cod_natureza_operacao = '10030'
         GROUP BY mes
         ORDER BY mes
@@ -186,7 +191,9 @@ def faturamento_mensal(store_id, portal, cnpj, ano):
 
 
 def faturamento_diario_mes(portal, cnpj, ano, mes):
-    """Faturamento total por dia para o mês/ano dado. Retorna dict {dia: total}."""
+    """Faturamento total por dia para o mês/ano dado. Retorna dict {dia: total}. Sem a
+    restrição de forma de pagamento/pedido do filtro padrão — usado em Motor > Faturamento,
+    que compara contra a meta de Faturamento Total (goal_id=3), não de Faturamento na loja."""
     rows = db.query_all("""
         SELECT EXTRACT(DAY FROM data_documento)::int AS dia,
                SUM(valor_total) AS total
@@ -198,7 +205,6 @@ def faturamento_diario_mes(portal, cnpj, ano, mes):
           AND  cancelado            <> 'S'
           AND  excluido             <> 'S'
           AND  soma_relatorio        = 'S'
-          AND  (transacao_pedido_venda = 0 OR transacao_pedido_venda IS NULL) AND (forma_pix = true OR forma_cartao = true OR forma_dinheiro = true)
           AND  cod_natureza_operacao = '10030'
         GROUP  BY dia
         ORDER  BY dia
